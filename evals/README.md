@@ -9,13 +9,14 @@ the app, over real sockets and Postgres 16.
 ## Commands
 
 ```bash
-make evals                    # 5 golden trials plus 50 seeded chaos trials.
+make evals                    # 9 golden trials plus 90 seeded chaos trials.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
 uv run zagent evals --filter STREAM-005 --trials 2
 uv run zagent evals --chaos --filter STREAM-001 --seed 7 --trials 1
 uv run zagent evals --update-golden --filter STREAM-001
+uv run zagent evals --chaos --filter 'VIEW-*' --seed 7 --trials 1
 ```
 
 `make evals EVAL_ARGS='--filter REQ-STREAM-02 --trials 2'` passes options to the CLI.
@@ -57,14 +58,25 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | STREAM-003 | Agent exception with partial text | REQ-STREAM-01, REQ-STREAM-02 |
 | STREAM-004 | A successful turn after a failed turn | REQ-STREAM-01, REQ-STREAM-02 |
 | STREAM-005 | A partial assistant message is removed and replaced | REQ-STREAM-01, REQ-STREAM-02 |
+| VIEW-001 | Two valid tables with ordered step markers | REQ-VIEW-01, REQ-VIEW-02 |
+| VIEW-002 | An empty table | REQ-VIEW-01, REQ-VIEW-02 |
+| VIEW-003 | A rejected view preserves the previous tables | REQ-VIEW-01, REQ-VIEW-02 |
+| VIEW-004 | A rejected view leaves a fresh surface empty | REQ-VIEW-01, REQ-VIEW-02 |
 
-YAML groups in [cases/streams.yaml](cases/streams.yaml) contain a `cases` list. Each case declares
+REQ-VIEW-01 also links all five stream cases: view validation is checked across the entire
+corpus, including cases that legitimately push no views. Requirement rows may share trials;
+the report's total counts each case/mode/seed once, not once per linked requirement.
+
+YAML groups in [cases/streams.yaml](cases/streams.yaml) and [cases/views.yaml](cases/views.yaml)
+contain a `cases` list. Each case declares
 its primary `requirement`, `agent`, `conversation_turns`, and `expect` assertions. Secondary
 requirements link the same case in the register. `scripted:default` uses the app's built-in
-script; other names load `scripts/<name>.yaml`. Case and script data are validated before execution.
+script; other names load `scripts/<name>.yaml`. Case and script structure is validated before
+execution; event payloads are validated at emission so malformed views become failed turns.
 
-Goldens contain normalized events **and the projected messages and final conversation-turn
-state**, so a reducer bug is visible even when event bytes remain correct. IDs, timestamps, and
+Goldens contain normalized events **and the projected messages, views, steps, and final
+conversation-turn state**, so a reducer bug is visible even when event bytes remain correct. IDs,
+sequence positions, timestamps, and
 durations are excluded; adjacent text deltas for the same message are joined so timer scheduling
 does not churn fixtures. Both uninterrupted executions must agree; a leaked changing value is a
 failure with a `CASE-ID/determinism` diff, not something silently scrubbed away.
@@ -75,10 +87,17 @@ Pytest and CI never update fixtures. Add an assertion with `@assertion("name")` 
 [assertions.py](../services/agent/zagent/evals/assertions.py); the runner dispatches it without
 needing changes. Unknown assertion names and event types fail validation.
 
+PLAN3 adds `views` (ordered matching specs, with exact or `~regex` property matches) and
+`view_stack_depth`. Every case also checks all pushed specs against the registered schema and
+independently compares view history at each event prefix. The shared
+[view-replay fixture](fixtures/view-replay.json) is exercised by both server and browser reducers,
+including duplicate identities and resuming from every prefix.
+
 ## Chaos And Limits
 
-Each seed selects a conversation turn, a text-progress boundary, a disconnected interval, and
-an execution pause duration. The client closes the HTTP response, waits, then reconnects with
+Each seed selects a conversation turn, a disconnect boundary, a disconnected interval, and
+an execution pause duration. For turns with views, the boundary follows a seeded complete view
+push; for other turns it uses text progress. The client closes the HTTP response, waits, then reconnects with
 `Last-Event-ID`. It verifies contiguous IDs, all terminal events, the public snapshot, the golden,
 and the uninterrupted reference. The report records the selected plan and actual sequence at
 disconnect, allowing a single seed to reproduce failures.
@@ -129,4 +148,6 @@ source; local development cannot enable that repository setting or perform the h
 
 The existing client reducer tests and `make browser` remain separate frontend acceptance gates.
 They prove actual browser refresh, native SSE reconnect, tab closure, and mobile layout; the
-Python harness's reducer checks do not replace those browser tests.
+Python harness's reducer checks do not replace those browser tests. PLAN3 adds table component
+snapshots, stable history selection, auto-follow behavior, invalid-view isolation, and mobile
+panel navigation. Screenshots are inspection artifacts; no pixel-diff gate is introduced.

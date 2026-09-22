@@ -135,6 +135,7 @@ class Store:
         conversation_turn_id: UUID,
         event: EventDraft,
     ) -> Event:
+        event = EventDraft.model_validate(event.model_dump())
         seq = await connection.fetchval(
             "UPDATE sessions SET last_seq = last_seq + 1 WHERE id = $1 RETURNING last_seq",
             session_id,

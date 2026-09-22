@@ -1,0 +1,97 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Show unresolved checks"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Review unresolved checks"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "specimen_id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "check",
+                "label": "Check",
+                "type": "string"
+              }
+            ],
+            "row_count": 0,
+            "rows": [],
+            "title": "Unresolved checks"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "detail": "No unresolved checks in this synthetic fixture."
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Show unresolved checks"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "No unresolved checks in this synthetic fixture.",
+      "status": "complete",
+      "title": "Review unresolved checks"
+    }
+  ],
+  "views": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "check",
+            "label": "Check",
+            "type": "string"
+          }
+        ],
+        "row_count": 0,
+        "rows": [],
+        "title": "Unresolved checks"
+      },
+      "version": 1
+    }
+  ]
+}

@@ -154,6 +154,10 @@ The last two items are the acceptance test for the harness itself.
 
 ## Implementation Notes
 
+PLAN3 extends this harness to four requirements and nine cases, with 90 seeded chaos trials.
+The original five stream cases remain, and four view cases cover valid, empty, and invalid
+tables. See [PLAN3](PLAN3.md) and [evals/README.md](../evals/README.md) for the current matrix.
+
 - [services/agent/zagent/evals](../services/agent/zagent/evals) owns strict case/requirement models,
   the assertion registry, HTTP runner, seeded chaos plans, statistics, and reporting. Pytest and
   `zagent evals` call the same evaluator; neither seeds sessions nor gathers evidence through SQL.

@@ -50,5 +50,7 @@
       "status": "complete",
       "text": "Only the replacement response remains in this conversation."
     }
-  ]
+  ],
+  "steps": [],
+  "views": []
 }

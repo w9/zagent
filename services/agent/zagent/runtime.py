@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from pydantic import ValidationError
+
 from zagent.agent import Agent, Emit
 from zagent.events import EventDraft
 from zagent.store import AgentSession, Store
@@ -102,9 +104,14 @@ class Runtime:
             )
             raise
         except Exception as error:
-            logger.warning("Conversation turn %s failed: %s", session.conversation_turn_id, error)
+            detail = str(error) or type(error).__name__
+            if isinstance(error, ValidationError):
+                detail = "Invalid event payload: " + "; ".join(
+                    issue["msg"] for issue in error.errors(include_input=False, include_url=False)
+                )
+            logger.warning("Conversation turn %s failed: %s", session.conversation_turn_id, detail)
             await self.store.finish_conversation_turn(
-                session.id, session.conversation_turn_id, str(error) or type(error).__name__
+                session.id, session.conversation_turn_id, detail
             )
         else:
             await self.store.finish_conversation_turn(session.id, session.conversation_turn_id)

@@ -9,6 +9,30 @@
   mutations: [corrupt_projection, change_scripted_text]
   cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005]
 
+- id: REQ-VIEW-01
+  tier: invariant
+  statement: Every pushed view validates against its registered versioned schema before persistence.
+  verification: standard
+  enforced_by:
+    - services/agent/zagent/views.py
+    - services/agent/zagent/events.py
+    - services/agent/zagent/store.py
+    - apps/web/src/lib/views.ts
+  mutations: [bypass_view_validation, corrupt_view_payload]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, VIEW-001, VIEW-002, VIEW-003, VIEW-004]
+
+- id: REQ-VIEW-02
+  tier: invariant
+  statement: View stacks agree for every replayed prefix and remain complete after interruption.
+  verification: chaos
+  enforced_by:
+    - services/agent/zagent/events.py
+    - services/agent/zagent/evals/assertions.py
+    - apps/web/src/lib/events.ts
+    - apps/web/src/lib/events.test.ts
+  mutations: [drop_projected_view, duplicate_projected_view]
+  cases: [VIEW-001, VIEW-002, VIEW-003, VIEW-004]
+
 - id: REQ-STREAM-02
   tier: invariant
   statement: Interrupted SSE subscriptions recover the same transcript without gaps or duplicates.

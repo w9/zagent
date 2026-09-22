@@ -1,12 +1,16 @@
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from difflib import unified_diff
 from pathlib import Path
 from typing import Any, get_args
 
-from zagent.evals.schema import Case, fixture_path
-from zagent.events import Event, EventType, Projection, normalize_transcript
+from pydantic import Field, TypeAdapter, ValidationError
+
+from zagent.evals.schema import Case, StrictModel, fixture_path
+from zagent.events import Event, EventType, Projection, normalize_transcript, reduce_event
+from zagent.views import ViewPushed
 
 
 @dataclass
@@ -19,8 +23,10 @@ def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
     return {
         "events": normalize_transcript(evidence.events),
         "messages": [
-            message.model_dump(exclude={"id"}) for message in evidence.projection.messages
+            message.model_dump(exclude={"id", "seq"}) for message in evidence.projection.messages
         ],
+        "views": [view.spec.model_dump() for view in evidence.projection.views],
+        "steps": [step.model_dump(exclude={"id", "seq"}) for step in evidence.projection.steps],
         "conversation_turn": (
             evidence.projection.conversation_turn.model_dump(exclude={"id"})
             if evidence.projection.conversation_turn
@@ -84,6 +90,74 @@ def events_exclude(evidence: Evidence, expected: Any, root: Path, case_id: str) 
     return f"{case_id}: forbidden events {sorted(found)}" if found else None
 
 
+class ViewExpectation(StrictModel):
+    kind: str = Field(min_length=1)
+    version: int | None = Field(default=None, strict=True, ge=1)
+    props_match: dict[str, Any] = Field(default_factory=dict)
+
+
+VIEW_EXPECTATIONS = TypeAdapter(list[ViewExpectation])
+
+
+@assertion("views")
+def views(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    remaining = iter(evidence.projection.views)
+    for expectation in VIEW_EXPECTATIONS.validate_python(expected):
+        for view in remaining:
+            spec = view.spec
+            if spec.kind != expectation.kind:
+                continue
+            if expectation.version is not None and spec.version != expectation.version:
+                continue
+            matched = True
+            for key, value in expectation.props_match.items():
+                actual = spec.props.get(key)
+                if isinstance(value, str) and value.startswith("~"):
+                    matched = isinstance(actual, str) and re.search(value[1:], actual) is not None
+                else:
+                    matched = actual == value
+                if not matched:
+                    break
+            if matched:
+                break
+        else:
+            return f"{case_id}: missing ordered view matching {expectation.model_dump()}"
+    return None
+
+
+@assertion("view_stack_depth")
+def view_stack_depth(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    actual = len(evidence.projection.views)
+    return (
+        f"{case_id}: expected view stack depth {expected}, received {actual}"
+        if actual != expected
+        else None
+    )
+
+
+def view_invariants(evidence: Evidence, case_id: str) -> list[str]:
+    replayed = Projection(session_id=evidence.projection.session_id)
+    expected = []
+    identities = set()
+    for event in evidence.events:
+        if event.type == "view_pushed":
+            try:
+                pushed = ViewPushed.model_validate(event.payload)
+            except ValidationError as error:
+                return [f"{case_id}: REQ-VIEW-01 invalid view at seq {event.seq}: {error}"]
+            if pushed.view_id not in identities:
+                identities.add(pushed.view_id)
+                expected.append(
+                    {"id": pushed.view_id, "seq": event.seq, "spec": pushed.spec.model_dump()}
+                )
+        replayed = reduce_event(replayed, event)
+        if [view.model_dump() for view in replayed.views] != expected:
+            return [f"{case_id}: REQ-VIEW-02 view stack differs at prefix {event.seq}"]
+    if [view.model_dump() for view in evidence.projection.views] != expected:
+        return [f"{case_id}: REQ-VIEW-02 final view stack differs from the log"]
+    return []
+
+
 def validate_expectations(case: Case, root: Path) -> None:
     unknown = case.expect.keys() - ASSERTIONS.keys()
     if unknown:
@@ -100,13 +174,27 @@ def validate_expectations(case: Case, root: Path) -> None:
         unknown_events = set(case.expect.get(name, [])) - set(get_args(EventType))
         if unknown_events:
             raise ValueError(f"{case.id}: unknown event types {sorted(unknown_events)}")
+    if "views" in case.expect:
+        for expectation in VIEW_EXPECTATIONS.validate_python(case.expect["views"]):
+            for value in expectation.props_match.values():
+                if isinstance(value, str) and value.startswith("~"):
+                    try:
+                        re.compile(value[1:])
+                    except re.error as error:
+                        raise ValueError(
+                            f"{case.id}: invalid view match pattern: {error}"
+                        ) from error
+    if "view_stack_depth" in case.expect:
+        depth = case.expect["view_stack_depth"]
+        if type(depth) is not int or depth < 0:
+            raise ValueError(f"{case.id}: view_stack_depth must be a nonnegative integer")
 
 
 def check_case(
     case: Case, evidence: Evidence, root: Path, *, skip_golden: bool = False
 ) -> list[str]:
     validate_expectations(case, root)
-    failures = []
+    failures = view_invariants(evidence, case.id)
     for name, expected in case.expect.items():
         if name == "golden" and skip_golden:
             continue

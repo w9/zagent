@@ -18,7 +18,7 @@ async def stream_report(database_url):
 
 
 @pytest.mark.parametrize("case_id", [case.id for case in CASES])
-async def test_req_stream_01_golden_transcript(stream_report, case_id):
+async def test_case_golden_transcript(stream_report, case_id):
     result = next(
         result
         for result in stream_report.results
@@ -36,7 +36,7 @@ async def test_req_stream_01_golden_transcript(stream_report, case_id):
         for seed in range(10)
     ],
 )
-async def test_req_stream_02_chaos_resume(stream_report, case_id, seed):
+async def test_case_chaos_resume(stream_report, case_id, seed):
     result = next(
         (
             result

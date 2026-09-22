@@ -1,0 +1,28 @@
+steps:
+  - delay_ms: 300
+    event:
+      type: step_started
+      payload:
+        step_id: checks
+        title: Review unresolved checks
+  - delay_ms: 500
+    event:
+      type: view_pushed
+      payload:
+        view_id: empty
+        spec:
+          kind: table
+          version: 1
+          props:
+            title: Unresolved checks
+            columns:
+              - {key: specimen_id, label: Specimen, type: string}
+              - {key: check, label: Check, type: string}
+            rows: []
+            row_count: 0
+  - delay_ms: 300
+    event:
+      type: step_finished
+      payload:
+        step_id: checks
+        detail: No unresolved checks in this synthetic fixture.

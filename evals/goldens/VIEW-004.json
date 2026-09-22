@@ -1,0 +1,46 @@
+{
+  "conversation_turn": {
+    "error": "Invalid event payload: Value error, View schema error at props.row_count: -1 is less than the minimum of 0",
+    "status": "failed"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "/invalid-view"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "detail": "The fixture intentionally contains an invalid row count.",
+        "title": "Validate table fixture"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "error": "Invalid event payload: Value error, View schema error at props.row_count: -1 is less than the minimum of 0"
+      },
+      "type": "conversation_turn_failed"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "/invalid-view"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "The fixture intentionally contains an invalid row count.",
+      "status": "failed",
+      "title": "Validate table fixture"
+    }
+  ],
+  "views": []
+}

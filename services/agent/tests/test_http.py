@@ -126,3 +126,35 @@ async def test_validation_and_conflict(api):
         missing = await api.client.get(f"/sessions/{uuid4()}/{suffix}")
         assert missing.status_code == 404
     await read_events(api.client, session_id)
+
+
+async def test_scripted_turn_pushes_two_valid_views_and_complete_steps(api):
+    from zagent.views import ViewSpec
+
+    session_id = await session_with_turn(api)
+    events = await read_events(api.client, session_id)
+    snapshot = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    assert len(snapshot["views"]) == 2
+    assert len({view["id"] for view in snapshot["views"]}) == 2
+    for view in snapshot["views"]:
+        assert ViewSpec.model_validate(view["spec"]).kind == "table"
+    assert [step["status"] for step in snapshot["steps"]] == ["complete", "complete"]
+    assert snapshot == project(UUID(session_id), events).model_dump(mode="json")
+
+
+async def test_invalid_view_fails_without_changing_existing_surface(api):
+    session_id = await session_with_turn(api)
+    await read_events(api.client, session_id)
+    before = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    response = await api.client.post(
+        f"/sessions/{session_id}/messages", json={"text": "/invalid-view"}
+    )
+    assert response.status_code == 202
+    events = await read_events(api.client, session_id, after=before["seq"])
+    assert "view_pushed" not in [event.type for event in events]
+    assert events[-1].type == "conversation_turn_failed"
+    assert "View schema error" in events[-1].payload["error"]
+    assert response.json()["conversation_turn_id"] not in events[-1].payload["error"]
+    after = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    assert after["views"] == before["views"]
+    assert after["steps"][-1]["status"] == "failed"

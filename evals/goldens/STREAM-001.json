@@ -16,7 +16,179 @@
     },
     {
       "payload": {
-        "text": "Message received.\n\nFor this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\nNo records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
+        "text": "Message received.\n\n"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {
+        "detail": "Static synthetic fixture; no clinical records are queried.",
+        "title": "Review specimen intake"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "specimen_id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "library",
+                "label": "Library",
+                "type": "string"
+              },
+              {
+                "key": "site",
+                "label": "Site",
+                "type": "string"
+              },
+              {
+                "key": "status",
+                "label": "Status",
+                "type": "string"
+              }
+            ],
+            "row_count": 14,
+            "rows": [
+              [
+                "SPC-0001",
+                "DNA",
+                "Northlake",
+                "Ready"
+              ],
+              [
+                "SPC-0002",
+                "DNA",
+                "Northlake",
+                "Review"
+              ],
+              [
+                "SPC-0003",
+                "RNA",
+                "Westhaven",
+                "Ready"
+              ],
+              [
+                "SPC-0004",
+                "DNA",
+                "Eastmere",
+                "Ready"
+              ],
+              [
+                "SPC-0005",
+                "RNA",
+                "Westhaven",
+                "Ready"
+              ],
+              [
+                "SPC-0006",
+                "DNA",
+                "Eastmere",
+                "Ready"
+              ]
+            ],
+            "title": "Specimens received in the last 24 hours"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "detail": "14 synthetic specimens; 6 displayed in this snapshot."
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "text": "For this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\n"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {
+        "detail": "Static fixture checks for the displayed specimens.",
+        "title": "Review intake quality checks"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "specimen_id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "check",
+                "label": "Check",
+                "type": "string"
+              },
+              {
+                "key": "result",
+                "label": "Result",
+                "type": "string"
+              },
+              {
+                "key": "passed",
+                "label": "Passed",
+                "type": "boolean"
+              }
+            ],
+            "row_count": 4,
+            "rows": [
+              [
+                "SPC-0001",
+                "Library yield",
+                "Within range",
+                true
+              ],
+              [
+                "SPC-0002",
+                "Sample identity",
+                "Review required",
+                false
+              ],
+              [
+                "SPC-0003",
+                "RNA integrity",
+                "Within range",
+                true
+              ],
+              [
+                "SPC-0004",
+                "Library yield",
+                "Within range",
+                true
+              ]
+            ],
+            "title": "Intake quality checks"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started."
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "text": "No records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
       },
       "type": "text_delta"
     },
@@ -39,6 +211,144 @@
       "role": "assistant",
       "status": "complete",
       "text": "Message received.\n\nFor this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\nNo records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
+    }
+  ],
+  "steps": [
+    {
+      "detail": "14 synthetic specimens; 6 displayed in this snapshot.",
+      "status": "complete",
+      "title": "Review specimen intake"
+    },
+    {
+      "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started.",
+      "status": "complete",
+      "title": "Review intake quality checks"
+    }
+  ],
+  "views": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "library",
+            "label": "Library",
+            "type": "string"
+          },
+          {
+            "key": "site",
+            "label": "Site",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "label": "Status",
+            "type": "string"
+          }
+        ],
+        "row_count": 14,
+        "rows": [
+          [
+            "SPC-0001",
+            "DNA",
+            "Northlake",
+            "Ready"
+          ],
+          [
+            "SPC-0002",
+            "DNA",
+            "Northlake",
+            "Review"
+          ],
+          [
+            "SPC-0003",
+            "RNA",
+            "Westhaven",
+            "Ready"
+          ],
+          [
+            "SPC-0004",
+            "DNA",
+            "Eastmere",
+            "Ready"
+          ],
+          [
+            "SPC-0005",
+            "RNA",
+            "Westhaven",
+            "Ready"
+          ],
+          [
+            "SPC-0006",
+            "DNA",
+            "Eastmere",
+            "Ready"
+          ]
+        ],
+        "title": "Specimens received in the last 24 hours"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "check",
+            "label": "Check",
+            "type": "string"
+          },
+          {
+            "key": "result",
+            "label": "Result",
+            "type": "string"
+          },
+          {
+            "key": "passed",
+            "label": "Passed",
+            "type": "boolean"
+          }
+        ],
+        "row_count": 4,
+        "rows": [
+          [
+            "SPC-0001",
+            "Library yield",
+            "Within range",
+            true
+          ],
+          [
+            "SPC-0002",
+            "Sample identity",
+            "Review required",
+            false
+          ],
+          [
+            "SPC-0003",
+            "RNA integrity",
+            "Within range",
+            true
+          ],
+          [
+            "SPC-0004",
+            "Library yield",
+            "Within range",
+            true
+          ]
+        ],
+        "title": "Intake quality checks"
+      },
+      "version": 1
     }
   ]
 }

@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import * as Tooltip from '@radix-ui/react-tooltip'
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import {
   AlertTriangle,
   ArrowDown,
@@ -11,14 +11,16 @@ import {
   LoaderCircle,
   MessageSquare,
   PanelLeft,
-  PanelRight,
   Plus,
   ShieldCheck,
+  Table2,
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from './components/ui/button'
 import { IconButton } from './components/ui/icon-button'
+import { StepMarker } from './components/step-marker'
+import { WorkingSurface } from './components/working-surface'
 import { request } from './lib/api'
 import type { Session } from './lib/api'
 import { useSession } from './lib/use-session'
@@ -60,6 +62,7 @@ function Sidebar({
             key={session.id}
             to="/sessions/$sessionId"
             params={{ sessionId: session.id }}
+            search={{}}
             className={`session-link ${selected === session.id ? 'selected' : ''}`}
             aria-current={selected === session.id ? 'page' : undefined}
             onClick={onSelect}
@@ -84,8 +87,16 @@ function Sidebar({
   )
 }
 
-function Chat({ sessionId, name }: { sessionId: string; name: string }) {
-  const { state, connection, error } = useSession(sessionId)
+function Chat({
+  sessionId,
+  name,
+  state,
+  connection,
+  error,
+}: {
+  sessionId: string
+  name: string
+} & ReturnType<typeof useSession>) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -108,6 +119,13 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
           : state?.conversation_turn
             ? 'Complete'
             : 'Ready'
+  const timeline = [
+    ...(state?.messages ?? []).map((value) => ({
+      kind: 'message' as const,
+      value,
+    })),
+    ...(state?.steps ?? []).map((value) => ({ kind: 'step' as const, value })),
+  ].sort((first, second) => first.value.seq - second.value.seq)
 
   useEffect(() => {
     if (atBottom && scrollArea.current)
@@ -146,7 +164,7 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
   }
 
   return (
-    <main className="chat-panel">
+    <main className="chat-panel" id="conversation-panel">
       <header className="panel-heading chat-heading">
         <div>
           <h2>Conversation</h2>
@@ -188,27 +206,36 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
             </div>
           ) : (
             <ol className="messages" aria-label="Conversation">
-              {state.messages.map((message) => (
-                <li
-                  key={message.id}
-                  className={`message ${message.role}`}
-                  data-testid={`${message.role}-message`}
-                >
-                  <div className="message-label">
-                    {message.role === 'assistant' && <Dna size={15} />}
-                    {message.role === 'user' ? 'You' : 'Zagent'}
-                    {message.status === 'failed' && (
-                      <span className="interrupted">Interrupted</span>
-                    )}
-                  </div>
-                  <p className="message-text" data-testid="message-text">
-                    {message.text}
-                    {message.status === 'streaming' && (
-                      <span className="stream-cursor" aria-hidden="true" />
-                    )}
-                  </p>
-                </li>
-              ))}
+              {timeline.map((item) => {
+                if (item.kind === 'step')
+                  return (
+                    <li key={`step:${item.value.id}`} className="step-message">
+                      <StepMarker step={item.value} />
+                    </li>
+                  )
+                const message = item.value
+                return (
+                  <li
+                    key={message.id}
+                    className={`message ${message.role}`}
+                    data-testid={`${message.role}-message`}
+                  >
+                    <div className="message-label">
+                      {message.role === 'assistant' && <Dna size={15} />}
+                      {message.role === 'user' ? 'You' : 'Zagent'}
+                      {message.status === 'failed' && (
+                        <span className="interrupted">Interrupted</span>
+                      )}
+                    </div>
+                    <p className="message-text" data-testid="message-text">
+                      {message.text}
+                      {message.status === 'streaming' && (
+                        <span className="stream-cursor" aria-hidden="true" />
+                      )}
+                    </p>
+                  </li>
+                )
+              })}
             </ol>
           )}
         </div>
@@ -277,6 +304,76 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
   )
 }
 
+function SessionWorkspace({
+  sessionId,
+  name,
+}: {
+  sessionId: string
+  name: string
+}) {
+  const session = useSession(sessionId)
+  const search = useSearch({ strict: false })
+  const navigate = useNavigate()
+  const views = session.state?.views ?? []
+  const surface = search.panel === 'surface'
+
+  function selectPanel(showSurface: boolean) {
+    void navigate({
+      to: '/sessions/$sessionId',
+      params: { sessionId },
+      search: { ...search, panel: showSurface ? 'surface' : undefined },
+      replace: true,
+    })
+  }
+
+  return (
+    <section
+      className="session-workspace"
+      data-mobile-panel={surface ? 'surface' : 'chat'}
+    >
+      <div
+        className="workspace-mobile-tabs"
+        role="tablist"
+        aria-label="Workspace panels"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!surface}
+          aria-controls="conversation-panel"
+          onClick={() => selectPanel(false)}
+        >
+          <MessageSquare size={15} />
+          Conversation
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={surface}
+          aria-controls="working-surface"
+          onClick={() => selectPanel(true)}
+        >
+          <Table2 size={15} />
+          Working surface<span>{views.length}</span>
+        </button>
+      </div>
+      <Chat sessionId={sessionId} name={name} {...session} />
+      <WorkingSurface
+        views={views}
+        selectedId={search.view}
+        onSelect={(view) => {
+          void navigate({
+            to: '/sessions/$sessionId',
+            params: { sessionId },
+            search: { ...search, view },
+            replace: true,
+          })
+        }}
+      />
+    </section>
+  )
+}
+
 export default function App() {
   const { sessionId } = useParams({ strict: false })
   const navigate = useNavigate()
@@ -322,6 +419,7 @@ export default function App() {
     void navigate({
       to: '/sessions/$sessionId',
       params: { sessionId: selected.id },
+      search: {},
       replace: true,
     })
   }, [sessionId, sessions, navigate])
@@ -337,6 +435,7 @@ export default function App() {
       await navigate({
         to: '/sessions/$sessionId',
         params: { sessionId: session.id },
+        search: {},
       })
     } catch (reason) {
       setError(
@@ -400,7 +499,7 @@ export default function App() {
           <div className="workspace-panels">
             <aside className="sidebar">{sidebar}</aside>
             {sessionId ? (
-              <Chat
+              <SessionWorkspace
                 key={sessionId}
                 sessionId={sessionId}
                 name={
@@ -412,12 +511,6 @@ export default function App() {
                 <LoaderCircle className="spin" aria-label="Loading sessions" />
               </main>
             )}
-            <aside className="working-panel" aria-label="Working surface">
-              <header className="panel-heading">
-                <h2>Working surface</h2>
-                <PanelRight size={16} />
-              </header>
-            </aside>
           </div>
         </div>
         <Dialog.Portal>

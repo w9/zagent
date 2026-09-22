@@ -17,11 +17,12 @@ machine-checked evidence, regenerated on every commit.
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) and [PLAN2](docs/PLAN2.md).** The running app has a
-Postgres event log, a scripted background agent, and a resumable three-panel chat client.
-A public-HTTP evidence harness adds golden transcripts, 50 seeded chaos trials, statistics,
-and a traceability report. Domain workflows, LLMs, and the privacy boundary remain roadmap
-capabilities. No model or clinical system is called in these increments.
+**Implemented: [PLAN1](docs/PLAN1.md), [PLAN2](docs/PLAN2.md), and [PLAN3](docs/PLAN3.md).**
+The app has a Postgres event log, a scripted background agent, and a resumable three-panel
+client with schema-validated tables, view history, and collapsible step markers. A public-HTTP
+evidence harness adds golden transcripts, 90 seeded chaos trials, statistics, and a traceability
+report. Domain workflows, LLMs, and the privacy boundary remain roadmap capabilities. No model
+or clinical system is called in these increments.
 
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
@@ -93,15 +94,19 @@ make up            # Postgres 16, agent, web; migrates and seeds an empty sessio
 # Open http://localhost:5173
 ```
 
-Send any message, refresh halfway through, or open the same session URL in two tabs. Sending
-`/fail` exercises the conversation turn failure state. The working surface is intentionally
-empty in PLAN1.
-Session URLs survive refresh; reopening `/` restores the last session in that browser.
+Send any message: text streams while the working surface receives two synthetic tables.
+Previous/next controls and the history menu let you revisit earlier views. Navigating back pins
+that view while new ones arrive; selecting the latest resumes following. Refresh keeps the
+chosen view through the session URL. On smaller screens, tabs switch between chat and the surface.
+
+Step markers start collapsed and expand to show their detail. `/fail` exercises an agent failure;
+`/invalid-view` rejects a malformed table, fails the conversation turn, and leaves the existing
+surface unchanged. Reopening `/` restores the last session in that browser.
 
 ```bash
-make test          # Python tests, 50 seeded reconnect trials, client tests, build, lint.
+make test          # Python tests, 90 seeded trials, client/component tests, build, lint.
 make evals         # The shared evidence harness; writes docs/evals/index.html.
-make chaos         # 50 interruptions across all cases; checks normal references too.
+make chaos         # 90 interruptions across all cases; checks normal references too.
 make report        # Render stored results; evaluates first if none exist.
 make install       # Local Python and JavaScript dependencies.
 cd apps/web && npx playwright install chromium && cd ../..
@@ -135,6 +140,9 @@ Existing PLAN1 databases migrate automatically without rewriting stored event hi
 The API now returns `conversation_turn_id`, snapshots expose `conversation_turn`, and lifecycle
 events are `conversation_turn_started`, `conversation_turn_finished`, and
 `conversation_turn_failed` in event schema v2. Historical v1 events are translated on read.
+PLAN3 adds `views` and `steps` to the snapshot projection without a database migration.
+View payloads have their own `{kind, version, props}` schema; table v1 supports inline rows
+or a future handle source. No handle-fetching backend is implemented yet.
 
 Live providers and clinical cohort seeding belong to later plans. The harness uses a separate
 test database and an ephemeral HTTP server, so `make evals` needs Postgres but not the web app.
@@ -144,7 +152,8 @@ Commands, golden review, seed reproduction, and statistics are in [evals/README.
 
 ## Things to try
 
-The table below is the planned full demo. Only stream durability is available in PLAN1.
+The table below is the planned full demo. Stream durability and scripted tables are available;
+the domain queries, live jobs, privacy features, and model behavior remain deferred.
 Each workflow exercises a specific row in the guarantee table.
 
 | Ask it | What happens | Guarantee |
@@ -195,9 +204,9 @@ evals.
 
 ## Running the evidence suite
 
-PLAN2's implemented suite covers the two stream requirements with five cases: a normal reply,
-follow-up conversation turns, a failure, recovery from failure, and partial-message replacement.
-The same evaluator serves pytest and `zagent evals`.
+The suite covers two stream requirements and two view requirements with nine cases: the five
+original conversation scenarios plus two-table views, empty data, invalid views after a valid
+surface, and invalid views on a fresh session. The same evaluator serves pytest and `zagent evals`.
 
 The suite is the point of the project, so it is a first-class artifact rather than a test
 directory.
@@ -211,9 +220,11 @@ $ make evals
 
 Requirement          Tier       Gate          Trials     95% Wilson CI
 REQ-STREAM-01        invariant  PASS          5/5        [56.6%, 100.0%]
+REQ-VIEW-01          invariant  PASS          9/9        [70.1%, 100.0%]
+REQ-VIEW-02          invariant  PASS          40/40      [91.2%, 100.0%]
 REQ-STREAM-02        invariant  PASS          50/50      [92.9%, 100.0%]
 
-2 requirements, 55 trials, 0 failed trials; 60 HTTP case executions.
+4 requirements, 99 trials, 0 failed trials; 108 HTTP case executions.
 Report: docs/evals/index.html
 ```
 
@@ -267,7 +278,7 @@ green, so correctness is visible at every step rather than at the end.
 |---|---|---|
 | [PLAN1](docs/PLAN1.md) | The spine: event log, SSE resume, scripted agent | Complete |
 | [PLAN2](docs/PLAN2.md) | The evidence harness: golden transcripts, chaos suite | Complete |
-| [PLAN3](docs/PLAN3.md) | The working surface: view specs and the view stack | ☐ |
+| [PLAN3](docs/PLAN3.md) | The working surface: view specs and the view stack | Complete |
 | [PLAN4](docs/PLAN4.md) | The real agent: LLM gateway, record/replay, tool loop | ☐ |
 | [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | ☐ |
 | [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | ☐ |

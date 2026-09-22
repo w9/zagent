@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zagent.views import ViewPushed, ViewSpec
+
 EventType = Literal[
     "user_message",
     "conversation_turn_started",
@@ -34,6 +36,22 @@ class Failure(BaseModel):
     error: str
 
 
+class StepStarted(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step_id: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=200)
+    detail: str = Field(default="", max_length=4000)
+
+
+class StepFinished(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step_id: str = Field(min_length=1)
+    status: Literal["complete", "failed"] = "complete"
+    detail: str | None = Field(default=None, max_length=4000)
+
+
 class EventDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -48,6 +66,12 @@ class EventDraft(BaseModel):
             MessageRef.model_validate(self.payload)
         elif self.type == "conversation_turn_failed":
             Failure.model_validate(self.payload)
+        elif self.type == "view_pushed":
+            ViewPushed.model_validate(self.payload)
+        elif self.type == "step_started":
+            StepStarted.model_validate(self.payload)
+        elif self.type == "step_finished":
+            StepFinished.model_validate(self.payload)
         return self
 
 
@@ -77,6 +101,7 @@ class Event(EventDraft):
 
 class ChatMessage(BaseModel):
     id: str
+    seq: int = 0
     role: Literal["user", "assistant"]
     text: str = ""
     status: Literal["streaming", "complete", "failed"] = "complete"
@@ -88,10 +113,26 @@ class ConversationTurnState(BaseModel):
     error: str | None = None
 
 
+class PushedView(BaseModel):
+    id: str
+    seq: int
+    spec: ViewSpec
+
+
+class StepState(BaseModel):
+    id: str
+    seq: int
+    title: str
+    detail: str = ""
+    status: Literal["running", "complete", "failed"] = "running"
+
+
 class Projection(BaseModel):
     session_id: UUID
     seq: int = 0
     messages: list[ChatMessage] = Field(default_factory=list)
+    views: list[PushedView] = Field(default_factory=list)
+    steps: list[StepState] = Field(default_factory=list)
     conversation_turn: ConversationTurnState | None = None
 
 
@@ -108,7 +149,7 @@ def reduce_event(state: Projection, event: Event) -> Projection:
     payload = event.payload
     if event.type == "user_message":
         result.messages.append(
-            ChatMessage(id=payload["message_id"], role="user", text=payload["text"])
+            ChatMessage(id=payload["message_id"], seq=event.seq, role="user", text=payload["text"])
         )
         result.conversation_turn = ConversationTurnState(
             id=event.conversation_turn_id, status="running"
@@ -120,7 +161,9 @@ def reduce_event(state: Projection, event: Event) -> Projection:
     elif event.type == "text_delta":
         message = next((item for item in result.messages if item.id == payload["message_id"]), None)
         if message is None:
-            message = ChatMessage(id=payload["message_id"], role="assistant", status="streaming")
+            message = ChatMessage(
+                id=payload["message_id"], seq=event.seq, role="assistant", status="streaming"
+            )
             result.messages.append(message)
         message.text += payload["text"]
     elif event.type == "message_done":
@@ -129,6 +172,31 @@ def reduce_event(state: Projection, event: Event) -> Projection:
                 message.status = "complete"
     elif event.type == "message_dropped":
         result.messages = [item for item in result.messages if item.id != payload["message_id"]]
+    elif event.type == "view_pushed":
+        if not any(view.id == payload["view_id"] for view in result.views):
+            result.views.append(
+                PushedView(
+                    id=payload["view_id"],
+                    seq=event.seq,
+                    spec=ViewSpec.model_validate(payload["spec"]),
+                )
+            )
+    elif event.type == "step_started":
+        if not any(step.id == payload["step_id"] for step in result.steps):
+            result.steps.append(
+                StepState(
+                    id=payload["step_id"],
+                    seq=event.seq,
+                    title=payload["title"],
+                    detail=payload.get("detail", ""),
+                )
+            )
+    elif event.type == "step_finished":
+        for step in result.steps:
+            if step.id == payload["step_id"]:
+                step.status = payload.get("status", "complete")
+                if payload.get("detail") is not None:
+                    step.detail = payload["detail"]
     elif event.type in {"conversation_turn_finished", "conversation_turn_failed"}:
         failed = event.type == "conversation_turn_failed"
         result.conversation_turn = ConversationTurnState(
@@ -139,6 +207,9 @@ def reduce_event(state: Projection, event: Event) -> Projection:
         for message in result.messages:
             if message.status == "streaming":
                 message.status = "failed" if failed else "complete"
+        for step in result.steps:
+            if step.status == "running":
+                step.status = "failed" if failed else "complete"
     return result
 
 

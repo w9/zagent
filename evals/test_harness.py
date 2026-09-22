@@ -1,4 +1,6 @@
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -65,6 +67,67 @@ def test_golden_diff_names_case_and_exposes_broken_reducer(tmp_path):
 
 def test_normalized_evidence_is_stable_across_fresh_identifiers():
     assert render_transcript(sample_evidence()) == render_transcript(sample_evidence())
+
+
+def view_evidence():
+    fixture = json.loads((Path(__file__).parent / "fixtures/view-replay.json").read_text())
+    session_id, turn_id = uuid4(), uuid4()
+    events = [
+        Event(
+            **draft,
+            seq=index + 1,
+            session_id=session_id,
+            conversation_turn_id=turn_id,
+            created_at=datetime.now(UTC),
+        )
+        for index, draft in enumerate(fixture["events"])
+    ]
+    return Evidence(events, project(session_id, events))
+
+
+def test_view_assertions_validate_schema_and_every_replayed_prefix(tmp_path):
+    case = sample_case(
+        expect={
+            "golden": "test.json",
+            "views": [{"kind": "table", "props_match": {"title": "~received"}}],
+            "view_stack_depth": 2,
+        }
+    )
+    evidence = view_evidence()
+    assert check_case(case, evidence, tmp_path, skip_golden=True) == []
+    evidence.projection.views.pop()
+    failures = check_case(case, evidence, tmp_path, skip_golden=True)
+    assert any("REQ-VIEW-02" in failure for failure in failures)
+    assert any("expected view stack depth 2" in failure for failure in failures)
+
+
+def test_view_schema_is_checked_even_without_view_expectations(tmp_path):
+    evidence = view_evidence()
+    evidence.events[3].payload["spec"]["props"]["row_count"] = -1
+    failures = check_case(sample_case(), evidence, tmp_path, skip_golden=True)
+    assert "REQ-VIEW-01 invalid view" in failures[0]
+
+
+def test_bad_view_assertion_configuration_is_rejected(tmp_path):
+    for expected in [
+        {"view_stack_depth": -1},
+        {"view_stack_depth": True},
+        {"views": [{"kind": "table", "props_match": {"title": "~["}}]},
+        {"views": [{"kind": "table", "typo": True}]},
+    ]:
+        with pytest.raises(ValueError):
+            check_case(
+                sample_case(expect={"golden": "test.json", **expected}), view_evidence(), tmp_path
+            )
+
+
+def test_view_chaos_targets_complete_view_push_boundaries():
+    from zagent.evals.runner import chaos_plan
+
+    reference = view_evidence()
+    plans = [chaos_plan(sample_case(), reference, seed) for seed in range(10)]
+    assert all(plan.disconnect_after_view is not None for plan in plans)
+    assert len({plan.disconnect_after_view for plan in plans}) > 1
 
 
 def test_unredacted_nondeterminism_produces_a_readable_diff():

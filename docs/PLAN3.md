@@ -1,6 +1,6 @@
 # PLAN3: The Working Surface
 
-**Status:** not started
+**Status:** complete
 **Depends on:** [PLAN2](PLAN2.md)
 **Shippable outcome:** the agent pushes a table onto the right panel, and the user can flip back
 to every previous view.
@@ -65,13 +65,13 @@ navigate back, which is the behavior every browser-like surface has and the thin
 about when it is missing.
 
 **Collapsible event markers.** The middle panel renders `step_started` and `step_finished` as
-collapsible markers in the Cursor style. Nothing emits them until PLAN4, so the script emits a
-couple to exercise the rendering.
+collapsed markers. The script emits two steps now; the model/tool loop supplies real steps
+from PLAN4 onward. Completion updates the same marker without resetting its open state.
 
 **Snapshot testing.** Register the view kinds in a component snapshot suite, so a spec renders to
-stable markup. This is the deterministic half of visual correctness. Actual screenshots are
-deliberately not part of CI, since image diffing is a maintenance burden out of proportion to
-what it catches here.
+stable markup. This is the deterministic half of visual correctness. Screenshot comparisons
+are deliberately not a CI gate, since image diffing is a maintenance burden out of proportion
+to what it catches here. Browser screenshots remain inspection artifacts, not pixel goldens.
 
 ---
 
@@ -112,14 +112,55 @@ one component avoids a rewrite of the table and of every case that asserts on it
 
 ## Definition of done
 
-- [ ] A scripted conversation turn pushes two tables, and both are reachable through navigation.
-- [ ] Refreshing restores the view stack and the current position.
-- [ ] Navigating back stops the panel from auto-following, and returning to the head resumes it.
-- [ ] An invalid spec produces `conversation_turn_failed` with a schema error, and the panel is untouched.
-- [ ] Step markers render collapsed, and expand to show their contents.
-- [ ] Component snapshots exist for the table kind, including empty and truncated states.
-- [ ] Chaos mode passes on every view case: interrupting a conversation turn mid-push never leaves a partial
+- [x] A scripted conversation turn pushes two tables, and both are reachable through navigation.
+- [x] Refreshing restores the view stack and the current position.
+- [x] Navigating back stops the panel from auto-following, and returning to the head resumes it.
+- [x] An invalid spec produces `conversation_turn_failed` with a schema error, and the panel is untouched.
+- [x] Step markers render collapsed, and expand to show their contents.
+- [x] Component snapshots exist for the table kind, including empty and truncated states.
+- [x] Chaos mode passes on every view case: interrupting a conversation turn mid-push never leaves a partial
       view on screen.
+
+## Implementation Notes
+
+- The canonical [table v1 JSON Schema](../services/agent/zagent/view_schemas/table.v1.json) is
+  loaded by Python's JSON Schema validator and imported by the browser's Ajv registry. It
+  limits columns and rows, validates scalar cell types, and permits exactly one of `rows` or
+  `handle`. Both boundaries additionally check unique column keys, row width, cell/column
+  agreement, and `row_count` consistency. Labels and cells are rendered as text, never HTML.
+- `view_pushed` carries `{view_id, spec}`. The scripted agent namespaces view, message, and step
+  IDs by conversation turn. Invalid view payloads fail during emission before sequence
+  allocation, not during startup; `/invalid-view` demonstrates the failure without changing
+  prior views. Store appends revalidate payloads in case a caller mutated a validated object.
+- Snapshots add `views` and `steps`. Both reducers retain first-seen views by ID, ignore replay
+  duplicates, and preserve sequence order. No view table, cached stack, or new event schema
+  version is needed. The existing v2 log projects old sessions to empty view and step lists.
+- The chosen historical view is the `view` query parameter in the session URL. This is a
+  per-browser navigation cursor, not a second store of view data. Missing selection means
+  follow the latest; selecting the head clears the cursor. Refresh restores a pinned view,
+  while two tabs may browse different history positions over the same event-derived stack.
+- A single session subscription drives both panels. Mobile/tablet tabs use `panel=surface`
+  to preserve the selected panel on refresh; tables scroll within their panel at narrow widths.
+- Schemas are discovered from `view_schemas/*.json`; React components from
+  [components/views](../apps/web/src/components/views) export `kind` and `version` metadata.
+  Adding a schema and matching renderer does not change the panel, reducer, or harness runner.
+  The table renderer accepts an injected handle resolver with loading, validation, retry, and
+  cancellation states. PLAN3 supplies inline data only; the actual query backend is PLAN4.
+- Step payloads carry `step_id`, a start `title`, optional `detail`, and a finish `status`.
+  Starting sequence numbers place markers in the chat timeline. Unfinished steps become failed
+  when their conversation turn fails. Native disclosure controls start collapsed.
+- [views.test.tsx](../apps/web/src/components/views.test.tsx) covers complete, empty, and truncated
+  component snapshots, text escaping, handle-source states, and step disclosure behavior.
+  Python and TypeScript replay the same [prefix fixture](../evals/fixtures/view-replay.json),
+  including a duplicate view identity and snapshot continuation after every event.
+- The harness validates every view across the entire corpus and independently compares the
+  view stack at each prefix. `views` asserts an ordered subsequence with exact or `~regex`
+  property matches; `view_stack_depth` asserts the final depth. Four new view cases add 40
+  seeded chaos trials. For turns with views, chaos disconnects immediately after a seeded
+  complete `view_pushed` frame; text-only turns retain text-progress interruption.
+- Verification: `make test`, `make evals`, and `make browser`. Browser checks cover two tabs,
+  refresh, physical SSE interruption, history pinning and resumed following, invalid-view
+  isolation, collapsed markers, and 320px/390px mobile layouts. All data remains synthetic.
 
 ---
 

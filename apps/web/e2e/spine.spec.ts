@@ -160,6 +160,11 @@ test('refresh, two tabs, socket reconnect, and a second conversation turn agree'
       'Complete',
     )
     expect(await answer(second).textContent()).toBe(expected)
+    await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
+    await expect(second.getByTestId('view-position')).toHaveText('View 4 of 4')
+    expect(
+      await page.getByTestId('active-view').getAttribute('data-view-id'),
+    ).toBe(await second.getByTestId('active-view').getAttribute('data-view-id'))
     await assertLayout(page)
     await page.screenshot({ path: testInfo.outputPath('desktop-complete.png') })
     expect(errors).toEqual([])
@@ -247,4 +252,156 @@ test('mobile sessions, streaming, refresh, and compact viewports', async ({
   await page.setViewportSize({ width: 320, height: 568 })
   await assertLayout(page)
   await page.screenshot({ path: testInfo.outputPath('mobile-small.png') })
+})
+
+test('view history survives refresh, pauses following, and rejects invalid specs', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop')
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  const sessionId = await createSession(request)
+  await openSession(page, sessionId)
+  await send(page, 'Show intake')
+  await expect(page.getByTestId('view-position')).toHaveText('View 2 of 2')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Complete',
+  )
+  await expect(
+    page.getByRole('heading', { name: 'Intake quality checks', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByTestId('step-marker')).toHaveCount(2)
+  expect(
+    await page.getByTestId('step-marker').first().getAttribute('open'),
+  ).toBeNull()
+  await page.getByTestId('step-marker').first().locator('summary').click()
+  await expect(
+    page.getByText('14 synthetic specimens; 6 displayed in this snapshot.'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Previous view', exact: true }).click()
+  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
+  const pinned = await page
+    .getByTestId('active-view')
+    .getAttribute('data-view-id')
+  expect(new URL(page.url()).searchParams.get('view')).toBe(pinned)
+  await expect(page.getByText('6 of 14 rows shown')).toBeVisible()
+  await page.reload()
+  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
+  await expect(page.getByTestId('active-view')).toHaveAttribute(
+    'data-view-id',
+    pinned!,
+  )
+  await send(page, 'Continue')
+  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 3')
+  await expect(page.getByTestId('active-view')).toHaveAttribute(
+    'data-view-id',
+    pinned!,
+  )
+  await page.getByRole('button', { name: 'Latest view', exact: true }).click()
+  await expect(page.getByTestId('view-position')).toHaveText('View 3 of 3')
+  expect(new URL(page.url()).searchParams.has('view')).toBe(false)
+  await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Complete',
+  )
+  await expect(
+    page.getByRole('button', { name: 'Next view', exact: true }),
+  ).toBeDisabled()
+  const snapshot = await (
+    await request.get(`/api/sessions/${sessionId}/snapshot`)
+  ).json()
+  expect(
+    await page
+      .getByLabel('View history')
+      .locator('option')
+      .evaluateAll((options) =>
+        options.map((option) => (option as HTMLOptionElement).value),
+      ),
+  ).toEqual(snapshot.views.map((view: { id: string }) => view.id))
+  await page.getByLabel('View history').selectOption(snapshot.views[1].id)
+  await expect(page.getByTestId('view-position')).toHaveText('View 2 of 4')
+  await page.getByRole('button', { name: 'Next view', exact: true }).click()
+  await expect(page.getByTestId('view-position')).toHaveText('View 3 of 4')
+  await page.getByRole('button', { name: 'Latest view', exact: true }).click()
+  const previous = await page.getByTestId('active-view').innerText()
+  await page.screenshot({
+    path: testInfo.outputPath('desktop-working-surface.png'),
+      animations: 'disabled',
+  })
+  await send(page, '/invalid-view')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Failed',
+  )
+  await expect(page.getByRole('alert')).toContainText('View schema error')
+  await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
+  expect(await page.getByTestId('active-view').innerText()).toBe(previous)
+  await expect(page.getByTestId('step-marker').last()).toContainText('Failed')
+  expect(errors).toEqual([])
+})
+
+test('mobile working surface retains selection and both panels remain accessible', async ({
+  page,
+  request,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile')
+  const sessionId = await createSession(request)
+  await openSession(page, sessionId)
+  await send(page, 'Show intake')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Complete',
+  )
+  await page.getByRole('tab', { name: /Working surface/ }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Intake quality checks', exact: true }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Previous view', exact: true }).click()
+  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
+  await page.reload()
+  await expect(
+    page.getByRole('tab', { name: /Working surface/ }),
+  ).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
+  await expect(page.getByText('6 of 14 rows shown')).toBeVisible()
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 320, height: 568 },
+  ]) {
+    await page.setViewportSize(viewport)
+    const layout = await page.evaluate(() => {
+      const content = document
+        .querySelector('.surface-content')!
+        .getBoundingClientRect()
+      const navigation = document
+        .querySelector('.view-navigation')!
+        .getBoundingClientRect()
+      const scroll = document.querySelector('.data-table-scroll')!
+      return {
+        noPageOverflow: document.documentElement.scrollWidth <= innerWidth,
+        noOverlap: content.top >= navigation.bottom,
+        bounded:
+          content.left >= 0 &&
+          content.right <= innerWidth &&
+          content.bottom <= innerHeight,
+        tableScrollable: scroll.scrollWidth > scroll.clientWidth,
+      }
+    })
+    expect(layout).toEqual({
+      noPageOverflow: true,
+      noOverlap: true,
+      bounded: true,
+      tableScrollable: true,
+    })
+    await page.screenshot({
+      path: testInfo.outputPath(`mobile-surface-${viewport.width}.png`),
+        animations: 'disabled',
+    })
+  }
+  await page.getByRole('tab', { name: 'Conversation', exact: true }).click()
+  await expect(
+    page.getByRole('textbox', { name: 'Message', exact: true }),
+  ).toBeVisible()
+  await assertLayout(page)
+  await page.getByRole('tab', { name: /Working surface/ }).click()
+  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
 })

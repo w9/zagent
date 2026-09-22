@@ -301,6 +301,21 @@ rather than bespoke.
 The registry is intentionally small and grows one kind at a time. A large view vocabulary
 introduced early is untestable surface area.
 
+PLAN3 implements only table v1. One JSON Schema under `services/agent/zagent/view_schemas/`
+is used on both sides of the HTTP boundary, with cell/column consistency checks alongside it.
+`view_pushed` carries a stable `view_id` and a validated spec. Invalid specs fail the conversation
+turn before append; earlier views remain intact. Rows are text/scalars, never executable markup.
+
+View and step stacks are event projections in both Python and TypeScript. The browser stores
+only a selected view ID in the URL; it never stores a separate copy of the stack. No selected
+ID means follow the newest view. Navigation to an older ID pins it across refresh and future
+pushes; selecting the head resumes following. Compact screens expose chat and surface as tabs.
+
+The renderer registry discovers versioned components independently of the panel and reducer.
+Table props allow inline rows or an injected handle source, but live handle resolution remains
+PLAN4. Schema, prefix-replay, component-snapshot, and seeded reconnect evidence cover the current
+table contract. Step markers are collapsed disclosures over started/finished step events.
+
 ---
 
 ## 9. Drafts and confirmation

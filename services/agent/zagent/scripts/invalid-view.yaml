@@ -1,0 +1,23 @@
+word_delay_ms: 85
+steps:
+  - delay_ms: 300
+    event:
+      type: step_started
+      payload:
+        step_id: invalid
+        title: Validate table fixture
+        detail: The fixture intentionally contains an invalid row count.
+  - delay_ms: 500
+    event:
+      type: view_pushed
+      payload:
+        view_id: invalid
+        spec:
+          kind: table
+          version: 1
+          props:
+            title: Invalid table fixture
+            columns:
+              - {key: specimen_id, label: Specimen, type: string}
+            rows: []
+            row_count: -1

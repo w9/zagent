@@ -6,12 +6,80 @@ steps:
       payload:
         message_id: answer
         text: "Message received.\n\n"
+  - delay_ms: 150
+    event:
+      type: step_started
+      payload:
+        step_id: intake
+        title: Review specimen intake
+        detail: Static synthetic fixture; no clinical records are queried.
+  - delay_ms: 350
+    event:
+      type: view_pushed
+      payload:
+        view_id: intake
+        spec:
+          kind: table
+          version: 1
+          props:
+            title: Specimens received in the last 24 hours
+            columns:
+              - {key: specimen_id, label: Specimen, type: string}
+              - {key: library, label: Library, type: string}
+              - {key: site, label: Site, type: string}
+              - {key: status, label: Status, type: string}
+            rows:
+              - [SPC-0001, DNA, Northlake, Ready]
+              - [SPC-0002, DNA, Northlake, Review]
+              - [SPC-0003, RNA, Westhaven, Ready]
+              - [SPC-0004, DNA, Eastmere, Ready]
+              - [SPC-0005, RNA, Westhaven, Ready]
+              - [SPC-0006, DNA, Eastmere, Ready]
+            row_count: 14
+  - event:
+      type: step_finished
+      payload:
+        step_id: intake
+        detail: 14 synthetic specimens; 6 displayed in this snapshot.
   - delay_ms: 250
     event:
       type: text_delta
       payload:
         message_id: answer
         text: "For this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\n"
+  - delay_ms: 200
+    event:
+      type: step_started
+      payload:
+        step_id: quality
+        title: Review intake quality checks
+        detail: Static fixture checks for the displayed specimens.
+  - delay_ms: 450
+    event:
+      type: view_pushed
+      payload:
+        view_id: quality
+        spec:
+          kind: table
+          version: 1
+          props:
+            title: Intake quality checks
+            columns:
+              - {key: specimen_id, label: Specimen, type: string}
+              - {key: check, label: Check, type: string}
+              - {key: result, label: Result, type: string}
+              - {key: passed, label: Passed, type: boolean}
+            rows:
+              - [SPC-0001, Library yield, Within range, true]
+              - [SPC-0002, Sample identity, Review required, false]
+              - [SPC-0003, RNA integrity, Within range, true]
+              - [SPC-0004, Library yield, Within range, true]
+            row_count: 4
+  - event:
+      type: step_finished
+      payload:
+        step_id: quality
+        detail: 4 synthetic checks; 1 flagged for review. No analysis job was started.
   - delay_ms: 300
     event:
       type: text_delta

@@ -54,7 +54,7 @@ naming explicit; historical v1 events remain readable without rewriting the log.
 | `conversation_turn_started`, `conversation_turn_finished`, `conversation_turn_failed` | Runtime | PLAN1 |
 | `text_delta`, `message_done` | Runtime | PLAN1 |
 | `message_dropped` | Runtime | PLAN8 (reducer support required now) |
-| `step_started`, `step_finished` | Runtime | PLAN4 |
+| `step_started`, `step_finished` | Runtime | PLAN3 (scripted markers) |
 | `tool_call`, `tool_result` | Runtime | PLAN4 |
 | `view_pushed` | Runtime | PLAN3 |
 | `refused` | Scope guard | PLAN5 |

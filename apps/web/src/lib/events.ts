@@ -1,3 +1,6 @@
+import { validateViewSpec } from './views'
+import type { PushedView, ViewSpec } from './views'
+
 type MessageRef = { message_id: string }
 type MessageText = MessageRef & { text: string }
 
@@ -9,11 +12,15 @@ export type Payloads = {
   text_delta: MessageText
   message_done: MessageRef
   message_dropped: MessageRef
-  step_started: Record<string, unknown>
-  step_finished: Record<string, unknown>
+  step_started: { step_id: string; title: string; detail?: string }
+  step_finished: {
+    step_id: string
+    status?: 'complete' | 'failed'
+    detail?: string | null
+  }
   tool_call: Record<string, unknown>
   tool_result: Record<string, unknown>
-  view_pushed: Record<string, unknown>
+  view_pushed: { view_id: string; spec: ViewSpec }
   refused: Record<string, unknown>
   draft_updated: Record<string, unknown>
 }
@@ -33,15 +40,26 @@ export type LogEvent = {
 
 export type ChatMessage = {
   id: string
+  seq: number
   role: 'user' | 'assistant'
   text: string
   status: 'streaming' | 'complete' | 'failed'
+}
+
+export type StepState = {
+  id: string
+  seq: number
+  title: string
+  detail: string
+  status: 'running' | 'complete' | 'failed'
 }
 
 export type Projection = {
   session_id: string
   seq: number
   messages: ChatMessage[]
+  views: PushedView[]
+  steps: StepState[]
   conversation_turn: {
     id: string
     status: 'running' | 'finished' | 'failed'
@@ -63,6 +81,7 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
         ...state.messages,
         {
           id: event.payload.message_id,
+          seq: event.seq,
           role: 'user',
           text: event.payload.text,
           status: 'complete',
@@ -95,6 +114,7 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
             ...state.messages,
             {
               id: event.payload.message_id,
+              seq: event.seq,
               role: 'assistant',
               text: event.payload.text,
               status: 'streaming',
@@ -114,6 +134,41 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
         (message) => message.id !== event.payload.message_id,
       )
       break
+    case 'view_pushed': {
+      const spec = validateViewSpec(event.payload.spec)
+      if (!state.views.some((view) => view.id === event.payload.view_id)) {
+        next.views = [
+          ...state.views,
+          { id: event.payload.view_id, seq: event.seq, spec },
+        ]
+      }
+      break
+    }
+    case 'step_started':
+      if (!state.steps.some((step) => step.id === event.payload.step_id)) {
+        next.steps = [
+          ...state.steps,
+          {
+            id: event.payload.step_id,
+            seq: event.seq,
+            title: event.payload.title,
+            detail: event.payload.detail ?? '',
+            status: 'running',
+          },
+        ]
+      }
+      break
+    case 'step_finished':
+      next.steps = state.steps.map((step) =>
+        step.id === event.payload.step_id
+          ? {
+              ...step,
+              status: event.payload.status ?? 'complete',
+              detail: event.payload.detail ?? step.detail,
+            }
+          : step,
+      )
+      break
     case 'conversation_turn_failed':
     case 'conversation_turn_finished': {
       const failed = event.type === 'conversation_turn_failed'
@@ -129,6 +184,11 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
         message.status === 'streaming'
           ? { ...message, status: failed ? 'failed' : 'complete' }
           : message,
+      )
+      next.steps = state.steps.map((step) =>
+        step.status === 'running'
+          ? { ...step, status: failed ? 'failed' : 'complete' }
+          : step,
       )
       break
     }

@@ -38,5 +38,7 @@
       "status": "failed",
       "text": "Message received. The scripted conversation turn encountered an error."
     }
-  ]
+  ],
+  "steps": [],
+  "views": []
 }

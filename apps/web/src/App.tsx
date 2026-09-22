@@ -22,7 +22,7 @@ import { IconButton } from './components/ui/icon-button'
 import { StepMarker } from './components/step-marker'
 import { WorkingSurface } from './components/working-surface'
 import { request } from './lib/api'
-import type { Session } from './lib/api'
+import type { RuntimeHealth, Session } from './lib/api'
 import { useSession } from './lib/use-session'
 
 function sessionName(index: number) {
@@ -295,7 +295,7 @@ function Chat({
         <div className="composer-footer">
           <span>
             <FlaskConical size={13} />
-            Scripted agent
+            Genomics agent
           </span>
           <span>Synthetic data only</span>
         </div>
@@ -359,6 +359,7 @@ function SessionWorkspace({
       </div>
       <Chat sessionId={sessionId} name={name} {...session} />
       <WorkingSurface
+        sessionId={sessionId}
         views={views}
         selectedId={search.view}
         onSelect={(view) => {
@@ -378,6 +379,7 @@ export default function App() {
   const { sessionId } = useParams({ strict: false })
   const navigate = useNavigate()
   const [sessions, setSessions] = useState<Session[]>([])
+  const [mode, setMode] = useState<RuntimeHealth['mode'] | null>(null)
   const [creating, setCreating] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -386,10 +388,12 @@ export default function App() {
     const controller = new AbortController()
     async function refresh() {
       try {
-        const items = await request<Session[]>('/sessions', {
-          signal: controller.signal,
-        })
+        const [items, health] = await Promise.all([
+          request<Session[]>('/sessions', { signal: controller.signal }),
+          request<RuntimeHealth>('/health', { signal: controller.signal }),
+        ])
         setSessions(items)
+        setMode(health.mode)
         setError(null)
       } catch (reason) {
         if (!controller.signal.aborted)
@@ -488,7 +492,7 @@ export default function App() {
             <div className="environment">
               <span>LOCAL</span>
               <span className="environment-dot" />
-              Scripted
+              {mode ? mode[0].toUpperCase() + mode.slice(1) : 'Agent'}
             </div>
           </header>
           {error && (

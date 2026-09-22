@@ -4,6 +4,11 @@ This document records the decisions that are expensive to reverse and the reason
 them. It deliberately stops short of implementation detail: where a choice is local to one
 module and cheap to change later, it is the implementer's call, not this document's.
 
+**Implementation status:** PLAN1 through PLAN4 are implemented. The privacy/tokenization zones,
+scope guard, jobs, knowledge retrieval, and Kubernetes policies below describe subsequent plans.
+The local PLAN4 stack enforces database RLS and gateway-only internet egress, but user-provided
+synthetic identifiers are not tokenized yet.
+
 **Contents**
 
 1. [Guiding constraints](#1-guiding-constraints)
@@ -173,22 +178,23 @@ request headers, so authentication rides a cookie or the client moves to a strea
 Agent.run_turn(session, emit) -> None
 ```
 
-Three implementations exist over the project's life, and nothing else in the system knows which
+Two implementations share this interface, and nothing else in the runtime knows which
 one is running:
 
 | Implementation | Purpose |
 |---|---|
 | `ScriptedAgent` | A canned event sequence. Deterministic, no provider, no key. |
-| `ReplayAgent` | Drives the real loop against recorded provider cassettes. |
-| `LlmAgent` | The real loop against a live provider. |
+| `LlmAgent` | The real loop, with replay, record, or live selected inside the model gateway. |
 
 This is what makes the build order possible. The event log, the streaming layer, the entire
 front end and the whole evidence harness are built and proven against `ScriptedAgent`, before
 an LLM is in the picture. When the real loop arrives, the existing goldens are the regression
 test for it.
 
-It is also what makes CI free and deterministic. Pull requests run `ReplayAgent`. Nightly
-evaluations use `LlmAgent` across a model matrix, and the resulting drift is a reviewable diff.
+It is also what makes CI free and deterministic. Pull requests run `LlmAgent` with gateway
+replay, alongside retained scripted transport fixtures. There is no separate replay loop or
+harness-level provider mock. Nightly evaluations will use the same agent across configured
+model routes, and the resulting drift is a reviewable diff.
 
 ---
 

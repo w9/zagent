@@ -43,7 +43,7 @@ def main() -> None:
     )
     evaluate.add_argument("--seed", type=int, default=0)
     evaluate.add_argument("--update-golden", action="store_true")
-    evaluate.add_argument("--mode", choices=["replay", "live"], default="replay")
+    evaluate.add_argument("--mode", choices=["replay", "record", "live"], default="replay")
     chaos = evaluate.add_mutually_exclusive_group()
     chaos.add_argument("--chaos", action="store_true", help="Only seeded interruption trials")
     chaos.add_argument("--no-chaos", action="store_true", help="Only uninterrupted golden trials")
@@ -68,10 +68,10 @@ def main() -> None:
             return
         baseline = Report.model_validate_json(args.baseline.read_text()) if args.baseline else None
         if args.command == "evals":
-            if args.mode != "replay":
-                raise ValueError(
-                    "Live-provider evaluation is deferred; PLAN2 supports scripted replay only"
-                )
+            if args.mode != "replay" and (not args.no_chaos or not args.filter_value):
+                raise ValueError("Provider access requires --filter and --no-chaos to bound cost")
+            if args.mode == "live" and args.update_golden:
+                raise ValueError("Use --mode record to update replay goldens")
             result = asyncio.run(
                 evaluate_suite(
                     args.root,
@@ -83,6 +83,7 @@ def main() -> None:
                     include_chaos=not args.no_chaos,
                     update_golden=args.update_golden,
                     pass_streak=args.pass_k,
+                    mode=args.mode,
                 )
             )
         else:

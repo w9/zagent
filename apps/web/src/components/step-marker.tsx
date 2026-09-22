@@ -1,6 +1,14 @@
 import { ChevronRight, CircleCheck, CircleX, LoaderCircle } from 'lucide-react'
 import type { StepState } from '../lib/events'
 
+function formatArguments(argumentsJson: string) {
+  try {
+    return JSON.stringify(JSON.parse(argumentsJson), null, 2)
+  } catch {
+    return argumentsJson
+  }
+}
+
 export function StepMarker({ step }: { step: StepState }) {
   return (
     <details className={`step-marker ${step.status}`} data-testid="step-marker">
@@ -23,6 +31,15 @@ export function StepMarker({ step }: { step: StepState }) {
         </span>
       </summary>
       {step.detail && <p>{step.detail}</p>}
+      {step.tools?.map((tool) => (
+        <div className="step-tool" key={tool.call_id}>
+          <h4>{tool.name}</h4>
+          <span className="tool-detail-label">Arguments</span>
+          <pre>{formatArguments(tool.arguments)}</pre>
+          <span className="tool-detail-label">Result</span>
+          <pre>{tool.result ? JSON.stringify(tool.result, null, 2) : 'Pending...'}</pre>
+        </div>
+      ))}
     </details>
   )
 }

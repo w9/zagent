@@ -52,7 +52,7 @@ class ConversationTurn(StrictModel):
 class Case(StrictModel):
     id: str = Field(pattern=r"^[A-Z][A-Z0-9-]+$")
     requirement: str
-    agent: str = Field(pattern=r"^scripted:[a-z][a-z0-9_-]*$")
+    agent: str = Field(pattern=r"^(scripted|llm):[a-z][a-z0-9_-]*$")
     conversation_turns: list[ConversationTurn] = Field(min_length=1)
     expect: dict[str, Any]
 
@@ -103,11 +103,11 @@ class Provenance(StrictModel):
     commit: str | None
     dirty_worktree: bool | None
     agent_implementation: str
-    script_sha256: str
+    script_sha256: str | None = None
     seed: int
     clock: datetime
-    mode: Literal["replay"] = "replay"
-    delay_scale: float = 0.04
+    mode: Literal["replay", "record", "live"] = "replay"
+    delay_scale: float = 0
     coalesce_seconds: float = 0.008
     model: str | None = None
     prompt_hash: str | None = None

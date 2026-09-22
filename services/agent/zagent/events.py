@@ -52,6 +52,24 @@ class StepFinished(BaseModel):
     detail: str | None = Field(default=None, max_length=4000)
 
 
+class ToolCalled(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step_id: str = Field(min_length=1)
+    call_id: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=100)
+    arguments: str = Field(max_length=16384)
+
+
+class ToolReturned(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step_id: str = Field(min_length=1)
+    call_id: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=100)
+    result: dict[str, Any]
+
+
 class EventDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -72,6 +90,10 @@ class EventDraft(BaseModel):
             StepStarted.model_validate(self.payload)
         elif self.type == "step_finished":
             StepFinished.model_validate(self.payload)
+        elif self.type == "tool_call":
+            ToolCalled.model_validate(self.payload)
+        elif self.type == "tool_result":
+            ToolReturned.model_validate(self.payload)
         return self
 
 
@@ -119,12 +141,20 @@ class PushedView(BaseModel):
     spec: ViewSpec
 
 
+class ToolActivity(BaseModel):
+    call_id: str
+    name: str
+    arguments: str
+    result: dict[str, Any] | None = None
+
+
 class StepState(BaseModel):
     id: str
     seq: int
     title: str
     detail: str = ""
     status: Literal["running", "complete", "failed"] = "running"
+    tools: list[ToolActivity] = Field(default_factory=list)
 
 
 class Projection(BaseModel):
@@ -191,6 +221,23 @@ def reduce_event(state: Projection, event: Event) -> Projection:
                     detail=payload.get("detail", ""),
                 )
             )
+    elif event.type == "tool_call":
+        for step in result.steps:
+            if step.id == payload["step_id"]:
+                if not any(tool.call_id == payload["call_id"] for tool in step.tools):
+                    step.tools.append(
+                        ToolActivity(
+                            call_id=payload["call_id"],
+                            name=payload["name"],
+                            arguments=payload["arguments"],
+                        )
+                    )
+    elif event.type == "tool_result":
+        for step in result.steps:
+            if step.id == payload["step_id"]:
+                for tool in step.tools:
+                    if tool.call_id == payload["call_id"]:
+                        tool.result = payload["result"]
     elif event.type == "step_finished":
         for step in result.steps:
             if step.id == payload["step_id"]:

@@ -57,6 +57,11 @@ jobs:
 
   browser:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        agent: [scripted, llm]
+    env:
+      ZAGENT_AGENT: ${{ matrix.agent }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -71,7 +76,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: browser-evidence
+          name: browser-evidence-${{ matrix.agent }}
           path: apps/web/test-results
           retention-days: 7
       - if: failure()

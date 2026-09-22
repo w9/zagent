@@ -6,24 +6,32 @@ ZAGENT_DB_PORT ?= 5432
 DATABASE_URL ?= postgresql://zagent:zagent@localhost:$(ZAGENT_DB_PORT)/zagent
 ZAGENT_TEST_DATABASE_URL ?= postgresql://zagent:zagent@localhost:$(ZAGENT_DB_PORT)/zagent_test
 ZAGENT_SCRIPT ?=
+ZAGENT_AGENT ?= llm
+ZAGENT_LLM_MODE ?= replay
+ZAGENT_MODEL ?= deepseek/deepseek-v4.1-flash
 MODE ?= replay
 EVAL_ARGS ?=
 
 COMPOSE = docker compose --project-directory . -f deploy/compose/compose.yaml
 export UV_LINK_MODE = copy
 export DATABASE_URL ZAGENT_TEST_DATABASE_URL ZAGENT_WEB_PORT ZAGENT_AGENT_PORT ZAGENT_DB_PORT ZAGENT_SCRIPT
+export ZAGENT_AGENT ZAGENT_LLM_MODE ZAGENT_MODEL
 
-.PHONY: up down db install test evals chaos report lint browser transcript logs
+.PHONY: up live down db install test evals chaos report lint browser transcript logs
 
 up:
 	$(COMPOSE) up --build -d --wait
 	@printf '\nZagent: http://localhost:%s\n' '$(ZAGENT_WEB_PORT)'
 
+live:
+	$(COMPOSE) -f deploy/compose/live.yaml up --build -d --wait
+	@printf '\nZagent (live): http://localhost:%s\n' '$(ZAGENT_WEB_PORT)'
+
 down:
 	$(COMPOSE) down
 
 db:
-	$(COMPOSE) up -d --wait postgres
+	$(COMPOSE) up -d --wait --no-recreate postgres gateway
 
 install:
 	uv sync --frozen

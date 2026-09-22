@@ -1,0 +1,19 @@
+services:
+  gateway:
+    environment:
+      ZAGENT_LLM_MODE: live
+      OPENROUTER_API_KEY_FILE: /run/secrets/openrouter_api_key
+    secrets:
+      - source: openrouter_api_key
+        target: openrouter_api_key
+        mode: 0400
+  tools:
+    environment:
+      ZAGENT_LLM_MODE: live
+  agent:
+    environment:
+      ZAGENT_LLM_MODE: live
+
+secrets:
+  openrouter_api_key:
+    file: ${ZAGENT_OPENROUTER_KEY_FILE:-${HOME}/.config/zagent/openrouter.key}

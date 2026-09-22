@@ -7,7 +7,7 @@
     - services/agent/zagent/store.py
     - apps/web/src/lib/events.ts
   mutations: [corrupt_projection, change_scripted_text]
-  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, REAL-001, REAL-002]
 
 - id: REQ-VIEW-01
   tier: invariant
@@ -19,7 +19,7 @@
     - services/agent/zagent/store.py
     - apps/web/src/lib/views.ts
   mutations: [bypass_view_validation, corrupt_view_payload]
-  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, VIEW-001, VIEW-002, VIEW-003, VIEW-004]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, VIEW-001, VIEW-002, VIEW-003, VIEW-004, REAL-001, REAL-002]
 
 - id: REQ-VIEW-02
   tier: invariant
@@ -31,7 +31,7 @@
     - apps/web/src/lib/events.ts
     - apps/web/src/lib/events.test.ts
   mutations: [drop_projected_view, duplicate_projected_view]
-  cases: [VIEW-001, VIEW-002, VIEW-003, VIEW-004]
+  cases: [VIEW-001, VIEW-002, VIEW-003, VIEW-004, REAL-001, REAL-002]
 
 - id: REQ-STREAM-02
   tier: invariant
@@ -42,4 +42,35 @@
     - services/agent/zagent/runtime.py
     - apps/web/src/lib/use-session.ts
   mutations: [skip_resume_event, duplicate_resume_event]
-  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, REAL-001, REAL-002]
+
+- id: REQ-TOOL-01
+  tier: invariant
+  statement: Data tools expose bounded handles, counts and schemas, never row data.
+  enforced_by:
+    - services/agent/zagent/tools.py
+    - services/agent/tests/test_tools.py
+  mutations: [allow_rows_in_tool_schema, bypass_tool_result_validation]
+  cases: [REAL-001, REAL-002]
+
+- id: REQ-ISO-01
+  tier: invariant
+  statement: Direct clinical queries under the wrong database role return no foreign-site rows.
+  enforced_by:
+    - services/agent/zagent/migrations/003_cohort.sql
+    - services/agent/tests/test_cohort.py
+    - services/agent/zagent/evals/runner.py
+  mutations: [disable_row_level_security, use_owner_role_for_clinical_queries]
+  cases: [REAL-001, REAL-002]
+
+- id: REQ-GROUND-01
+  tier: measured
+  statement: Explicit numeric patient, specimen and library counts match preceding tool results.
+  threshold: {min_lower_bound: 0.4, trials: 3}
+  cases: [REAL-001, REAL-002]
+
+- id: REQ-CTX-01
+  tier: measured
+  statement: Library follow-ups resolve the preceding specimen query handle.
+  threshold: {min_lower_bound: 0.4, trials: 3}
+  cases: [REAL-001]

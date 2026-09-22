@@ -1,6 +1,6 @@
 # PLAN4: The Real Agent
 
-**Status:** not started
+**Status:** implemented
 **Depends on:** [PLAN3](PLAN3.md)
 **Shippable outcome:** a real model answers real questions about a seeded genomics cohort, and
 the existing suite still passes in replay mode with no provider key.
@@ -131,16 +131,41 @@ alive without a data refresh ritual, and the seed keeps it reproducible.
 
 ## Definition of done
 
-- [ ] Every PLAN1 through PLAN3 golden passes with `LlmAgent` in replay mode, or the difference is
+- [x] Every PLAN1 through PLAN3 golden passes with `LlmAgent` in replay mode, or the difference is
       explained in the commit.
-- [ ] `make evals` needs no provider key and completes in under a minute.
-- [ ] A cassette miss in replay mode fails with the request hash and a hint to re-record.
-- [ ] Multi-turn context works: a follow-up referring to "those" resolves correctly.
-- [ ] Step markers show tool names, arguments and results, and expand cleanly.
-- [ ] No tool returns rows. Asserted as a property test over every tool's response schema.
-- [ ] A cross-site query returns nothing, with RLS as the reason, proven by a test that queries
+- [x] `make evals` needs no provider key and completes in under a minute.
+- [x] A cassette miss in replay mode fails with the request hash and a hint to re-record.
+- [x] Multi-turn context works: a follow-up referring to "those" resolves correctly.
+- [x] Step markers show tool names, arguments and results, and expand cleanly.
+- [x] No tool returns rows. Asserted as a property test over every tool's response schema.
+- [x] A cross-site query returns nothing, with RLS as the reason, proven by a test that queries
       as the wrong role.
-- [ ] The iteration cap is enforced and produces a clean `turn_failed`.
+- [x] The iteration cap is enforced and produces a clean `conversation_turn_failed`.
+
+### Implementation Evidence
+
+- `LlmAgent` uses the existing runtime and event contract. The gateway supports OpenRouter and
+  OpenAI routes, defaults to replay, hashes normalized requests with an explicit prompt hash,
+  and exposes an egress-check hook for PLAN6. The configured cheap model is
+  `deepseek/deepseek-v4.1-flash`; 18 real provider cassettes cover two multi-turn/count cases.
+- Legacy PLAN1-3 goldens are unchanged and still run as scripted transport fixtures. This is
+  the intentional substitution exception: literal canned prose, inline fake rows, and scripted
+  failure commands are not valid expectations of a handle-only real agent. `REAL-001/002`
+  exercise the same stream, view, snapshot, golden, and chaos assertions through `LlmAgent`.
+- The full keyless replay suite passed 125 trials / 136 HTTP executions in 45 seconds locally.
+  Repeated replay trials test runtime behavior, not independent model samples. Grounding is
+  deliberately limited to explicit integer clinical entity counts supported by earlier results.
+- Query handles persist in Postgres, are session/site bound, expire visibly after 24 hours, and
+  hold at most 200 rows. MCP responses are schema-checked and capped at 8 KiB. Rejected arguments
+  are audited and returned to the model for correction. Eight model iterations is the default cap.
+- Seed 41872 generates five invented sites with distinct MRN formats and all four required
+  conditions. Live fixtures refresh relative times every minute. Evals freeze the clock at
+  `2026-01-15T12:00:00Z` and disable simulation. Wrong-role tests query clinical tables directly.
+- Browser tests verify handle-backed tables, tool details, multi-turn library lookups, chart
+  pixels, refresh/history, and missing-cassette errors at desktop and narrow mobile widths.
+- Only the gateway joins the Compose egress network. Fixed loopback TCP ingress also lives there
+  so web, API, and Postgres can stay internal-only. Live credentials are mounted from an
+  owner-only external file; replay Compose and CI do not require that file or a provider key.
 
 ---
 

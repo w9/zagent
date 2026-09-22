@@ -6,8 +6,9 @@ import {
 } from 'lucide-react'
 import { Component } from 'react'
 import type { ReactNode } from 'react'
+import { request } from '../lib/api'
 import { selectionAt, viewPosition } from '../lib/views'
-import type { PushedView } from '../lib/views'
+import type { PushedView, TableData } from '../lib/views'
 import { IconButton } from './ui/icon-button'
 import { ViewRenderer } from './view-renderer'
 
@@ -34,10 +35,12 @@ class ViewBoundary extends Component<
 }
 
 export function WorkingSurface({
+  sessionId,
   views,
   selectedId,
   onSelect,
 }: {
+  sessionId?: string
   views: PushedView[]
   selectedId?: string
   onSelect: (id: string | undefined) => void
@@ -123,7 +126,12 @@ export function WorkingSurface({
             data-view-id={active.id}
           >
             <ViewBoundary>
-              <ViewRenderer spec={active.spec} />
+              <ViewRenderer
+                spec={active.spec}
+                resolveHandle={sessionId ? (handle, signal) => request<TableData>(
+                  `/sessions/${sessionId}/handles/${encodeURIComponent(handle)}`, { signal },
+                ) : undefined}
+              />
             </ViewBoundary>
           </div>
         </>

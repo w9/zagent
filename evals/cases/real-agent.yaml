@@ -1,0 +1,38 @@
+cases:
+  - id: REAL-001
+    requirement: REQ-CTX-01
+    agent: llm:default
+    conversation_turns:
+      - user: What specimens came in yesterday for patient NGC-0041872?
+      - user: What libraries belong to those specimens?
+      - user: Show a coverage chart for those libraries.
+    expect:
+      golden: goldens/REAL-001.json
+      events_include: [tool_call, tool_result, view_pushed, step_started, step_finished, conversation_turn_finished]
+      events_exclude: [conversation_turn_failed]
+      views:
+        - kind: table
+          props_match: {row_count: 3}
+        - kind: table
+          props_match: {row_count: 3}
+        - kind: chart
+      view_stack_depth: 3
+      tools_only_handles: true
+      numeric_claims_grounded: true
+      references_resolve: true
+
+  - id: REAL-002
+    requirement: REQ-GROUND-01
+    agent: llm:default
+    conversation_turns:
+      - user: How many specimens arrived in the last 24 hours? Show a table and report only the count.
+    expect:
+      golden: goldens/REAL-002.json
+      events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
+      events_exclude: [conversation_turn_failed]
+      views:
+        - kind: table
+          props_match: {row_count: 29}
+      view_stack_depth: 1
+      tools_only_handles: true
+      numeric_claims_grounded: true

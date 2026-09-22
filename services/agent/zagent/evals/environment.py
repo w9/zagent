@@ -70,7 +70,7 @@ async def local_api(
                     await task
                     raise RuntimeError("Evaluation HTTP server did not start")
                 await asyncio.sleep(0.005)
-        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=10) as client:
+        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=90) as client:
             yield APIEnvironment(client, application)
     finally:
         server.should_exit = True

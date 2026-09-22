@@ -18,8 +18,18 @@ export type Payloads = {
     status?: 'complete' | 'failed'
     detail?: string | null
   }
-  tool_call: Record<string, unknown>
-  tool_result: Record<string, unknown>
+  tool_call: {
+    step_id: string
+    call_id: string
+    name: string
+    arguments: string
+  }
+  tool_result: {
+    step_id: string
+    call_id: string
+    name: string
+    result: Record<string, unknown>
+  }
   view_pushed: { view_id: string; spec: ViewSpec }
   refused: Record<string, unknown>
   draft_updated: Record<string, unknown>
@@ -52,6 +62,12 @@ export type StepState = {
   title: string
   detail: string
   status: 'running' | 'complete' | 'failed'
+  tools?: {
+    call_id: string
+    name: string
+    arguments: string
+    result: Record<string, unknown> | null
+  }[]
 }
 
 export type Projection = {
@@ -154,9 +170,40 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
             title: event.payload.title,
             detail: event.payload.detail ?? '',
             status: 'running',
+            tools: [],
           },
         ]
       }
+      break
+    case 'tool_call':
+      next.steps = state.steps.map((step) =>
+        step.id === event.payload.step_id &&
+        !step.tools?.some((tool) => tool.call_id === event.payload.call_id)
+          ? {
+              ...step,
+              tools: [...(step.tools ?? []), {
+                call_id: event.payload.call_id,
+                name: event.payload.name,
+                arguments: event.payload.arguments,
+                result: null,
+              }],
+            }
+          : step,
+      )
+      break
+    case 'tool_result':
+      next.steps = state.steps.map((step) =>
+        step.id === event.payload.step_id
+          ? {
+              ...step,
+              tools: step.tools?.map((tool) =>
+                tool.call_id === event.payload.call_id
+                  ? { ...tool, result: event.payload.result }
+                  : tool,
+              ),
+            }
+          : step,
+      )
       break
     case 'step_finished':
       next.steps = state.steps.map((step) =>

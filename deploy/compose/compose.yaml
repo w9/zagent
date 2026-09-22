@@ -3,12 +3,11 @@ name: zagent
 services:
   postgres:
     image: postgres:16-alpine
+    networks: [internal]
     environment:
       POSTGRES_USER: zagent
       POSTGRES_PASSWORD: zagent
       POSTGRES_DB: zagent
-    ports:
-      - "127.0.0.1:${ZAGENT_DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./deploy/compose/init.sql:/docker-entrypoint-initdb.d/001-test-database.sql:ro
@@ -25,13 +24,61 @@ services:
     environment:
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       ZAGENT_SCRIPT: "${ZAGENT_SCRIPT:-}"
+      ZAGENT_AGENT: "${ZAGENT_AGENT:-llm}"
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_GATEWAY_URL: http://gateway:8001
+      ZAGENT_TOOLS_URL: http://tools:8002/mcp
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      tools:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.gateway:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_MODEL: "${ZAGENT_MODEL:-deepseek/deepseek-v4.1-flash}"
+      ZAGENT_MODEL_ROUTES: "${ZAGENT_MODEL_ROUTES:-}"
+      ZAGENT_LOCAL_INGRESS: "1"
     ports:
+      - "127.0.0.1:${ZAGENT_WEB_PORT:-5173}:5173"
       - "127.0.0.1:${ZAGENT_AGENT_PORT:-8000}:8000"
+      - "127.0.0.1:${ZAGENT_DB_PORT:-5432}:5432"
+    networks: [internal, egress]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  tools:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.tools_server:app", "--host", "0.0.0.0", "--port", "8002"]
+    environment:
+      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+    networks: [internal]
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
       interval: 2s
       timeout: 5s
       retries: 30
@@ -42,8 +89,7 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       AGENT_URL: http://agent:8000
-    ports:
-      - "127.0.0.1:${ZAGENT_WEB_PORT:-5173}:5173"
+    networks: [internal]
     depends_on:
       agent:
         condition: service_healthy
@@ -55,3 +101,8 @@ services:
 
 volumes:
   postgres_data:
+
+networks:
+  internal:
+    internal: true
+  egress:

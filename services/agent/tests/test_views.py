@@ -55,7 +55,7 @@ def test_invalid_specs_are_rejected_at_the_event_boundary(props):
 def test_view_identity_and_version_are_required():
     with pytest.raises(ValidationError):
         EventDraft(type="view_pushed", payload={"spec": table_spec()})
-    for kind, version in [("chart", 1), ("table", 2)]:
+    for kind, version in [("unknown", 1), ("table", 2)]:
         spec = {**table_spec(), "kind": kind, "version": version}
         with pytest.raises(ValidationError, match="unsupported"):
             ViewSpec.model_validate(spec)

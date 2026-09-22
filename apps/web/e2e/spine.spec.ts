@@ -5,6 +5,11 @@ import { createServer, request as proxyRequest } from 'node:http'
 import type { ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
 
+test.skip(
+  (process.env.ZAGENT_AGENT || 'llm') !== 'scripted',
+  'Legacy stream fixtures require ZAGENT_AGENT=scripted',
+)
+
 const expected =
   'Message received.\n\nFor this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\nNo records have been queried and no analysis has been started. This response is a fixed script, independent of your message.'
 

@@ -5,6 +5,7 @@ import json
 import random
 import subprocess
 import time
+from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
@@ -13,7 +14,8 @@ import httpx
 from httpx_sse import aconnect_sse
 from pydantic import Field
 
-from zagent.agent import Agent, ScriptedAgent
+from zagent.agent import SYSTEM_PROMPT, Agent, LlmAgent, ScriptedAgent
+from zagent.cohort import FROZEN_NOW, ClinicalStore
 from zagent.evals.assertions import (
     Evidence,
     check_case,
@@ -32,6 +34,10 @@ from zagent.evals.schema import (
     load_suite,
 )
 from zagent.events import Event, Projection, reduce_event
+from zagent.gateway import configured_gateway
+from zagent.llm import CompletionRequest, canonical_json, normalized_request
+from zagent.store import Store
+from zagent.tools import TOOL_DEFINITIONS, McpToolClient, ToolsGateway, create_mcp_server
 
 
 class ChaosPlan(StrictModel):
@@ -72,10 +78,47 @@ def chaos_plan(case: Case, reference: Evidence, seed: int) -> ChaosPlan:
 def scripted_agent(case: Case, root: Path, plan: ChaosPlan | None = None) -> Agent:
     name = case.agent.removeprefix("scripted:")
     script = None if name == "default" else fixture_path(root, f"scripts/{name}.yaml")
-    agent = ScriptedAgent(script, delay_scale=0.04)
+    agent = ScriptedAgent(script, delay_scale=0)
     if plan is None:
         return agent
     return PausedAgent(agent, emit_index=plan.pause_emit_index, seconds=plan.pause_seconds)
+
+
+@asynccontextmanager
+async def case_agent(
+    case: Case, root: Path, database_url: str, mode: str = "replay", plan: ChaosPlan | None = None
+):
+    if case.agent.startswith("scripted:"):
+        yield scripted_agent(case, root, plan)
+        return
+    store = await Store.open(database_url)
+    try:
+        await store.migrate(seed=False)
+        clinical = ClinicalStore(store, lambda: FROZEN_NOW)
+        await clinical.seed()
+        for table in ("patients", "specimens", "libraries"):
+            foreign = await store.pool.fetchval(
+                f"SELECT count(*) FROM {table} WHERE site_id = 'lakeside'"
+            )
+            async with clinical.site_connection("northgate") as connection:
+                leaked = await connection.fetchval(
+                    f"SELECT count(*) FROM {table} WHERE site_id = 'lakeside'"
+                )
+            if not foreign or leaked:
+                raise AssertionError(f"REQ-ISO-01: wrong-role isolation failed for {table}")
+        agent = LlmAgent(
+            store,
+            configured_gateway(mode),
+            ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical))),
+            route=case.agent.removeprefix("llm:"),
+        )
+        yield (
+            agent
+            if plan is None
+            else PausedAgent(agent, emit_index=plan.pause_emit_index, seconds=plan.pause_seconds)
+        )
+    finally:
+        await store.close()
 
 
 def resume_headers(cursor: int) -> dict[str, str]:
@@ -216,21 +259,33 @@ async def evaluate_case(
     update_golden: bool = False,
     commit: str | None = None,
     dirty_worktree: bool | None = None,
+    mode: str = "replay",
 ) -> list[TrialResult]:
     if min(standard_trials, chaos_trials, seed) < 0 or standard_trials + chaos_trials == 0:
         raise ValueError("Evaluation requires positive trial counts and a nonnegative seed")
     validate_expectations(case, root)
-    agent = scripted_agent(case, root)
-    script_digest = hashlib.sha256(
-        json.dumps(
-            {
-                "script": agent.script.model_dump(),
-                "failure": agent.failure.model_dump(),
-                "invalid_view": agent.invalid_view.model_dump(),
-            },
-            sort_keys=True,
-        ).encode()
-    ).hexdigest()
+    is_llm = case.agent.startswith("llm:")
+    script_digest = None
+    model = None
+    prompt_digest = None
+    if is_llm:
+        route = configured_gateway(mode).routes[case.agent.removeprefix("llm:")]
+        model = route.model
+        prompt_digest = normalized_request(
+            CompletionRequest(messages=[{"role": "system", "content": SYSTEM_PROMPT}]), route
+        )["prompt_hash"]
+    else:
+        scripted = scripted_agent(case, root)
+        script_digest = hashlib.sha256(
+            json.dumps(
+                {
+                    "script": scripted.script.model_dump(),
+                    "failure": scripted.failure.model_dump(),
+                    "invalid_view": scripted.invalid_view.model_dump(),
+                },
+                sort_keys=True,
+            ).encode()
+        ).hexdigest()
     results = []
     reference: Evidence | None = None
     reference_failures: list[str] = []
@@ -262,30 +317,48 @@ async def evaluate_case(
                 provenance=Provenance(
                     commit=commit,
                     dirty_worktree=dirty_worktree,
-                    agent_implementation="ScriptedAgent",
+                    agent_implementation="LlmAgent" if is_llm else "ScriptedAgent",
                     script_sha256=script_digest,
                     seed=trial_seed,
-                    clock=clock,
+                    clock=FROZEN_NOW if is_llm else clock,
+                    mode=mode if is_llm else "replay",
+                    model=model,
+                    prompt_hash=prompt_digest,
+                    tool_schema_hash=hashlib.sha256(
+                        canonical_json(TOOL_DEFINITIONS).encode()
+                    ).hexdigest()
+                    if is_llm
+                    else None,
                 ),
                 interruption=plan.model_dump() if plan is not None else None,
             )
         )
 
     try:
-        async with local_api(database_url, agent, coalesce_seconds=0.008) as environment:
+        async with (
+            case_agent(case, root, database_url, mode) as agent,
+            local_api(database_url, agent, coalesce_seconds=0.008) as environment,
+        ):
             reference_executions += 1
-            reference = await capture_case(environment.client, case)
+            reference = await capture_case(
+                environment.client, case, timeout_seconds=600 if mode != "replay" else 15
+            )
+            if is_llm and mode == "record":
+                agent.gateway.mode = "replay"
             reference_executions += 1
-            repeated = await capture_case(environment.client, case)
-            reference_failures.extend(check_case(case, reference, root, skip_golden=update_golden))
-            reference_failures.extend(check_case(case, repeated, root, skip_golden=update_golden))
+            repeated = await capture_case(
+                environment.client, case, timeout_seconds=600 if mode == "live" else 15
+            )
+            skip_golden = update_golden or mode == "live"
+            reference_failures.extend(check_case(case, reference, root, skip_golden=skip_golden))
+            reference_failures.extend(check_case(case, repeated, root, skip_golden=skip_golden))
             difference = transcript_diff(
                 case.id,
                 render_transcript(reference),
                 render_transcript(repeated),
                 "determinism",
             )
-            if difference:
+            if difference and mode != "live":
                 reference_failures.append(f"{case.id}: nondeterministic transcript\n{difference}")
             if update_golden and not reference_failures:
                 path = fixture_path(root, case.expect["golden"])
@@ -299,15 +372,19 @@ async def evaluate_case(
                 executions = reference_executions if trial_index == 0 else 1
                 if trial_index:
                     try:
-                        evidence = await capture_case(environment.client, case)
-                        failures.extend(check_case(case, evidence, root))
+                        evidence = await capture_case(
+                            environment.client,
+                            case,
+                            timeout_seconds=600 if mode == "live" else 15,
+                        )
+                        failures.extend(check_case(case, evidence, root, skip_golden=skip_golden))
                         difference = transcript_diff(
                             case.id,
                             render_transcript(reference),
                             render_transcript(evidence),
                             "determinism",
                         )
-                        if difference:
+                        if difference and mode != "live":
                             failures.append(f"{case.id}: nondeterministic transcript\n{difference}")
                     except Exception as error:
                         failures.append(f"{case.id}: {type(error).__name__}: {error}")
@@ -327,32 +404,41 @@ async def evaluate_case(
         )
         return results
 
-    for trial_index in range(chaos_trials):
-        trial_seed = seed + trial_index
-        plan = chaos_plan(case, reference, trial_seed)
-        started, clock = time.perf_counter(), datetime.now(UTC)
-        failures = list(reference_failures)
-        evidence = None
-        try:
-            async with local_api(
-                database_url,
-                scripted_agent(case, root, plan),
-                coalesce_seconds=0.008,
-            ) as environment:
+    async with AsyncExitStack() as resources:
+        environment = None
+        for trial_index in range(chaos_trials):
+            trial_seed = seed + trial_index
+            plan = chaos_plan(case, reference, trial_seed)
+            started, clock = time.perf_counter(), datetime.now(UTC)
+            failures = list(reference_failures)
+            evidence = None
+            try:
+                if environment is None:
+                    agent = await resources.enter_async_context(
+                        case_agent(case, root, database_url, "replay" if mode == "record" else mode)
+                    )
+                    environment = await resources.enter_async_context(
+                        local_api(database_url, agent, coalesce_seconds=0.008)
+                    )
+                environment.app.state.runtime.agent = PausedAgent(
+                    agent, emit_index=plan.pause_emit_index, seconds=plan.pause_seconds
+                )
                 evidence = await capture_case(environment.client, case, plan=plan)
-            failures.extend(check_case(case, evidence, root))
-            difference = transcript_diff(
-                case.id,
-                render_transcript(reference),
-                render_transcript(evidence),
-                "uninterrupted",
+                failures.extend(check_case(case, evidence, root))
+                difference = transcript_diff(
+                    case.id,
+                    render_transcript(reference),
+                    render_transcript(evidence),
+                    "uninterrupted",
+                )
+                if difference:
+                    failures.append(f"{case.id}: resume changed the transcript\n{difference}")
+            except Exception as error:
+                failures.append(f"{case.id}: {type(error).__name__}: {error}")
+            executions = 1 + (
+                reference_executions if not standard_trials and trial_index == 0 else 0
             )
-            if difference:
-                failures.append(f"{case.id}: resume changed the transcript\n{difference}")
-        except Exception as error:
-            failures.append(f"{case.id}: {type(error).__name__}: {error}")
-        executions = 1 + (reference_executions if not standard_trials and trial_index == 0 else 0)
-        record("chaos", trial_seed, evidence, failures, started, clock, executions, plan)
+            record("chaos", trial_seed, evidence, failures, started, clock, executions, plan)
     return results
 
 
@@ -367,6 +453,7 @@ async def evaluate_suite(
     include_chaos: bool = True,
     update_golden: bool = False,
     pass_streak: int = 3,
+    mode: str = "replay",
 ) -> Report:
     if trials is not None and trials < 1:
         raise ValueError("--trials must be positive")
@@ -393,7 +480,8 @@ async def evaluate_suite(
     paths = []
     for case in selected:
         validate_expectations(case, root)
-        scripted_agent(case, root)
+        if case.agent.startswith("scripted:"):
+            scripted_agent(case, root)
         paths.append(fixture_path(root, case.expect["golden"]))
     if len(paths) != len(set(paths)):
         raise ValueError("Each case must own a distinct golden file")
@@ -404,17 +492,32 @@ async def evaluate_suite(
     started, clock = time.perf_counter(), datetime.now(UTC)
     results = []
     for case in selected:
+        case_trials = standard_trials
+        if standard_trials and trials is None:
+            case_trials = max(
+                [
+                    standard_trials,
+                    *(
+                        requirement.threshold.trials
+                        for requirement in suite.requirements
+                        if requirement.threshold
+                        and requirement.verification == "standard"
+                        and case.id in requirement.cases
+                    ),
+                ]
+            )
         results.extend(
             await evaluate_case(
                 case,
                 root,
                 database_url,
-                standard_trials=standard_trials,
+                standard_trials=case_trials,
                 chaos_trials=chaos_trials,
                 seed=seed,
                 update_golden=update_golden,
                 commit=commit,
                 dirty_worktree=dirty,
+                mode=mode,
             )
         )
     return Report(

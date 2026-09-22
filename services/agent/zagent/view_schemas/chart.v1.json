@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zagent.local/schemas/views/chart.v1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "version", "props"],
+  "properties": {
+    "kind": {"const": "chart"},
+    "version": {"const": 1},
+    "props": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "handle", "mark", "encoding"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "handle": {"type": "string", "pattern": "^query-[0-9]{4,}$"},
+        "mark": {"enum": ["bar", "line", "point"]},
+        "encoding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": {
+            "x": {"$ref": "#/$defs/channel"},
+            "y": {"$ref": "#/$defs/channel"},
+            "color": {"$ref": "#/$defs/channel"}
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "channel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field", "type"],
+      "properties": {
+        "field": {"type": "string", "minLength": 1, "maxLength": 100},
+        "type": {"enum": ["nominal", "ordinal", "quantitative", "temporal"]},
+        "aggregate": {"enum": ["count", "sum", "mean", "min", "max"]}
+      }
+    }
+  }
+}

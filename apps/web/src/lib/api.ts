@@ -1,4 +1,8 @@
 export type Session = { id: string; seq: number; created_at: string }
+export type RuntimeHealth = {
+  status: 'ok'
+  mode: 'scripted' | 'replay' | 'record' | 'live'
+}
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {

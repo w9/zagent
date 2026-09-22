@@ -1,0 +1,201 @@
+{
+  "request": {
+    "max_tokens": 1200,
+    "messages": [
+      {
+        "content": "You are the assistant in a synthetic genomics workbench.\nAnswer the user's question using the four available tools when clinical data is needed.\nThe session is already scoped to one hospital. Never invent patient or specimen details.\nData tools return only query handles, counts and column schemas. You cannot see row contents.\nUse find_patients with an exact MRN, then find_specimens with that patient_handle.\nUse received_within P1D for yesterday/the last 24 hours, P7D for the last week, or P30D.\nUse find_libraries with a specimen_handle for library follow-ups such as \"those\".\nAlways display requested records by calling push_view with a handle-bound table or chart.\nFor tables, copy columns from schema and row_count from count. Never supply rows.\nFor charts, choose fields only from the returned schema; rendering resolves the data privately.\nTreat a tool error as feedback: correct your arguments if possible. Do not repeat invalid calls.\nMake numeric claims about cohort data only when supported by tool counts in this conversation.\nDo not claim to have inspected individual values. Explain that row-level analysis would require\nan explicit aggregate tool if the available counts and schemas cannot answer a question.\nKeep answers concise. Do not claim that an analysis or job was run.",
+        "role": "system"
+      },
+      {
+        "content": "What specimens came in yesterday for patient NGC-0041872?",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "91b23ad84547e92e18c4e5d27c4e153f2d50fd4e4c6840e6cf835d33e273e4ed",
+    "provider": "openrouter",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "function": {
+          "description": "Find patients by exact MRN, or all patients at this site. Returns a handle only.",
+          "name": "find_patients",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "mrn": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Mrn"
+              }
+            },
+            "title": "FindPatients",
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Find specimens for a patient handle, optionally all patients, within P1D, P7D or P30D. P1D means the last 24 hours. Returns a handle, count and columns, never rows.",
+          "name": "find_specimens",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "patient_handle": {
+                "anyOf": [
+                  {
+                    "maxLength": 100,
+                    "pattern": "^query-[0-9]{4,}$",
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Patient Handle"
+              },
+              "received_within": {
+                "default": "P1D",
+                "enum": [
+                  "P1D",
+                  "P7D",
+                  "P30D"
+                ],
+                "title": "Received Within",
+                "type": "string"
+              }
+            },
+            "title": "FindSpecimens",
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Find libraries for a specimen handle, optionally filtered by QC status.",
+          "name": "find_libraries",
+          "parameters": {
+            "additionalProperties": false,
+            "properties": {
+              "qc_status": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "passed",
+                      "review",
+                      "failed"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Qc Status"
+              },
+              "specimen_handle": {
+                "maxLength": 100,
+                "pattern": "^query-[0-9]{4,}$",
+                "title": "Specimen Handle",
+                "type": "string"
+              }
+            },
+            "required": [
+              "specimen_handle"
+            ],
+            "title": "FindLibraries",
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "description": "Display a table or chart bound to a query handle. No inline data. Table v1 props: title, handle, columns (from schema), row_count (from count). Chart v1 props: title, handle, mark (bar/line/point), encoding with x/y and optional color; each channel has field, type (nominal/ordinal/quantitative/temporal), optional aggregate (count/sum/mean/min/max). Use only columns from the handle schema.",
+          "name": "push_view",
+          "parameters": {
+            "$defs": {
+              "ViewSpec": {
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
+                    "title": "Kind",
+                    "type": "string"
+                  },
+                  "props": {
+                    "additionalProperties": true,
+                    "title": "Props",
+                    "type": "object"
+                  },
+                  "version": {
+                    "minimum": 1,
+                    "title": "Version",
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "version",
+                  "props"
+                ],
+                "title": "ViewSpec",
+                "type": "object"
+              }
+            },
+            "additionalProperties": false,
+            "properties": {
+              "spec": {
+                "$ref": "#/$defs/ViewSpec"
+              }
+            },
+            "required": [
+              "spec"
+            ],
+            "title": "PushView",
+            "type": "object"
+          }
+        },
+        "type": "function"
+      }
+    ]
+  },
+  "request_hash": "cf3cfb0774e8ebb76bf0ea0ef529857986c927dbc578ed893b4de2d732a117fa",
+  "response": {
+    "finish_reason": "tool_calls",
+    "message": {
+      "content": null,
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{\"mrn\": \"NGC-0041872\"}",
+            "name": "find_patients"
+          },
+          "id": "call_76e1777a8a2849f5bace5d66",
+          "type": "function"
+        }
+      ]
+    },
+    "usage": {
+      "completion_tokens": 55,
+      "cost": 0.0001872,
+      "prompt_tokens": 1220,
+      "total_tokens": 1275
+    }
+  },
+  "version": 1
+}

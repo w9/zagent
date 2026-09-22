@@ -69,6 +69,40 @@ def test_normalized_evidence_is_stable_across_fresh_identifiers():
     assert render_transcript(sample_evidence()) == render_transcript(sample_evidence())
 
 
+def test_numeric_grounding_requires_a_preceding_entity_count(tmp_path):
+    evidence = sample_evidence("Found **3** specimens.")
+    result = evidence.events[0].model_copy(
+        update={
+            "type": "tool_result",
+            "payload": {
+                "step_id": "step",
+                "call_id": "call",
+                "name": "find_specimens",
+                "result": {"handle": "query-0001", "count": 3, "schema": []},
+            },
+        }
+    )
+    events = evidence.events[:2] + [result] + evidence.events[2:]
+    events = [event.model_copy(update={"seq": index}) for index, event in enumerate(events, 1)]
+    evidence = Evidence(events, project(evidence.projection.session_id, events))
+    case = sample_case(expect={"golden": "test.json", "numeric_claims_grounded": True})
+    assert check_case(case, evidence, tmp_path, skip_golden=True) == []
+    evidence.events[2].payload["result"]["count"] = 99
+    assert (
+        "unsupported claim: 3 specimens"
+        in check_case(case, evidence, tmp_path, skip_golden=True)[0]
+    )
+
+
+def test_real_agent_assertions_reject_bad_configuration_and_inline_rows(tmp_path):
+    evidence = sample_evidence()
+    for name in ("tools_only_handles", "numeric_claims_grounded", "references_resolve"):
+        with pytest.raises(ValueError, match="must be a boolean"):
+            check_case(sample_case(expect={"golden": "test.json", name: "yes"}), evidence, tmp_path)
+    case = sample_case(expect={"golden": "test.json", "tools_only_handles": True})
+    assert "no tool results" in check_case(case, evidence, tmp_path, skip_golden=True)[0]
+
+
 def view_evidence():
     fixture = json.loads((Path(__file__).parent / "fixtures/view-replay.json").read_text())
     session_id, turn_id = uuid4(), uuid4()
@@ -255,6 +289,25 @@ async def test_shared_evaluator_updates_goldens_only_after_agreement(tmp_path, d
     assert results[1].interruption["disconnected_at_seq"] is not None
     assert results[1].provenance.seed == 17
     assert results[0].transcript == (tmp_path / "goldens/test.json").read_text()
+
+
+@pytest.mark.integration
+async def test_live_capture_timeout_covers_reference_and_repeat(
+    tmp_path, database_url, monkeypatch
+):
+    from zagent.evals import runner
+
+    capture = runner.capture_case
+    timeouts = []
+
+    async def timed_capture(*args, **kwargs):
+        timeouts.append(kwargs.get("timeout_seconds"))
+        return await capture(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "capture_case", timed_capture)
+    results = await runner.evaluate_case(sample_case(), tmp_path, database_url, mode="live")
+    assert all(result.passed for result in results)
+    assert timeouts == [600, 600]
 
 
 @pytest.mark.integration
@@ -488,7 +541,7 @@ async def test_cli_shares_results_filtering_updates_baselines_and_exit_codes(
     assert (tmp_path / "rendered/index.html").is_file()
     code, text = await invoke(*arguments, "--mode", "live")
     assert code == 1
-    assert "deferred" in text
+    assert "requires --filter and --no-chaos" in text
     code, text = await invoke(*arguments, "--filter", "DOES-NOT-EXIST")
     assert code == 1
     assert "No cases match" in text

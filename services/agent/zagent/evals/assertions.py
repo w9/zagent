@@ -6,10 +6,12 @@ from difflib import unified_diff
 from pathlib import Path
 from typing import Any, get_args
 
+from jsonschema import Draft202012Validator
 from pydantic import Field, TypeAdapter, ValidationError
 
 from zagent.evals.schema import Case, StrictModel, fixture_path
 from zagent.events import Event, EventType, Projection, normalize_transcript, reduce_event
+from zagent.tools import RESPONSE_SCHEMAS
 from zagent.views import ViewPushed
 
 
@@ -20,13 +22,19 @@ class Evidence:
 
 
 def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
+    steps = []
+    for step in evidence.projection.steps:
+        normalized = step.model_dump(exclude={"id", "seq", "tools"})
+        if step.tools:
+            normalized["tools"] = [tool.model_dump(exclude={"call_id"}) for tool in step.tools]
+        steps.append(normalized)
     return {
         "events": normalize_transcript(evidence.events),
         "messages": [
             message.model_dump(exclude={"id", "seq"}) for message in evidence.projection.messages
         ],
         "views": [view.spec.model_dump() for view in evidence.projection.views],
-        "steps": [step.model_dump(exclude={"id", "seq"}) for step in evidence.projection.steps],
+        "steps": steps,
         "conversation_turn": (
             evidence.projection.conversation_turn.model_dump(exclude={"id"})
             if evidence.projection.conversation_turn
@@ -135,6 +143,69 @@ def view_stack_depth(evidence: Evidence, expected: Any, root: Path, case_id: str
     )
 
 
+@assertion("tools_only_handles")
+def tools_only_handles(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    if not expected:
+        return None
+    results = [event for event in evidence.events if event.type == "tool_result"]
+    if not results:
+        return f"{case_id}: no tool results to verify"
+    for event in results:
+        schema = RESPONSE_SCHEMAS.get(event.payload["name"])
+        if schema is None or not Draft202012Validator(schema).is_valid(event.payload["result"]):
+            return f"{case_id}: REQ-TOOL-01 invalid tool result at seq {event.seq}"
+    if any("handle" not in view.spec.props for view in evidence.projection.views):
+        return f"{case_id}: REQ-TOOL-01 a view used inline data"
+    return None
+
+
+@assertion("numeric_claims_grounded")
+def numeric_claims_grounded(
+    evidence: Evidence, expected: Any, root: Path, case_id: str
+) -> str | None:
+    if not expected:
+        return None
+    counts: dict[str, set[int]] = {"patient": set(), "specimen": set(), "librar": set()}
+    texts: dict[str, str] = {}
+    names = {"find_patients": "patient", "find_specimens": "specimen", "find_libraries": "librar"}
+    pattern = re.compile(
+        r"\b(\d+)\**\s+(patients?|specimens?|librar(?:y|ies)|records?)\b", re.IGNORECASE
+    )
+    for event in evidence.events:
+        payload = event.payload
+        if event.type == "tool_result" and payload["name"] in names:
+            if type(payload["result"].get("count")) is int:
+                counts[names[payload["name"]]].add(payload["result"]["count"])
+        elif event.type == "text_delta":
+            message_id = payload["message_id"]
+            texts[message_id] = texts.get(message_id, "") + payload["text"]
+        elif event.type == "message_done":
+            for number, noun in pattern.findall(texts.get(payload["message_id"], "")):
+                entity = next((name for name in counts if noun.lower().startswith(name)), None)
+                support = counts[entity] if entity else set().union(*counts.values())
+                if int(number) not in support:
+                    return f"{case_id}: REQ-GROUND-01 unsupported claim: {number} {noun}"
+    return None
+
+
+@assertion("references_resolve")
+def references_resolve(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    if not expected:
+        return None
+    specimen_handle = None
+    resolved = False
+    for event in evidence.events:
+        payload = event.payload
+        if event.type == "tool_result" and payload["name"] == "find_specimens":
+            specimen_handle = payload["result"].get("handle", specimen_handle)
+        elif event.type == "tool_call" and payload["name"] == "find_libraries":
+            arguments = json.loads(payload["arguments"])
+            if specimen_handle is None or arguments.get("specimen_handle") != specimen_handle:
+                return f"{case_id}: REQ-CTX-01 follow-up did not reference the specimen handle"
+            resolved = True
+    return None if resolved else f"{case_id}: REQ-CTX-01 no library follow-up was exercised"
+
+
 def view_invariants(evidence: Evidence, case_id: str) -> list[str]:
     replayed = Projection(session_id=evidence.projection.session_id)
     expected = []
@@ -188,6 +259,9 @@ def validate_expectations(case: Case, root: Path) -> None:
         depth = case.expect["view_stack_depth"]
         if type(depth) is not int or depth < 0:
             raise ValueError(f"{case.id}: view_stack_depth must be a nonnegative integer")
+    for name in ("tools_only_handles", "numeric_claims_grounded", "references_resolve"):
+        if name in case.expect and type(case.expect[name]) is not bool:
+            raise ValueError(f"{case.id}: {name} must be a boolean")
 
 
 def check_case(

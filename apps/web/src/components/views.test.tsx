@@ -4,10 +4,17 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ViewRenderer } from './view-renderer'
 import { StepMarker } from './step-marker'
-import type { TableData, TableSpec } from '../lib/views'
+import { validateViewSpec } from '../lib/views'
+import type { ChartSpec, TableData, TableSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
 
 afterEach(cleanup)
+
+const embed = vi.hoisted(() => vi.fn(async () => ({
+  finalize: vi.fn(),
+  view: { resize: vi.fn(() => ({ runAsync: vi.fn(async () => undefined) })) },
+})))
+vi.mock('vega-embed', () => ({ default: embed }))
 
 const spec: TableSpec = {
   kind: 'table',
@@ -73,6 +80,18 @@ describe('registered table snapshots', () => {
 })
 
 describe('additive table handle source', () => {
+  it('maps a selected column order using query metadata', async () => {
+    const resolver = vi.fn<HandleResolver>().mockResolvedValue({
+      columns: [spec.props.columns[1], spec.props.columns[0], spec.props.columns[2]],
+      rows: [[95, 'SPC-REORDERED', true]], row_count: 1,
+    })
+    render(<ViewRenderer spec={handleSpec} resolveHandle={resolver} />)
+    await screen.findByText('SPC-REORDERED')
+    expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
+      'SPC-REORDERED', '95', 'Yes',
+    ])
+  })
+
   it('loads using an injected resolver and retries a failure', async () => {
     const resolver = vi
       .fn<HandleResolver>()
@@ -139,4 +158,58 @@ it('starts steps collapsed and retains the open state on completion', async () =
   )
   expect(details.open).toBe(true)
   expect(screen.getByText('14 specimens reviewed.')).toBeTruthy()
+})
+
+it('shows tool names, arguments, and correction errors inside a collapsed step', async () => {
+  const { container } = render(<StepMarker step={{
+    id: 'step-1', seq: 2, title: 'Agent step 1', detail: '', status: 'complete',
+    tools: [{
+      call_id: 'call-1', name: 'find_specimens', arguments: '{"received_within":"bad"}',
+      result: { error: { code: 'invalid_arguments', message: 'Use a relative window' } },
+    }],
+  }} />)
+  expect(container.querySelector('details')!.open).toBe(false)
+  await userEvent.click(container.querySelector('summary')!)
+  expect(screen.getByText('find_specimens')).toBeTruthy()
+  expect(screen.getByText(/"received_within": "bad"/)).toBeTruthy()
+  expect(screen.getByText(/Use a relative window/)).toBeTruthy()
+})
+
+const chartSpec: ChartSpec = {
+  kind: 'chart', version: 1,
+  props: {
+    title: 'Library coverage', handle: 'query-0001', mark: 'bar',
+    encoding: {
+      x: { field: 'specimen_id', type: 'nominal' },
+      y: { field: 'coverage', type: 'quantitative' },
+    },
+  },
+}
+
+it('renders charts from resolved rows and disables external loading', async () => {
+  const resolver = vi.fn<HandleResolver>().mockResolvedValue({
+    columns: spec.props.columns, rows: spec.props.rows!, row_count: 2,
+  })
+  render(<ViewRenderer spec={chartSpec} resolveHandle={resolver} />)
+  await screen.findByText('2 rows')
+  const call = embed.mock.calls.at(-1) as unknown as [Element, {
+    data: { values: Record<string, unknown>[] }
+  }, { loader: { load: () => Promise<never> } }]
+  expect(call[1].data.values[0]).toEqual({ specimen_id: 'SPC-0001', coverage: 120, ready: true })
+  await expect(call[2].loader.load()).rejects.toThrow('External chart data')
+})
+
+it('shows chart handle expiry instead of rendering an empty result', async () => {
+  const resolver = vi.fn<HandleResolver>().mockRejectedValue(new Error('Handle expired'))
+  render(<ViewRenderer spec={chartSpec} resolveHandle={resolver} />)
+  await screen.findByText('Handle expired')
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+})
+
+it('rejects chart URLs, expressions, and arbitrary Vega transforms', () => {
+  for (const extra of [{ data: { url: 'https://example.com' } }, { transform: [] }, { href: 'x' }]) {
+    expect(() => validateViewSpec({
+      ...chartSpec, props: { ...chartSpec.props, ...extra },
+    })).toThrow('View schema error')
+  }
 })

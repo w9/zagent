@@ -6,10 +6,14 @@ the **public HTTP API**. The evaluator never seeds sessions or reads evidence di
 the database. Its local server uses the same application startup, migrations, and seed path as
 the app, over real sockets and Postgres 16.
 
+PLAN4 adds real `LlmAgent` cases with a frozen synthetic cohort and actual MCP dispatch. It seeds
+clinical fixtures and tests RLS directly under a wrong-site role before those cases; conversation
+evidence is still collected exclusively through the public HTTP API.
+
 ## Commands
 
 ```bash
-make evals                    # 9 golden trials plus 90 seeded chaos trials.
+make evals                    # 15 standard trials plus 110 seeded chaos trials.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -17,11 +21,14 @@ uv run zagent evals --filter STREAM-005 --trials 2
 uv run zagent evals --chaos --filter STREAM-001 --seed 7 --trials 1
 uv run zagent evals --update-golden --filter STREAM-001
 uv run zagent evals --chaos --filter 'VIEW-*' --seed 7 --trials 1
+uv run zagent evals --filter 'REAL-*' --no-chaos
+uv run zagent evals --filter 'REAL-*' --mode record --no-chaos --update-golden
 ```
 
 `make evals EVAL_ARGS='--filter REQ-STREAM-02 --trials 2'` passes options to the CLI.
 `--trials` sets the count **per selected case and verification mode**. Defaults are one standard
-trial and ten chaos trials per case. Each standard reference executes twice; those duplicate
+trial and ten chaos trials per case, raised to the registered minimum for measured requirements
+(currently three standard trials for real-agent cases). Each standard reference executes twice; those duplicate
 determinism checks are reported as HTTP executions, not inflated trial counts. `--chaos` selects
 only interrupted trials; `--no-chaos` selects only standard trials. Every newly registered case
 automatically participates in chaos mode.
@@ -42,8 +49,29 @@ uv run zagent report --input docs/evals/results.json --baseline /tmp/zagent-base
 `--output` selects a different report directory. `zagent report` only renders stored evidence;
 it does not contact Postgres. Nonzero exit status means a failed gate, uncovered requirement,
 invalid configuration, or execution error. Filtered requirements and unselected verification
-modes are labeled explicitly, never shown as passing. `--mode live` is recognized but rejected:
-provider evaluation is deferred to PLAN4 and PLAN10.
+modes are labeled explicitly, never shown as passing. Provider access with `--mode record` or
+`--mode live` requires both `--filter` and `--no-chaos` to bound cost. Record calls the provider
+for the first reference only, then replays for agreement and remaining trials. Live does not
+assert deterministic text or update goldens.
+
+## Provider Cassettes
+
+The gateway stores reviewed cassettes under
+[services/agent/zagent/cassettes](../services/agent/zagent/cassettes). Keys hash the normalized
+request, selected provider/model, and explicit system-prompt hash. Object order, JSON argument
+whitespace, provider call IDs, transport metadata, and surrounding text whitespace are normalized;
+meaningful prompt or argument changes miss. Replay misses fail with a hash and recording hint,
+never with a live fallback. Requests and responses are saved, not authorization headers.
+
+The default model is `deepseek/deepseek-v4.1-flash`. `ZAGENT_MODEL` changes the default route;
+`ZAGENT_MODEL_ROUTES` accepts a JSON object mapping route names to `{provider, model}`. A case
+uses `agent: llm:<route>`. `ZAGENT_CASSETTE_DIR` can select a separate cassette directory.
+Provider keys come from an owner-only file outside the repository, as described in the root
+[README](../README.md#live-openrouter-access). No key is needed to replay the checked-in cases.
+
+The clock is frozen at `2026-01-15T12:00:00Z`, with seed 41872 and no simulator. Handles are
+session-local deterministic names, expire after 24 hours of the fixture clock, and never expose
+rows in model context. The HTTP renderer resolves their data separately.
 
 ## Cases And Goldens
 
@@ -62,8 +90,10 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | VIEW-002 | An empty table | REQ-VIEW-01, REQ-VIEW-02 |
 | VIEW-003 | A rejected view preserves the previous tables | REQ-VIEW-01, REQ-VIEW-02 |
 | VIEW-004 | A rejected view leaves a fresh surface empty | REQ-VIEW-01, REQ-VIEW-02 |
+| REAL-001 | Patient specimens, "those" libraries, then a coverage chart | Streams, views, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01, REQ-CTX-01 |
+| REAL-002 | Site-wide specimen count and handle-backed table | Streams, views, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01 |
 
-REQ-VIEW-01 also links all five stream cases: view validation is checked across the entire
+Stream and view requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: view validation is checked across the entire
 corpus, including cases that legitimately push no views. Requirement rows may share trials;
 the report's total counts each case/mode/seed once, not once per linked requirement.
 
@@ -93,6 +123,16 @@ independently compares view history at each event prefix. The shared
 [view-replay fixture](fixtures/view-replay.json) is exercised by both server and browser reducers,
 including duplicate identities and resuming from every prefix.
 
+PLAN4 adds `tools_only_handles`, `numeric_claims_grounded`, and `references_resolve`. The
+grounding check covers explicit integer patient/specimen/library/record counts (including
+Markdown emphasis), supported by a preceding tool result. It is not a general factual-claim
+judge. The reference check binds library lookups to the preceding specimen handle.
+
+Legacy goldens intentionally remain scripted: their literal canned text, inline synthetic rows,
+`/fail`, and `/invalid-view` commands are not the real agent's contract. None were rewritten to
+make PLAN4 pass. The real-agent cases run the same public-HTTP, event-prefix, golden, snapshot,
+and reconnect assertions with handle-bound output and their own provider recordings.
+
 ## Chaos And Limits
 
 Each seed selects a conversation turn, a disconnect boundary, a disconnected interval, and
@@ -102,17 +142,17 @@ push; for other turns it uses text progress. The client closes the HTTP response
 and the uninterrupted reference. The report records the selected plan and actual sequence at
 disconnect, allowing a single seed to reproduce failures.
 
-Execution-layer interruption is a **cooperative pause/resume** wrapper around `ScriptedAgent`,
+Execution-layer interruption is a **cooperative pause/resume** wrapper around either agent,
 before its first emission on each turn. It uses the same runtime and coalescer while introducing
 different scheduling. It is not a process kill: journal-based crash recovery remains PLAN8.
 No production mutation switches are added. Self-tests deliberately corrupt the reducer and skip
 a resume event, then require named diffs and a failed REQ-STREAM-02 gate.
 
-Timing is accelerated to keep the full default suite in tens of seconds: 0.04x script delays
-and 8 ms coalescing. Provenance records these values, the current UTC clock, commit and dirty
-worktree flag, script digest, implementation, and seed. Model, prompt hash, tool-schema hash,
-and KB version are explicit null placeholders. No claim of production latency or model quality
-is made by these deterministic fixtures.
+Replay omits scripted presentation delays and uses 8 ms coalescing. Chaos trials reuse the
+HTTP service for each case but create fresh sessions and retain distinct seeds and interruptions.
+The full 125-trial keyless suite was verified in under a minute. Provenance records timing,
+clock, commit, dirty worktree, implementation, seed, and either script digest or model, normalized
+prompt hash, and tool-schema hash. No production-latency claim is made.
 
 ## Statistics
 
@@ -128,8 +168,10 @@ It is reported separately from the gating metric; `--pass-k` defaults to 3.
 
 Baseline comparisons pair by case ID, verification mode, and seed, and report improvements,
 regressions, unmatched trials, paired rate difference, and an exact two-sided McNemar p-value.
-No pairing is fabricated for unmatched cases. These statistics are implemented and unit-tested
-now; real nondeterministic measured requirements arrive in later plans.
+No pairing is fabricated for unmatched cases. Replaying the same model response is not an
+independent model draw: the current intervals describe regression outcomes, not calibrated
+production model quality. Use explicitly selected live trials for fresh model samples; broader
+case sets, judges, and model-matrix evaluation arrive at PLAN10.
 
 ## Development And CI
 
@@ -150,4 +192,6 @@ The existing client reducer tests and `make browser` remain separate frontend ac
 They prove actual browser refresh, native SSE reconnect, tab closure, and mobile layout; the
 Python harness's reducer checks do not replace those browser tests. PLAN3 adds table component
 snapshots, stable history selection, auto-follow behavior, invalid-view isolation, and mobile
-panel navigation. Screenshots are inspection artifacts; no pixel-diff gate is introduced.
+panel navigation. PLAN4 adds desktop/mobile handle resolution, multi-turn charts, expanded tool
+details, visible replay misses, and nonblank chart-pixel checks. CI runs both scripted and LLM
+replay browser modes. Screenshots are inspection artifacts; no pixel-diff gate is introduced.

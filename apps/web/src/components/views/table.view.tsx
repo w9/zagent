@@ -1,5 +1,5 @@
 import { Check, RefreshCw, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { Button } from '../ui/button'
 import { validateViewSpec } from '../../lib/views'
 import type {
@@ -136,11 +136,22 @@ function HandleTable({
   const [attempt, setAttempt] = useState(0)
   const props = spec.props
   const handle = props.handle!
+  const resolve = useEffectEvent(resolveHandle)
   useEffect(() => {
     const controller = new AbortController()
     async function load() {
       try {
-        const data = await resolveHandle(handle, controller.signal)
+        const source = await resolve(handle, controller.signal)
+        const data = {
+          ...source,
+          rows: source.columns
+            ? source.rows.map((row) => props.columns.map((column) => {
+                const index = source.columns!.findIndex((item) => item.key === column.key)
+                if (index < 0) throw new Error('View schema error: missing query column')
+                return row[index]
+              }))
+            : source.rows,
+        }
         const inline: ViewSpec = {
           kind: 'table',
           version: 1,
@@ -163,7 +174,7 @@ function HandleTable({
     }
     void load()
     return () => controller.abort()
-  }, [handle, props.title, props.columns, resolveHandle, attempt])
+  }, [handle, props.title, props.columns, attempt])
   return (
     <TableContent
       props={props}

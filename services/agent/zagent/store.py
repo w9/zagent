@@ -25,12 +25,14 @@ class Session(BaseModel):
     id: UUID
     seq: int
     created_at: datetime
+    site_id: str = "northgate"
 
 
 class AgentSession(BaseModel):
     id: UUID
     conversation_turn_id: UUID
     message: str
+    site_id: str = "northgate"
 
 
 async def configure_connection(connection: asyncpg.Connection) -> None:
@@ -77,16 +79,19 @@ class Store:
                     "INSERT INTO sessions (id) VALUES ($1) ON CONFLICT DO NOTHING", SEED_SESSION_ID
                 )
 
-    async def create_session(self) -> Session:
+    async def create_session(self, site_id: str = "northgate") -> Session:
         row = await self.pool.fetchrow(
-            "INSERT INTO sessions (id) VALUES ($1) RETURNING id, last_seq AS seq, created_at",
+            """INSERT INTO sessions (id, site_id) VALUES ($1, $2)
+               RETURNING id, last_seq AS seq, created_at, site_id""",
             uuid4(),
+            site_id,
         )
         return Session.model_validate(dict(row))
 
     async def get_session(self, session_id: UUID) -> Session:
         row = await self.pool.fetchrow(
-            "SELECT id, last_seq AS seq, created_at FROM sessions WHERE id = $1", session_id
+            "SELECT id, last_seq AS seq, created_at, site_id FROM sessions WHERE id = $1",
+            session_id,
         )
         if row is None:
             raise NotFound("Session not found")
@@ -94,17 +99,17 @@ class Store:
 
     async def list_sessions(self) -> list[Session]:
         rows = await self.pool.fetch(
-            "SELECT id, last_seq AS seq, created_at FROM sessions ORDER BY created_at, id"
+            "SELECT id, last_seq AS seq, created_at, site_id FROM sessions ORDER BY created_at, id"
         )
         return [Session.model_validate(dict(row)) for row in rows]
 
     async def begin_conversation_turn(self, session_id: UUID, text: str) -> AgentSession:
         conversation_turn_id = uuid4()
         async with self.pool.acquire() as connection, connection.transaction():
-            exists = await connection.fetchval(
-                "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
+            session = await connection.fetchrow(
+                "SELECT id, site_id FROM sessions WHERE id = $1 FOR UPDATE", session_id
             )
-            if exists is None:
+            if session is None:
                 raise NotFound("Session not found")
             active = await connection.fetchval(
                 "SELECT id FROM conversation_turns WHERE session_id = $1 AND status = 'running'",
@@ -126,7 +131,12 @@ class Store:
                 conversation_turn_id,
                 EventDraft(type="user_message", payload={"message_id": str(uuid4()), "text": text}),
             )
-        return AgentSession(id=session_id, conversation_turn_id=conversation_turn_id, message=text)
+        return AgentSession(
+            id=session_id,
+            conversation_turn_id=conversation_turn_id,
+            message=text,
+            site_id=session["site_id"],
+        )
 
     async def _append(
         self,

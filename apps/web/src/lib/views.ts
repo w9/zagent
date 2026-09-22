@@ -12,7 +12,11 @@ export type TableColumn = {
   label: string
   type: 'string' | 'number' | 'boolean'
 }
-export type TableData = { rows: TableCell[][]; row_count: number }
+export type TableData = {
+  rows: TableCell[][]
+  row_count: number
+  columns?: TableColumn[]
+}
 export type TableProps = {
   title: string
   columns: TableColumn[]
@@ -22,6 +26,21 @@ export type TableSpec = ViewSpec & {
   kind: 'table'
   version: 1
   props: TableProps
+}
+export type ChartProps = {
+  title: string
+  handle: string
+  mark: 'bar' | 'line' | 'point'
+  encoding: Record<string, {
+    field: string
+    type: 'nominal' | 'ordinal' | 'quantitative' | 'temporal'
+    aggregate?: 'count' | 'sum' | 'mean' | 'min' | 'max'
+  }>
+}
+export type ChartSpec = ViewSpec & {
+  kind: 'chart'
+  version: 1
+  props: ChartProps
 }
 export type PushedView = { id: string; seq: number; spec: ViewSpec }
 

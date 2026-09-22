@@ -27,8 +27,8 @@ async def invoke(session_id, database_url):
 
 async def test_cli_prints_the_normalized_log(store, database_url):
     session = await store.create_session()
-    run = await store.begin_run(session.id, "Hello")
-    await store.finish_run(session.id, run.run_id)
+    turn = await store.begin_conversation_turn(session.id, "Hello")
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
     code, stdout, stderr = await invoke(session.id, database_url)
     assert code == 0
     assert stderr == ""

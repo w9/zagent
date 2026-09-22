@@ -19,7 +19,7 @@ async function openSession(page: Page, sessionId: string, origin = '') {
   await expect(
     page.getByRole('textbox', { name: 'Message', exact: true }),
   ).toBeEnabled()
-  await expect(page.getByTestId('run-status')).not.toHaveText(
+  await expect(page.getByTestId('conversation-turn-status')).not.toHaveText(
     /Connecting|Reconnecting/,
   )
 }
@@ -109,7 +109,7 @@ async function assertLayout(page: Page) {
   })
 }
 
-test('refresh, two tabs, socket reconnect, and a second run agree', async ({
+test('refresh, two tabs, socket reconnect, and a second conversation turn agree', async ({
   page,
   context,
   request,
@@ -128,7 +128,9 @@ test('refresh, two tabs, socket reconnect, and a second run agree', async ({
     await expect(answer(page)).toContainText('Message received.')
     const partial = await answer(page).textContent()
     expect(partial!.length).toBeLessThan(expected.length)
-    await expect(page.getByTestId('run-status')).toHaveText('Running')
+    await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+      'Responding',
+    )
     await page.screenshot({
       path: testInfo.outputPath('desktop-streaming.png'),
     })
@@ -136,17 +138,27 @@ test('refresh, two tabs, socket reconnect, and a second run agree', async ({
     await expect(answer(page)).toContainText(partial!)
     await expect(answer(second)).toContainText(partial!)
     proxy.disconnect()
-    await expect(second.getByTestId('run-status')).toHaveText('Reconnecting')
-    await expect(page.getByTestId('run-status')).toHaveText('Complete')
-    await expect(second.getByTestId('run-status')).toHaveText('Complete')
+    await expect(second.getByTestId('conversation-turn-status')).toHaveText(
+      'Reconnecting',
+    )
+    await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+      'Complete',
+    )
+    await expect(second.getByTestId('conversation-turn-status')).toHaveText(
+      'Complete',
+    )
     expect(await answer(page).textContent()).toBe(expected)
     expect(await answer(second).textContent()).toBe(expected)
     expect(proxy.resumeCursors.length).toBeGreaterThan(0)
     await send(page, 'Again')
     await expect(page.getByTestId('assistant-message')).toHaveCount(2)
-    await expect(page.getByTestId('run-status')).toHaveText('Complete')
+    await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+      'Complete',
+    )
     await expect(second.getByTestId('assistant-message')).toHaveCount(2)
-    await expect(second.getByTestId('run-status')).toHaveText('Complete')
+    await expect(second.getByTestId('conversation-turn-status')).toHaveText(
+      'Complete',
+    )
     expect(await answer(second).textContent()).toBe(expected)
     await assertLayout(page)
     await page.screenshot({ path: testInfo.outputPath('desktop-complete.png') })
@@ -156,7 +168,7 @@ test('refresh, two tabs, socket reconnect, and a second run agree', async ({
   }
 })
 
-test('closing the only tab does not cancel a run', async ({
+test('closing the only tab does not cancel a conversation turn', async ({
   page,
   context,
   request,
@@ -170,17 +182,19 @@ test('closing the only tab does not cancel a run', async ({
   await expect
     .poll(async () => {
       const snapshot = await request.get(`/api/sessions/${sessionId}/snapshot`)
-      return (await snapshot.json()).run?.status
+      return (await snapshot.json()).conversation_turn?.status
     })
     .toBe('finished')
   const reopened = await context.newPage()
   await reopened.goto('/')
   await expect(reopened).toHaveURL(new RegExp(`/sessions/${sessionId}$`))
-  await expect(reopened.getByTestId('run-status')).toHaveText('Complete')
+  await expect(reopened.getByTestId('conversation-turn-status')).toHaveText(
+    'Complete',
+  )
   expect(await answer(reopened).textContent()).toBe(expected)
 })
 
-test('failed runs are visible and accept a new message', async ({
+test('failed conversation turns are visible and accept a new message', async ({
   page,
   request,
 }, testInfo) => {
@@ -188,13 +202,17 @@ test('failed runs are visible and accept a new message', async ({
   const sessionId = await createSession(request)
   await openSession(page, sessionId)
   await send(page, '/fail')
-  await expect(page.getByTestId('run-status')).toHaveText('Failed')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Failed',
+  )
   await expect(page.getByRole('alert')).toContainText('Scripted failure')
   await expect(answer(page)).toHaveText(
-    'Message received. The scripted run encountered an error.',
+    'Message received. The scripted conversation turn encountered an error.',
   )
   await page.reload()
-  await expect(page.getByTestId('run-status')).toHaveText('Failed')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Failed',
+  )
   await page
     .getByRole('textbox', { name: 'Message', exact: true })
     .fill('Try again')
@@ -220,7 +238,9 @@ test('mobile sessions, streaming, refresh, and compact viewports', async ({
   await send(page, 'Hello')
   await expect(answer(page)).toContainText('Message received.')
   await page.reload()
-  await expect(page.getByTestId('run-status')).toHaveText('Complete')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText(
+    'Complete',
+  )
   expect(await answer(page).textContent()).toBe(expected)
   await assertLayout(page)
   await page.screenshot({ path: testInfo.outputPath('mobile-complete.png') })

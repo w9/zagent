@@ -15,7 +15,7 @@ Emit = Callable[[EventDraft], Awaitable[None]]
 
 
 class Agent(Protocol):
-    async def run(self, session: AgentSession, emit: Emit) -> None: ...
+    async def run_turn(self, session: AgentSession, emit: Emit) -> None: ...
 
 
 class ScriptStep(BaseModel):
@@ -29,9 +29,9 @@ class ScriptStep(BaseModel):
             raise ValueError("Each step must emit an event or raise an error")
         if self.event and self.event.type in {
             "user_message",
-            "run_started",
-            "run_finished",
-            "run_failed",
+            "conversation_turn_started",
+            "conversation_turn_finished",
+            "conversation_turn_failed",
         }:
             raise ValueError("The runtime owns lifecycle events")
         return self
@@ -52,7 +52,7 @@ class ScriptedAgent:
     def load(path) -> Script:
         return Script.model_validate(yaml.safe_load(path.read_text()))
 
-    async def run(self, session: AgentSession, emit: Emit) -> None:
+    async def run_turn(self, session: AgentSession, emit: Emit) -> None:
         script = self.failure if session.message.strip() == "/fail" else self.script
         for step in script.steps:
             await asyncio.sleep(step.delay_ms * self.delay_scale / 1000)
@@ -60,7 +60,9 @@ class ScriptedAgent:
                 raise RuntimeError(step.raise_error)
             event = step.event.model_copy(deep=True)
             if "message_id" in event.payload:
-                event.payload["message_id"] = f"{session.run_id}:{event.payload['message_id']}"
+                event.payload["message_id"] = (
+                    f"{session.conversation_turn_id}:{event.payload['message_id']}"
+                )
             if event.type == "text_delta":
                 for word in re.findall(r"\S+\s*|\s+", event.payload["text"]):
                     await asyncio.sleep(script.word_delay_ms * self.delay_scale / 1000)

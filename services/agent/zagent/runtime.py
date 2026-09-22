@@ -68,40 +68,46 @@ class Runtime:
         self.tasks: dict = {}
 
     def start(self, session: AgentSession) -> None:
-        task = asyncio.create_task(self._run(session), name=f"run:{session.run_id}")
-        self.tasks[session.run_id] = task
+        task = asyncio.create_task(
+            self._run_turn(session), name=f"conversation_turn:{session.conversation_turn_id}"
+        )
+        self.tasks[session.conversation_turn_id] = task
         task.add_done_callback(lambda finished: self._finished(session, finished))
 
     def _finished(self, session: AgentSession, task: asyncio.Task) -> None:
-        self.tasks.pop(session.run_id, None)
+        self.tasks.pop(session.conversation_turn_id, None)
         if not task.cancelled() and task.exception():
             logger.error(
-                "Could not persist run %s outcome", session.run_id, exc_info=task.exception()
+                "Could not persist conversation turn %s outcome",
+                session.conversation_turn_id,
+                exc_info=task.exception(),
             )
 
-    async def _run(self, session: AgentSession) -> None:
+    async def _run_turn(self, session: AgentSession) -> None:
         async def append(event: EventDraft) -> None:
-            await self.store.append(session.id, session.run_id, event)
+            await self.store.append(session.id, session.conversation_turn_id, event)
 
         coalescer = DeltaCoalescer(append, self.coalesce_seconds)
         try:
             try:
-                await append(EventDraft(type="run_started"))
-                await self.agent.run(session, coalescer.emit)
+                await append(EventDraft(type="conversation_turn_started"))
+                await self.agent.run_turn(session, coalescer.emit)
             finally:
                 await coalescer.close()
         except asyncio.CancelledError:
-            await self.store.finish_run(
-                session.id, session.run_id, "Agent service stopped before the run completed."
+            await self.store.finish_conversation_turn(
+                session.id,
+                session.conversation_turn_id,
+                "Agent service stopped before the conversation turn completed.",
             )
             raise
         except Exception as error:
-            logger.warning("Run %s failed: %s", session.run_id, error)
-            await self.store.finish_run(
-                session.id, session.run_id, str(error) or type(error).__name__
+            logger.warning("Conversation turn %s failed: %s", session.conversation_turn_id, error)
+            await self.store.finish_conversation_turn(
+                session.id, session.conversation_turn_id, str(error) or type(error).__name__
             )
         else:
-            await self.store.finish_run(session.id, session.run_id)
+            await self.store.finish_conversation_turn(session.id, session.conversation_turn_id)
 
     async def close(self) -> None:
         tasks = list(self.tasks.values())

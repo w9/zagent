@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_validator
 from zagent.agent import Agent, ScriptedAgent
 from zagent.events import Projection
 from zagent.runtime import Runtime
-from zagent.store import DEFAULT_DATABASE_URL, NotFound, RunConflict, Session, Store
+from zagent.store import DEFAULT_DATABASE_URL, ConversationTurnConflict, NotFound, Session, Store
 from zagent.stream import Notifications, tail_events
 
 
@@ -34,9 +34,9 @@ class MessageInput(BaseModel):
         return text
 
 
-class AcceptedRun(BaseModel):
+class AcceptedConversationTurn(BaseModel):
     session_id: UUID
-    run_id: UUID
+    conversation_turn_id: UUID
 
 
 def create_app(settings: Settings | None = None, agent: Agent | None = None) -> FastAPI:
@@ -48,7 +48,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             store = await Store.open(settings.database_url)
             resources.push_async_callback(store.close)
             await store.migrate()
-            await store.fail_interrupted_runs()
+            await store.fail_interrupted_conversation_turns()
             notifications = await Notifications.open(settings.database_url)
             resources.push_async_callback(notifications.close)
             script = os.environ.get("ZAGENT_SCRIPT")
@@ -69,8 +69,8 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     async def not_found(request: Request, error: NotFound):
         return JSONResponse(status_code=404, content={"detail": str(error)})
 
-    @app.exception_handler(RunConflict)
-    async def conflict(request: Request, error: RunConflict):
+    @app.exception_handler(ConversationTurnConflict)
+    async def conflict(request: Request, error: ConversationTurnConflict):
         return JSONResponse(status_code=409, content={"detail": str(error)})
 
     @app.get("/health")
@@ -86,11 +86,15 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     async def list_sessions():
         return await app.state.store.list_sessions()
 
-    @app.post("/sessions/{session_id}/messages", status_code=202, response_model=AcceptedRun)
+    @app.post(
+        "/sessions/{session_id}/messages", status_code=202, response_model=AcceptedConversationTurn
+    )
     async def message(session_id: UUID, body: MessageInput):
-        session = await app.state.store.begin_run(session_id, body.text)
+        session = await app.state.store.begin_conversation_turn(session_id, body.text)
         app.state.runtime.start(session)
-        return AcceptedRun(session_id=session.id, run_id=session.run_id)
+        return AcceptedConversationTurn(
+            session_id=session.id, conversation_turn_id=session.conversation_turn_id
+        )
 
     @app.get("/sessions/{session_id}/snapshot", response_model=Projection)
     async def snapshot(session_id: UUID):

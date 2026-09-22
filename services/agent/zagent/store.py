@@ -17,7 +17,7 @@ class NotFound(Exception):
     pass
 
 
-class RunConflict(Exception):
+class ConversationTurnConflict(Exception):
     pass
 
 
@@ -29,7 +29,7 @@ class Session(BaseModel):
 
 class AgentSession(BaseModel):
     id: UUID
-    run_id: UUID
+    conversation_turn_id: UUID
     message: str
 
 
@@ -54,18 +54,24 @@ class Store:
         await self.pool.close()
 
     async def migrate(self, *, seed: bool = True) -> None:
-        migration = files("zagent").joinpath("migrations/001_spine.sql").read_text()
+        migrations = sorted(
+            files("zagent").joinpath("migrations").iterdir(), key=lambda path: path.name
+        )
         async with self.pool.acquire() as connection, connection.transaction():
             await connection.execute("SELECT pg_advisory_xact_lock(710001)")
             await connection.execute(
                 "CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY)"
             )
-            applied = await connection.fetchval(
-                "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = 1)"
-            )
-            if not applied:
-                await connection.execute(migration)
-                await connection.execute("INSERT INTO schema_migrations VALUES (1)")
+            for migration in migrations:
+                if not migration.name.endswith(".sql"):
+                    continue
+                version = int(migration.name.split("_", 1)[0])
+                applied = await connection.fetchval(
+                    "SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)", version
+                )
+                if not applied:
+                    await connection.execute(migration.read_text())
+                    await connection.execute("INSERT INTO schema_migrations VALUES ($1)", version)
             if seed:
                 await connection.execute(
                     "INSERT INTO sessions (id) VALUES ($1) ON CONFLICT DO NOTHING", SEED_SESSION_ID
@@ -92,8 +98,8 @@ class Store:
         )
         return [Session.model_validate(dict(row)) for row in rows]
 
-    async def begin_run(self, session_id: UUID, text: str) -> AgentSession:
-        run_id = uuid4()
+    async def begin_conversation_turn(self, session_id: UUID, text: str) -> AgentSession:
+        conversation_turn_id = uuid4()
         async with self.pool.acquire() as connection, connection.transaction():
             exists = await connection.fetchval(
                 "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
@@ -101,28 +107,32 @@ class Store:
             if exists is None:
                 raise NotFound("Session not found")
             active = await connection.fetchval(
-                "SELECT id FROM runs WHERE session_id = $1 AND status = 'running'", session_id
+                "SELECT id FROM conversation_turns WHERE session_id = $1 AND status = 'running'",
+                session_id,
             )
             if active:
-                raise RunConflict("This session already has an active run")
+                raise ConversationTurnConflict(
+                    "This session already has an active conversation turn"
+                )
             await connection.execute(
-                "INSERT INTO runs (id, session_id, status) VALUES ($1, $2, 'running')",
-                run_id,
+                """INSERT INTO conversation_turns (id, session_id, status)
+                   VALUES ($1, $2, 'running')""",
+                conversation_turn_id,
                 session_id,
             )
             await self._append(
                 connection,
                 session_id,
-                run_id,
+                conversation_turn_id,
                 EventDraft(type="user_message", payload={"message_id": str(uuid4()), "text": text}),
             )
-        return AgentSession(id=session_id, run_id=run_id, message=text)
+        return AgentSession(id=session_id, conversation_turn_id=conversation_turn_id, message=text)
 
     async def _append(
         self,
         connection: asyncpg.Connection,
         session_id: UUID,
-        run_id: UUID,
+        conversation_turn_id: UUID,
         event: EventDraft,
     ) -> Event:
         seq = await connection.fetchval(
@@ -132,56 +142,71 @@ class Store:
         if seq is None:
             raise NotFound("Session not found")
         status = await connection.fetchval(
-            "SELECT status FROM runs WHERE id = $1 AND session_id = $2", run_id, session_id
+            "SELECT status FROM conversation_turns WHERE id = $1 AND session_id = $2",
+            conversation_turn_id,
+            session_id,
         )
         if status != "running":
-            raise RunConflict("Run is not active")
+            raise ConversationTurnConflict("Conversation turn is not active")
         row = await connection.fetchrow(
-            """INSERT INTO events (session_id, seq, run_id, type, payload)
+            """INSERT INTO events (session_id, seq, conversation_turn_id, type, payload)
                VALUES ($1, $2, $3, $4, $5) RETURNING *""",
             session_id,
             seq,
-            run_id,
+            conversation_turn_id,
             event.type,
             event.payload,
         )
         await connection.execute("SELECT pg_notify($1, $2)", NOTIFY_CHANNEL, str(session_id))
         return Event.model_validate(dict(row))
 
-    async def append(self, session_id: UUID, run_id: UUID, event: EventDraft) -> Event:
+    async def append(
+        self, session_id: UUID, conversation_turn_id: UUID, event: EventDraft
+    ) -> Event:
         async with self.pool.acquire() as connection, connection.transaction():
-            return await self._append(connection, session_id, run_id, event)
+            return await self._append(connection, session_id, conversation_turn_id, event)
 
-    async def finish_run(self, session_id: UUID, run_id: UUID, error: str | None = None) -> None:
+    async def finish_conversation_turn(
+        self, session_id: UUID, conversation_turn_id: UUID, error: str | None = None
+    ) -> None:
         async with self.pool.acquire() as connection, connection.transaction():
             await connection.fetchval(
                 "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
             )
             status = await connection.fetchval(
-                "SELECT status FROM runs WHERE id = $1 AND session_id = $2", run_id, session_id
+                "SELECT status FROM conversation_turns WHERE id = $1 AND session_id = $2",
+                conversation_turn_id,
+                session_id,
             )
             if status != "running":
                 return
             await self._append(
                 connection,
                 session_id,
-                run_id,
+                conversation_turn_id,
                 EventDraft(
-                    type="run_failed" if error is not None else "run_finished",
+                    type="conversation_turn_failed"
+                    if error is not None
+                    else "conversation_turn_finished",
                     payload={"error": error} if error is not None else {},
                 ),
             )
             await connection.execute(
-                "UPDATE runs SET status = $2, finished_at = clock_timestamp() WHERE id = $1",
-                run_id,
+                """UPDATE conversation_turns SET status = $2, finished_at = clock_timestamp()
+                   WHERE id = $1""",
+                conversation_turn_id,
                 "failed" if error is not None else "finished",
             )
 
-    async def fail_interrupted_runs(self) -> None:
-        rows = await self.pool.fetch("SELECT id, session_id FROM runs WHERE status = 'running'")
+    async def fail_interrupted_conversation_turns(self) -> None:
+        rows = await self.pool.fetch(
+            "SELECT id, session_id FROM conversation_turns WHERE status = 'running'"
+        )
         for row in rows:
-            await self.finish_run(
-                row["session_id"], row["id"], "Agent service restarted before the run completed."
+            await self.finish_conversation_turn(
+                row["session_id"],
+                row["id"],
+                "Agent service restarted before the conversation turn completed.",
             )
 
     async def events_after(self, session_id: UUID, seq: int, limit: int = 500) -> list[Event]:
@@ -212,7 +237,7 @@ class Store:
     async def head(self, session_id: UUID) -> tuple[int, bool]:
         row = await self.pool.fetchrow(
             """SELECT last_seq, EXISTS (
-                   SELECT 1 FROM runs WHERE session_id = $1 AND status = 'running'
+                     SELECT 1 FROM conversation_turns WHERE session_id = $1 AND status = 'running'
                ) AS active FROM sessions WHERE id = $1""",
             session_id,
         )

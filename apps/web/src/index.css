@@ -240,7 +240,7 @@ a:focus-visible {
   align-items: center;
   gap: 16px;
 }
-.run-status {
+.conversation-turn-status {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -248,27 +248,27 @@ a:focus-visible {
   color: #75837a;
   white-space: nowrap;
 }
-.run-status i {
+.conversation-turn-status i {
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: #8eab99;
 }
-.run-status.running {
+.conversation-turn-status.responding {
   color: var(--primary);
 }
-.run-status.running i {
+.conversation-turn-status.responding i {
   background: var(--primary);
   animation: pulse 1.4s ease-in-out infinite;
 }
-.run-status.failed {
+.conversation-turn-status.failed {
   color: #af514a;
 }
-.run-status.failed i {
+.conversation-turn-status.failed i {
   background: #c77567;
 }
-.run-status.reconnecting i,
-.run-status.connecting i {
+.conversation-turn-status.reconnecting i,
+.conversation-turn-status.connecting i {
   background: #c3a347;
 }
 .sequence {

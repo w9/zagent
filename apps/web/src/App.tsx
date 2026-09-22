@@ -92,20 +92,20 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
   const [atBottom, setAtBottom] = useState(true)
   const scrollArea = useRef<HTMLDivElement>(null)
   const hasSnapshot = state !== null
-  const running = state?.run?.status === 'running'
+  const responding = state?.conversation_turn?.status === 'running'
   const canSend = Boolean(
-    state && connection === 'live' && !running && !sending && draft.trim(),
+    state && connection === 'live' && !responding && !sending && draft.trim(),
   )
   const status =
     connection !== 'live'
       ? connection === 'connecting'
         ? 'Connecting'
         : 'Reconnecting'
-      : running
-        ? 'Running'
-        : state?.run?.status === 'failed'
+      : responding
+        ? 'Responding'
+        : state?.conversation_turn?.status === 'failed'
           ? 'Failed'
-          : state?.run
+          : state?.conversation_turn
             ? 'Complete'
             : 'Ready'
 
@@ -154,9 +154,10 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
         </div>
         <div className="chat-state">
           <span
-            className={`run-status ${status.toLowerCase()}`}
+            className={`conversation-turn-status ${status.toLowerCase()}`}
             role="status"
-            data-testid="run-status"
+            aria-label="Conversation turn status"
+            data-testid="conversation-turn-status"
           >
             <i />
             {status}
@@ -222,10 +223,10 @@ function Chat({ sessionId, name }: { sessionId: string; name: string }) {
         )}
       </div>
       <div className="composer-area">
-        {(error || sendError || state?.run?.error) && (
+        {(error || sendError || state?.conversation_turn?.error) && (
           <div className="error-notice" role="alert">
             <AlertTriangle size={16} />
-            <span>{error || sendError || state?.run?.error}</span>
+            <span>{error || sendError || state?.conversation_turn?.error}</span>
           </div>
         )}
         <form

@@ -5,6 +5,6 @@ steps:
       type: text_delta
       payload:
         message_id: answer
-        text: "Message received. The scripted run encountered an error."
+        text: "Message received. The scripted conversation turn encountered an error."
   - delay_ms: 400
     raise_error: "Scripted failure requested with /fail."

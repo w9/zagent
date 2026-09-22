@@ -50,18 +50,18 @@ agent now does differently. That is the mechanism that makes every subsequent in
 statement, enforcement sites or threshold, linked cases, and for invariants the mutations that
 must break them. Two requirements exist at this point, both from PLAN1.
 
-**Case format.** YAML, one file per group. A case names turns and expectations.
+**Case format.** YAML, one file per group. A case names conversation turns and expectations.
 
 ```yaml
 id: STREAM-004
 requirement: REQ-STREAM-01
 agent: scripted:multi_paragraph
-turns:
+conversation_turns:
   - user: "summarize the samples"
 expect:
   golden: goldens/STREAM-004.txt
-  events_include: [run_started, text_delta, message_done, run_finished]
-  events_exclude: [run_failed]
+  events_include: [conversation_turn_started, text_delta, message_done, conversation_turn_finished]
+  events_exclude: [conversation_turn_failed]
 ```
 
 Later plans extend the `expect` vocabulary (`tool_calls`, `views`, `egress`, `refusal`,
@@ -69,8 +69,8 @@ Later plans extend the `expect` vocabulary (`tool_calls`, `views`, `egress`, `re
 not touching the runner.
 
 **The runner.** Drives cases through the **public HTTP API**, the same endpoints the browser
-uses. It creates a session, posts turns, tails the event feed, and collects the log. Two entry
-points over one implementation:
+uses. It creates a session, posts messages to start conversation turns, tails the event feed,
+and collects the log. Two entry points over one implementation:
 
 - `pytest` imports it, so cases run in the normal development loop.
 - `zagent evals [--filter] [--trials N] [--update-golden] [--mode replay|live]` runs it as a CLI.
@@ -81,11 +81,11 @@ that is the finding.
 **Golden transcripts.** The normalizer from PLAN1 produces a stable text form. `--update-golden`
 rewrites the files, and review of that diff is the actual verification step. Normalization must
 redact ids, timestamps, durations and any other nondeterminism, and must fail loudly if it
-encounters an unredacted value that changes between runs.
+encounters an unredacted value that changes between case executions.
 
 **Chaos as a harness mode.** `zagent evals --chaos` reruns any case with seeded interruptions at
-the connection layer and at the run layer, then diffs the recovered transcript against the
-uninterrupted golden. Every case written from here on gets chaos coverage for free, which is
+the connection layer and at the conversation turn execution layer, then diffs the recovered
+transcript against the uninterrupted golden. Every case written from here on gets chaos coverage for free, which is
 the payoff for building this now.
 
 **Statistics module.** Wilson interval, `pass^k`, and a paired comparison against a stored
@@ -111,7 +111,7 @@ suite stays free and non-flaky.
 | Multiple trials with real nondeterminism | PLAN5, where the first measured requirement appears |
 | Simulated users with hidden goals | PLAN7 |
 | Fault-injection mutations | PLAN10 |
-| Model matrix and nightly live runs | PLAN10 |
+| Model matrix and nightly live evaluations | PLAN10 |
 | LLM judges | PLAN10, and only for properties no deterministic check covers |
 
 Build the shape for trials and mutations now. Do not build the mechanisms until there is
@@ -159,7 +159,7 @@ The last two items are the acceptance test for the harness itself.
 No new requirements. This increment is what reports on requirements, and the two existing ones
 move from hand-written tests into the harness.
 
-One thing to record: the wall-clock duration of a full replay-mode run. It should stay in the
+One thing to record: the wall-clock duration of a full replay-mode evaluation. It should stay in the
 tens of seconds. When it stops being fast, it stops being run, and that is the beginning of the
 end for the whole approach.
 

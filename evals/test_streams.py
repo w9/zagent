@@ -12,7 +12,7 @@ from conftest import read_events
 pytestmark = pytest.mark.integration
 
 
-async def start_run(api):
+async def start_conversation_turn(api):
     response = await api.client.post("/sessions")
     response.raise_for_status()
     session_id = response.json()["id"]
@@ -23,7 +23,7 @@ async def start_run(api):
 
 @pytest.fixture(scope="session")
 async def uninterrupted(api):
-    session_id = await start_run(api)
+    session_id = await start_conversation_turn(api)
     return await read_events(api.client, session_id)
 
 
@@ -39,17 +39,19 @@ async def test_req_stream_01_golden_transcript(api, uninterrupted):
 async def test_req_stream_02_chaos_resume(api, uninterrupted, seed):
     randomizer = random.Random(seed)
     drop_after = randomizer.randint(3, 10)
-    session_id = await start_run(api)
+    session_id = await start_conversation_turn(api)
     prefix = await read_events(api.client, session_id, stop_after=drop_after)
     assert prefix[-1].type == "text_delta", f"seed={seed}, drop_after={drop_after}"
-    assert (await api.app.state.store.snapshot(UUID(session_id))).run.status == "running"
+    assert (
+        await api.app.state.store.snapshot(UUID(session_id))
+    ).conversation_turn.status == "running"
     await asyncio.sleep(randomizer.uniform(0.001, 0.08))
     suffix = await read_events(
         api.client, session_id, headers={"Last-Event-ID": str(prefix[-1].seq)}
     )
     reassembled = prefix + suffix
     assert [event.seq for event in reassembled] == list(range(1, reassembled[-1].seq + 1))
-    assert reassembled[-1].type == "run_finished"
+    assert reassembled[-1].type == "conversation_turn_finished"
     assert normalize_transcript(reassembled) == normalize_transcript(uninterrupted), (
         f"seed={seed}, drop_after={drop_after}"
     )

@@ -6,14 +6,14 @@ from pydantic import ValidationError
 from zagent.events import Event, EventDraft, Projection, normalize_transcript, project, reduce_event
 
 SESSION_ID = uuid4()
-RUN_ID = uuid4()
+CONVERSATION_TURN_ID = uuid4()
 
 
 def event(seq, kind, **payload):
     return Event(
         session_id=SESSION_ID,
         seq=seq,
-        run_id=RUN_ID,
+        conversation_turn_id=CONVERSATION_TURN_ID,
         type=kind,
         payload=payload,
         created_at=datetime.now(UTC),
@@ -21,7 +21,7 @@ def event(seq, kind, **payload):
 
 
 def test_replay_is_idempotent_and_supports_removal():
-    started = event(1, "run_started")
+    started = event(1, "conversation_turn_started")
     delta = event(2, "text_delta", message_id="answer", text="partial")
     state = project(SESSION_ID, [started, delta])
     assert reduce_event(state, delta) == state
@@ -37,22 +37,22 @@ def test_replay_is_idempotent_and_supports_removal():
 def test_gaps_and_cross_session_events_are_rejected():
     state = Projection(session_id=SESSION_ID)
     with pytest.raises(ValueError, match="Event gap"):
-        reduce_event(state, event(2, "run_started"))
+        reduce_event(state, event(2, "conversation_turn_started"))
     with pytest.raises(ValueError, match="different session"):
-        reduce_event(Projection(session_id=uuid4()), event(1, "run_started"))
+        reduce_event(Projection(session_id=uuid4()), event(1, "conversation_turn_started"))
 
 
 def test_failure_ends_partial_messages():
     state = project(
         SESSION_ID,
         [
-            event(1, "run_started"),
+            event(1, "conversation_turn_started"),
             event(2, "text_delta", message_id="answer", text="partial"),
-            event(3, "run_failed", error="Scripted failure"),
+            event(3, "conversation_turn_failed", error="Scripted failure"),
         ],
     )
-    assert state.run.status == "failed"
-    assert state.run.error == "Scripted failure"
+    assert state.conversation_turn.status == "failed"
+    assert state.conversation_turn.error == "Scripted failure"
     assert state.messages[0].status == "failed"
 
 
@@ -81,10 +81,38 @@ def test_normalizer_redacts_metadata_and_ignores_coalescing_boundaries():
     [
         ("text_delta", {"message_id": "answer"}),
         ("message_dropped", {}),
-        ("run_failed", {}),
+        ("conversation_turn_failed", {}),
         ("unknown_event", {}),
     ],
 )
 def test_invalid_events_are_rejected(kind, payload):
     with pytest.raises(ValidationError):
         EventDraft(type=kind, payload=payload)
+
+
+@pytest.mark.parametrize("kind", ["started", "finished", "failed"])
+def test_legacy_events_replay_with_conversation_turn_names(kind):
+    legacy = {
+        "schema_version": 1,
+        "session_id": SESSION_ID,
+        "seq": 1,
+        "run_id": CONVERSATION_TURN_ID,
+        "type": f"run_{kind}",
+        "payload": {"error": "Scripted failure"} if kind == "failed" else {},
+        "created_at": datetime.now(UTC),
+    }
+    upgraded = Event.model_validate(legacy)
+    serialized = upgraded.model_dump(mode="json")
+    assert serialized["schema_version"] == 2
+    assert serialized["conversation_turn_id"] == str(CONVERSATION_TURN_ID)
+    assert serialized["type"] == f"conversation_turn_{kind}"
+    assert "run_id" not in serialized
+    assert legacy["schema_version"] == 1
+    state = project(SESSION_ID, [upgraded])
+    assert state.conversation_turn.id == CONVERSATION_TURN_ID
+    assert "run" not in state.model_dump()
+
+
+def test_legacy_names_are_not_accepted_for_new_events():
+    with pytest.raises(ValidationError):
+        EventDraft(type="run_started")

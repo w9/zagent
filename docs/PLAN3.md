@@ -56,8 +56,8 @@ adding a schema file and a component, with no changes to the panel, the reducer 
 This is the extension point that PLAN8 and any future MCP server use.
 
 **`view_pushed`.** Carries the validated spec plus a `view_id`. Validation happens on the
-emitting side, and an invalid spec produces a `run_failed` rather than a broken panel. A view
-that cannot be rendered is a bug worth surfacing, not worth degrading around.
+emitting side, and an invalid spec produces a `conversation_turn_failed` rather than a broken
+panel. A view that cannot be rendered is a bug worth surfacing, not worth degrading around.
 
 **The view stack.** A projection over `view_pushed` events for the session. Back and forward walk
 it. The panel follows the newest view when the user is at the head, and stops following once they
@@ -102,8 +102,8 @@ live in a sandboxed frame.
 sources of truth and a reconciliation bug on every refresh. Deriving it means refresh
 correctness is the same code path as initial load.
 
-**Validate on emit, fail the run.** The alternative, rendering a fallback for an invalid spec,
-hides exactly the class of bug that matters once a model is generating specs.
+**Validate on emit, fail the conversation turn.** The alternative, rendering a fallback for an
+invalid spec, hides exactly the class of bug that matters once a model is generating specs.
 
 **One component, two data sources.** Building `rows` now and `handle` at PLAN4 as alternatives in
 one component avoids a rewrite of the table and of every case that asserts on it.
@@ -112,13 +112,13 @@ one component avoids a rewrite of the table and of every case that asserts on it
 
 ## Definition of done
 
-- [ ] A scripted run pushes two tables, and both are reachable through navigation.
+- [ ] A scripted conversation turn pushes two tables, and both are reachable through navigation.
 - [ ] Refreshing restores the view stack and the current position.
 - [ ] Navigating back stops the panel from auto-following, and returning to the head resumes it.
-- [ ] An invalid spec produces `run_failed` with a schema error, and the panel is untouched.
+- [ ] An invalid spec produces `conversation_turn_failed` with a schema error, and the panel is untouched.
 - [ ] Step markers render collapsed, and expand to show their contents.
 - [ ] Component snapshots exist for the table kind, including empty and truncated states.
-- [ ] Chaos mode passes on every view case: interrupting a run mid-push never leaves a partial
+- [ ] Chaos mode passes on every view case: interrupting a conversation turn mid-push never leaves a partial
       view on screen.
 
 ---

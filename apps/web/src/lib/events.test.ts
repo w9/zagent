@@ -6,7 +6,7 @@ const empty: Projection = {
   session_id: 'session',
   seq: 0,
   messages: [],
-  run: null,
+  conversation_turn: null,
 }
 
 function event<Kind extends EventType>(
@@ -15,10 +15,10 @@ function event<Kind extends EventType>(
   payload: Payloads[Kind],
 ): LogEvent {
   return {
-    schema_version: 1,
+    schema_version: 2,
     session_id: 'session',
     seq,
-    run_id: 'run',
+    conversation_turn_id: 'turn',
     created_at: '2026-01-01T00:00:00Z',
     type,
     payload,
@@ -43,15 +43,15 @@ describe('event projection', () => {
   })
 
   it('rejects gaps', () => {
-    expect(() => reduceEvent(empty, event(2, 'run_started', {}))).toThrow(
-      'Event gap',
-    )
+    expect(() =>
+      reduceEvent(empty, event(2, 'conversation_turn_started', {})),
+    ).toThrow('Event gap')
   })
 
   it('rejects another session', () => {
     expect(() =>
       reduceEvent(empty, {
-        ...event(1, 'run_started', {}),
+        ...event(1, 'conversation_turn_started', {}),
         session_id: 'other',
       }),
     ).toThrow('different session')
@@ -80,24 +80,24 @@ describe('event projection', () => {
     ])
   })
 
-  it('ends a failed run instead of leaving partial messages streaming', () => {
+  it('ends a failed conversation turn instead of leaving partial messages streaming', () => {
     const partial = reduceEvent(
       empty,
       event(1, 'text_delta', { message_id: 'answer', text: 'text' }),
     )
     const failed = reduceEvent(
       partial,
-      event(2, 'run_failed', { error: 'Scripted failure' }),
+      event(2, 'conversation_turn_failed', { error: 'Scripted failure' }),
     )
-    expect(failed.run).toEqual({
-      id: 'run',
+    expect(failed.conversation_turn).toEqual({
+      id: 'turn',
       status: 'failed',
       error: 'Scripted failure',
     })
     expect(failed.messages[0].status).toBe('failed')
   })
 
-  it('continues from a snapshot and starts the next run without losing history', () => {
+  it('continues from a snapshot and starts the next conversation turn without losing history', () => {
     const snapshot: Projection = {
       ...empty,
       seq: 10,
@@ -109,22 +109,25 @@ describe('event projection', () => {
           status: 'streaming',
         },
       ],
-      run: { id: 'run', status: 'running', error: null },
+      conversation_turn: { id: 'turn', status: 'running', error: null },
     }
     const resumed = reduceEvent(
       snapshot,
       event(11, 'text_delta', { message_id: 'answer', text: 'world.' }),
     )
-    const finished = reduceEvent(resumed, event(12, 'run_finished', {}))
-    expect(finished.run?.status).toBe('finished')
+    const finished = reduceEvent(
+      resumed,
+      event(12, 'conversation_turn_finished', {}),
+    )
+    expect(finished.conversation_turn?.status).toBe('finished')
     expect(finished.messages[0].text).toBe('Hello world.')
-    const nextRun = reduceEvent(finished, {
+    const nextTurn = reduceEvent(finished, {
       ...event(13, 'user_message', { message_id: 'user', text: 'Again' }),
-      run_id: 'next-run',
+      conversation_turn_id: 'next-turn',
     })
-    expect(nextRun.messages).toHaveLength(2)
-    expect(nextRun.run?.status).toBe('running')
-    expect(nextRun.run?.id).toBe('next-run')
+    expect(nextTurn.messages).toHaveLength(2)
+    expect(nextTurn.conversation_turn?.status).toBe('running')
+    expect(nextTurn.conversation_turn?.id).toBe('next-turn')
   })
 
   it.each([

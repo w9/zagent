@@ -22,6 +22,9 @@ scripted background agent, and a resumable three-panel chat client. The domain w
 LLM, privacy boundary, and evidence harness described below are the roadmap, not shipped
 capabilities. No model or clinical system is called in this increment.
 
+A **conversation turn** is one user message plus the agent's processing and response. A
+**job run** is the execution of a submitted analysis job, with an independent lifecycle.
+
 ---
 
 ## The idea
@@ -43,7 +46,7 @@ Zagent separates the two everywhere, and says which is which.
 |---|---|---|---|
 | Rule-matched identifiers never reach the model provider | Invariant | Ingress tokenization, typed boundary, NetworkPolicy | Property tests, egress tripwire, fault injection |
 | No job runs without explicit human confirmation | Invariant | Model has no submit tool. Confirm is user-only and bound to a draft version hash | State machine tests |
-| Streams survive refresh, tab close and reconnect | Invariant | Server-side runs over an append-only event log | Chaos suite with transcript diffing |
+| Streams survive refresh, tab close and reconnect | Invariant | Server-side conversation turns over an append-only event log | Chaos suite with transcript diffing |
 | Cross-site data isolation | Invariant | Postgres row-level security | Policy tests |
 | Off-topic requests refused, in-scope requests served | **Measured** | Scope guard plus policy prompt | Precision and recall on a labeled set, with CIs |
 | Slot filling converges on the user's actual intent | **Measured** | Model and prompt | Simulated-user evals scored against hidden goals |
@@ -73,7 +76,7 @@ Two controls matter more than the rest:
 - **X-ray** puts what the user saw next to what the model saw, token for token. It is how you
   check the privacy boundary with your own eyes instead of trusting a diagram.
 - **Chaos** kills the browser tab or the agent pod mid-stream, then diffs the recovered
-  transcript against an uninterrupted run of the same case.
+  transcript against an uninterrupted execution of the same case.
 
 ---
 
@@ -90,7 +93,8 @@ make up            # Postgres 16, agent, web; migrates and seeds an empty sessio
 ```
 
 Send any message, refresh halfway through, or open the same session URL in two tabs. Sending
-`/fail` exercises the failed-run state. The working surface is intentionally empty in PLAN1.
+`/fail` exercises the conversation turn failure state. The working surface is intentionally
+empty in PLAN1.
 Session URLs survive refresh; reopening `/` restores the last session in that browser.
 
 ```bash
@@ -120,9 +124,14 @@ For hot-reload development, run `make db`, `uv run uvicorn zagent.app:app --relo
 The Vite proxy uses `AGENT_URL` (default `http://127.0.0.1:8000`).
 
 The runtime is deliberately single-process in PLAN1. Browser disconnections never cancel a
-run. A service restart marks interrupted runs as failed instead of leaving them hanging;
+conversation turn. A service restart marks interrupted conversation turns as failed;
 resuming execution after a process crash belongs to PLAN8. This local stack has no
 authentication and must not be exposed publicly. Bindings are loopback-only.
+
+Existing PLAN1 databases migrate automatically without rewriting stored event history.
+The API now returns `conversation_turn_id`, snapshots expose `conversation_turn`, and lifecycle
+events are `conversation_turn_started`, `conversation_turn_finished`, and
+`conversation_turn_failed` in event schema v2. Historical v1 events are translated on read.
 
 `make evals`, `make report`, live providers, and clinical cohort seeding belong to later plans.
 The current evidence and seed-reproduction commands are in [evals/README.md](evals/README.md).
@@ -206,8 +215,8 @@ REQ-GROUND-01  measured    no unsupported claims    194/200   97.0%  [93.6, 98.6
 
 Three properties of this output are deliberate.
 
-**Measured rows report intervals, and gates use the lower bound.** A run of 300 trials at 99%
-observed supports roughly 97% at the 95% lower bound. Reporting the point estimate alone
+**Measured rows report intervals, and gates use the lower bound.** An evaluation of 300 trials
+at 99% observed supports roughly 97% at the 95% lower bound. Reporting the point estimate alone
 overstates what the evidence can carry.
 
 **Invariant rows count trials too.** Zero tripwire hits in 310 calls bounds the violation rate
@@ -220,15 +229,15 @@ guard disabled) and asserts the suite goes red for each. A green suite that cann
 broken build is not evidence. See [PLAN10.md](PLAN10.md).
 
 Replay mode makes all of this free and deterministic. Pull requests run the full suite with no
-provider key. Nightly runs go live across a model matrix so provider drift shows up as a diff
-instead of a surprise.
+provider key. Nightly evaluations go live across a model matrix so provider drift shows up as
+a diff instead of a surprise.
 
 ---
 
 ## Architecture in one paragraph
 
-An append-only per-session event log in Postgres is the spine. Agent runs execute server-side
-and append to it. Clients tail it over SSE and resume with `Last-Event-ID`, which is why a
+An append-only per-session event log in Postgres is the spine. Conversation turns execute
+server-side and append to it. Clients tail it over SSE and resume with `Last-Event-ID`, which is why a
 refresh cannot lose a stream. The same log is the eval trace, so behavioral assertions run
 against the exact bytes the UI rendered. Everything crossing into model context is tokenized
 first, and the model works with query handles rather than rows, so the agent zone holds no

@@ -3,9 +3,9 @@ type MessageText = MessageRef & { text: string }
 
 export type Payloads = {
   user_message: MessageText
-  run_started: Record<string, never>
-  run_finished: Record<string, never>
-  run_failed: { error: string }
+  conversation_turn_started: Record<string, never>
+  conversation_turn_finished: Record<string, never>
+  conversation_turn_failed: { error: string }
   text_delta: MessageText
   message_done: MessageRef
   message_dropped: MessageRef
@@ -21,10 +21,10 @@ export type Payloads = {
 export type EventType = keyof Payloads
 export type LogEvent = {
   [Kind in EventType]: {
-    schema_version: 1
+    schema_version: 2
     session_id: string
     seq: number
-    run_id: string
+    conversation_turn_id: string
     created_at: string
     type: Kind
     payload: Payloads[Kind]
@@ -42,7 +42,7 @@ export type Projection = {
   session_id: string
   seq: number
   messages: ChatMessage[]
-  run: {
+  conversation_turn: {
     id: string
     status: 'running' | 'finished' | 'failed'
     error: string | null
@@ -50,7 +50,7 @@ export type Projection = {
 }
 
 export function reduceEvent(state: Projection, event: LogEvent): Projection {
-  if (event.schema_version !== 1) throw new Error('Unsupported event schema')
+  if (event.schema_version !== 2) throw new Error('Unsupported event schema')
   if (event.session_id !== state.session_id)
     throw new Error('Event belongs to a different session')
   if (event.seq <= state.seq) return state
@@ -68,10 +68,18 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
           status: 'complete',
         },
       ]
-      next.run = { id: event.run_id, status: 'running', error: null }
+      next.conversation_turn = {
+        id: event.conversation_turn_id,
+        status: 'running',
+        error: null,
+      }
       break
-    case 'run_started':
-      next.run = { id: event.run_id, status: 'running', error: null }
+    case 'conversation_turn_started':
+      next.conversation_turn = {
+        id: event.conversation_turn_id,
+        status: 'running',
+        error: null,
+      }
       break
     case 'text_delta': {
       const existing = state.messages.some(
@@ -106,13 +114,16 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
         (message) => message.id !== event.payload.message_id,
       )
       break
-    case 'run_failed':
-    case 'run_finished': {
-      const failed = event.type === 'run_failed'
-      next.run = {
-        id: event.run_id,
+    case 'conversation_turn_failed':
+    case 'conversation_turn_finished': {
+      const failed = event.type === 'conversation_turn_failed'
+      next.conversation_turn = {
+        id: event.conversation_turn_id,
         status: failed ? 'failed' : 'finished',
-        error: event.type === 'run_failed' ? event.payload.error : null,
+        error:
+          event.type === 'conversation_turn_failed'
+            ? event.payload.error
+            : null,
       }
       next.messages = state.messages.map((message) =>
         message.status === 'streaming'

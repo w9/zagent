@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 EventType = Literal[
     "user_message",
-    "run_started",
-    "run_finished",
-    "run_failed",
+    "conversation_turn_started",
+    "conversation_turn_finished",
+    "conversation_turn_failed",
     "text_delta",
     "message_done",
     "message_dropped",
@@ -46,17 +46,33 @@ class EventDraft(BaseModel):
             MessageText.model_validate(self.payload)
         elif self.type in {"message_done", "message_dropped"}:
             MessageRef.model_validate(self.payload)
-        elif self.type == "run_failed":
+        elif self.type == "conversation_turn_failed":
             Failure.model_validate(self.payload)
         return self
 
 
 class Event(EventDraft):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     session_id: UUID
     seq: int = Field(gt=0)
-    run_id: UUID
+    conversation_turn_id: UUID
     created_at: datetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def upgrade_legacy_event(cls, value: Any) -> Any:
+        if isinstance(value, dict) and value.get("schema_version") == 1:
+            value = dict(value)
+            value["schema_version"] = 2
+            if "run_id" in value:
+                value["conversation_turn_id"] = value.pop("run_id")
+            legacy_types = {
+                "run_started": "conversation_turn_started",
+                "run_finished": "conversation_turn_finished",
+                "run_failed": "conversation_turn_failed",
+            }
+            value["type"] = legacy_types.get(value["type"], value["type"])
+        return value
 
 
 class ChatMessage(BaseModel):
@@ -66,7 +82,7 @@ class ChatMessage(BaseModel):
     status: Literal["streaming", "complete", "failed"] = "complete"
 
 
-class RunState(BaseModel):
+class ConversationTurnState(BaseModel):
     id: UUID
     status: Literal["running", "finished", "failed"]
     error: str | None = None
@@ -76,7 +92,7 @@ class Projection(BaseModel):
     session_id: UUID
     seq: int = 0
     messages: list[ChatMessage] = Field(default_factory=list)
-    run: RunState | None = None
+    conversation_turn: ConversationTurnState | None = None
 
 
 def reduce_event(state: Projection, event: Event) -> Projection:
@@ -94,9 +110,13 @@ def reduce_event(state: Projection, event: Event) -> Projection:
         result.messages.append(
             ChatMessage(id=payload["message_id"], role="user", text=payload["text"])
         )
-        result.run = RunState(id=event.run_id, status="running")
-    elif event.type == "run_started":
-        result.run = RunState(id=event.run_id, status="running")
+        result.conversation_turn = ConversationTurnState(
+            id=event.conversation_turn_id, status="running"
+        )
+    elif event.type == "conversation_turn_started":
+        result.conversation_turn = ConversationTurnState(
+            id=event.conversation_turn_id, status="running"
+        )
     elif event.type == "text_delta":
         message = next((item for item in result.messages if item.id == payload["message_id"]), None)
         if message is None:
@@ -109,10 +129,10 @@ def reduce_event(state: Projection, event: Event) -> Projection:
                 message.status = "complete"
     elif event.type == "message_dropped":
         result.messages = [item for item in result.messages if item.id != payload["message_id"]]
-    elif event.type in {"run_finished", "run_failed"}:
-        failed = event.type == "run_failed"
-        result.run = RunState(
-            id=event.run_id,
+    elif event.type in {"conversation_turn_finished", "conversation_turn_failed"}:
+        failed = event.type == "conversation_turn_failed"
+        result.conversation_turn = ConversationTurnState(
+            id=event.conversation_turn_id,
             status="failed" if failed else "finished",
             error=payload.get("error") if failed else None,
         )
@@ -155,7 +175,7 @@ def normalize_transcript(events: list[Event]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
     previous_delta = None
     for event in events:
-        identity = (event.run_id, event.payload.get("message_id"))
+        identity = (event.conversation_turn_id, event.payload.get("message_id"))
         if event.type == "text_delta" and previous_delta == identity:
             normalized[-1]["payload"]["text"] += event.payload["text"]
         else:

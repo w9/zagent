@@ -9,7 +9,7 @@ module and cheap to change later, it is the implementer's call, not this documen
 1. [Guiding constraints](#1-guiding-constraints)
 2. [The two-tier guarantee model](#2-the-two-tier-guarantee-model)
 3. [The event log is the spine](#3-the-event-log-is-the-spine)
-4. [Runs are decoupled from connections](#4-runs-are-decoupled-from-connections)
+4. [Conversation turns are decoupled from connections](#4-conversation-turns-are-decoupled-from-connections)
 5. [The agent is an interface](#5-the-agent-is-an-interface)
 6. [Zones and the privacy boundary](#6-zones-and-the-privacy-boundary)
 7. [Handles, not rows](#7-handles-not-rows)
@@ -78,10 +78,20 @@ The [requirement register](#17-requirement-register) is the authoritative classi
 A single append-only, per-session event log in Postgres is the system's source of truth for
 everything a session did.
 
+A **conversation turn** begins with one user message and includes the agent's processing,
+model/tool steps, and response until completion or failure. A session contains many conversation
+turns, with at most one active at a time. A **job run** is a separate analysis execution: it can
+outlive the conversation turn that prepared its draft and is not the unit of chat streaming.
+
 ```
-events(session_id, seq, run_id, type, payload, created_at)
+events(session_id, seq, conversation_turn_id, schema_version, type, payload, created_at)
   primary key (session_id, seq)
 ```
+
+Lifecycle events are `conversation_turn_started`, `conversation_turn_finished`, and
+`conversation_turn_failed`. The current event schema is v2. Original v1 events remain immutable
+in storage and are translated to the current vocabulary on read; the identifier column is
+renamed by a migration, with sequence numbers and payloads preserved.
 
 `seq` is monotonic per session, allocated by incrementing a counter column on the session row.
 That row lock serializes appends within a session, which is the desired behavior anyway, and it
@@ -107,19 +117,19 @@ event: refusals go through a `refuse(reason)` tool rather than improvised prose,
 state, views are specs. This converts most behavioral checks from fuzzy judgment into
 deterministic assertion. Second, the event schema is versioned, and the client reducer must
 support removal (`message_dropped`) from the start, even before anything emits it. A resumed
-run that re-executes an interrupted model call needs to retract a partial message, and an
-append-only reducer is a rewrite at that point.
+conversation turn that re-executes an interrupted model call needs to retract a partial
+message, and an append-only reducer is a rewrite at that point.
 
 Token deltas are coalesced on a short timer before being appended, so streaming does not mean
 one row per token.
 
 ---
 
-## 4. Runs are decoupled from connections
+## 4. Conversation turns are decoupled from connections
 
-Posting a message starts a background run and returns immediately. It does not return the
-stream. The client is separately subscribed to the session's event feed and sees the run's
-output arrive there.
+Posting a message starts a background conversation turn and returns immediately. It does not
+return the stream. The client is separately subscribed to the session's event feed and sees
+the conversation turn's output arrive there.
 
 ```mermaid
 sequenceDiagram
@@ -130,9 +140,9 @@ sequenceDiagram
     C->>W: GET /sessions/:id/events?from=N (SSE, held open)
     C->>W: POST /sessions/:id/messages
     W->>L: append user_message
-    W->>R: start run (background)
+    W->>R: start conversation turn (background)
     W-->>C: 202 Accepted
-    loop while running
+    loop while conversation turn is active
         R->>L: append events
         L-->>W: NOTIFY
         W-->>C: SSE frames (id = seq)
@@ -143,8 +153,8 @@ sequenceDiagram
 ```
 
 This is the single most important structural decision in the project, and the one most
-expensive to retrofit. An architecture where the POST response *is* the stream ties run
-lifetime to connection lifetime, which means a refresh kills work in progress and every
+expensive to retrofit. An architecture where the POST response *is* the stream ties
+conversation turn lifetime to connection lifetime, which means a refresh kills work in progress and every
 durability guarantee becomes a special case. Building it the other way costs almost nothing on
 day one.
 
@@ -160,7 +170,7 @@ request headers, so authentication rides a cookie or the client moves to a strea
 ## 5. The agent is an interface
 
 ```
-Agent.run(session, emit) -> None
+Agent.run_turn(session, emit) -> None
 ```
 
 Three implementations exist over the project's life, and nothing else in the system knows which
@@ -177,8 +187,8 @@ front end and the whole evidence harness are built and proven against `ScriptedA
 an LLM is in the picture. When the real loop arrives, the existing goldens are the regression
 test for it.
 
-It is also what makes CI free and deterministic. Pull requests run `ReplayAgent`. Nightly runs
-use `LlmAgent` across a model matrix, and the resulting drift is a reviewable diff.
+It is also what makes CI free and deterministic. Pull requests run `ReplayAgent`. Nightly
+evaluations use `LlmAgent` across a model matrix, and the resulting drift is a reviewable diff.
 
 ---
 
@@ -323,10 +333,11 @@ command, and a JSON Schema for parameters. Retries, backoff and cleanup come fro
 rather than from application code. Jobs emit progress as OTel-compatible JSONL on stdout, which
 the dispatcher tails into the database and the observability pipeline.
 
-Jobs themselves are single-step and have no sub-workflow, so they need no workflow engine. The
-place durable execution actually earns its keep here is the *agent run*, which is a long-lived
-multi-step process that waits on a human. That is served by journaling the run into the same
-event log rather than by adding Temporal.
+Job runs are single-step and have no sub-workflow, so they need no workflow engine. Durable
+execution also matters within a *conversation turn*, which can contain multiple model and tool
+steps. That is served by journaling the conversation turn into the same event log rather than
+by adding Temporal. Workflows that wait on a human span conversation turns; the wait between
+turns lives in persisted session and draft state.
 
 ---
 
@@ -398,7 +409,7 @@ simulator.
 | Service | Zone | Responsibility |
 |---|---|---|
 | Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization |
-| Agent runtime | Agent | The run loop, the scope guard, run journaling |
+| Agent runtime | Agent | Conversation turn execution, the scope guard, conversation turn journaling |
 | LLM gateway | Agent | Provider routing, record and replay, egress tripwire. Sole internet egress |
 | Tools gateway | Clinical | MCP client and policy enforcement point |
 | Privacy service | Clinical | Token vault, detector rule set, tokenize and resolve |
@@ -489,7 +500,7 @@ how the traceability matrix is generated rather than maintained.
 | # | Decision | Alternative rejected | Because |
 |---|---|---|---|
 | 1 | Append-only per-session event log as the single source of truth | Conventional message table plus separate telemetry | One spine gives resume, view history and eval traces from the same bytes |
-| 2 | Runs decoupled from connections | POST returns the stream | Connection lifetime must not bound work lifetime |
+| 2 | Conversation turns decoupled from connections | POST returns the stream | Connection lifetime must not bound work lifetime |
 | 3 | SSE with `Last-Event-ID` | WebSockets | Resume is the primitive needed, and the rest is plain HTTP |
 | 4 | Per-session sequence via a session counter row | Global sequence | Readers must not skip, and gaps make that unsafe |
 | 5 | Agent as an interface, scripted first | Build against a real provider | Enables the entire front end and harness to be proven before any LLM |
@@ -502,7 +513,7 @@ how the traceability matrix is generated rather than maintained.
 | 12 | No submit tool exposed to the model | Submit tool plus policy prompt | Makes unauthorized submission structurally impossible |
 | 13 | Postgres queue with `SKIP LOCKED` | Dedicated broker | One fewer component, and transactional enqueue with the job row |
 | 14 | Kubernetes Jobs for execution | In-process worker pool | Retries, backoff and cleanup come from the platform |
-| 15 | Run journaling in the event log | Temporal or similar | The durable process here is the agent run, and the log already is a journal |
+| 15 | Conversation turn journaling in the event log | Temporal or similar | Multi-step conversation turns need durable progress, and the log already is a journal |
 | 16 | In-house LLM gateway | Off-the-shelf proxy | Record and replay keyed on request hash is a hard requirement |
 | 17 | Immutable SQLite FTS5 knowledge base | Vector database service | Deterministic, pinnable, and line-level citations make groundedness checkable |
 | 18 | Golden transcripts as the regression mechanism | Assertion-only tests | Behavior changes become reviewable diffs |

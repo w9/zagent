@@ -1,0 +1,21 @@
+- id: REQ-STREAM-01
+  tier: invariant
+  statement: Golden transcripts match the events and projected state delivered by the public API.
+  verification: standard
+  enforced_by:
+    - services/agent/zagent/events.py
+    - services/agent/zagent/store.py
+    - apps/web/src/lib/events.ts
+  mutations: [corrupt_projection, change_scripted_text]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005]
+
+- id: REQ-STREAM-02
+  tier: invariant
+  statement: Interrupted SSE subscriptions recover the same transcript without gaps or duplicates.
+  verification: chaos
+  enforced_by:
+    - services/agent/zagent/stream.py
+    - services/agent/zagent/runtime.py
+    - apps/web/src/lib/use-session.ts
+  mutations: [skip_resume_event, duplicate_resume_event]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005]

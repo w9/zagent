@@ -1,6 +1,6 @@
 # PLAN2: The Evidence Harness
 
-**Status:** not started
+**Status:** complete (GitHub Pages deployment configured; requires repository Pages enablement)
 **Depends on:** [PLAN1](PLAN1.md)
 **Shippable outcome:** `make evals` prints a traceability report, and any behavior change shows
 up as a reviewable diff in a checked-in golden file.
@@ -29,10 +29,10 @@ A terminal report:
 ```
 $ make evals
 
-REQ-STREAM-01  invariant   golden transcripts        12/12   ✓
-REQ-STREAM-02  invariant   resume after interrupt    50/50   ✓
+REQ-STREAM-01  invariant   golden transcripts         5/5    PASS
+REQ-STREAM-02  invariant   resume after interrupt    50/50   PASS
 
-2 requirements, 62 trials, 0 failures.  Report: docs/evals/index.html
+2 requirements, 55 trials, 0 failures.  Report: docs/evals/index.html
 ```
 
 And an HTML report with the same content plus per-case detail: the transcript, the diff when one
@@ -53,13 +53,13 @@ must break them. Two requirements exist at this point, both from PLAN1.
 **Case format.** YAML, one file per group. A case names conversation turns and expectations.
 
 ```yaml
-id: STREAM-004
+id: STREAM-001
 requirement: REQ-STREAM-01
-agent: scripted:multi_paragraph
+agent: scripted:default
 conversation_turns:
-  - user: "summarize the samples"
+  - user: "Hello"
 expect:
-  golden: goldens/STREAM-004.txt
+  golden: goldens/STREAM-001.json
   events_include: [conversation_turn_started, text_delta, message_done, conversation_turn_finished]
   events_exclude: [conversation_turn_failed]
 ```
@@ -141,16 +141,44 @@ requirement with no cases is a visible gap rather than a silent one.
 
 ## Definition of done
 
-- [ ] `zagent evals` runs every case through the HTTP API and prints a per-requirement table.
-- [ ] `zagent evals --update-golden` rewrites goldens, and the diff is readable.
-- [ ] `zagent evals --chaos` reruns every case with seeded interruptions.
-- [ ] `pytest` runs the same cases with no separate assertions.
-- [ ] `make report` produces `docs/evals/index.html`, published by CI.
-- [ ] A requirement with zero linked cases is reported as uncovered, not omitted.
-- [ ] Deliberately breaking the reducer produces a readable golden diff naming the case.
-- [ ] Deliberately breaking resume turns REQ-STREAM-02 red.
+- [x] `zagent evals` runs every case through the HTTP API and prints a per-requirement table.
+- [x] `zagent evals --update-golden` rewrites goldens, and the diff is readable.
+- [x] `zagent evals --chaos` reruns every case with seeded interruptions.
+- [x] `pytest` runs the same cases with no separate assertions.
+- [x] `make report` produces `docs/evals/index.html`; CI publication is configured.
+- [x] A requirement with zero linked cases is reported as uncovered, not omitted.
+- [x] Deliberately breaking the reducer produces a readable golden diff naming the case.
+- [x] Deliberately breaking resume turns REQ-STREAM-02 red.
 
 The last two items are the acceptance test for the harness itself.
+
+## Implementation Notes
+
+- [services/agent/zagent/evals](../services/agent/zagent/evals) owns strict case/requirement models,
+  the assertion registry, HTTP runner, seeded chaos plans, statistics, and reporting. Pytest and
+  `zagent evals` call the same evaluator; neither seeds sessions nor gathers evidence through SQL.
+- [evals/cases/streams.yaml](../evals/cases/streams.yaml) has five cases, each linked to both stream
+  requirements. Default evaluation is five golden trials plus ten chaos trials per case. Every
+  uninterrupted golden executes twice to expose nondeterminism. Duplicate determinism executions
+  are counted separately from trials. Wall-clock duration is included in the report.
+- Goldens include normalized event types/payloads and the projected messages and final turn
+  state. This is what exposes reducer regressions that leave the event log unchanged. Updates
+  are explicit and blocked by nondeterminism or failed structural checks.
+- Execution-layer chaos is a seeded cooperative pause/resume wrapper around `ScriptedAgent`.
+  Connection chaos closes and reopens the HTTP stream with `Last-Event-ID`. Process-kill recovery
+  remains PLAN8, and no production mutation framework is introduced here.
+- Script delays are accelerated to 0.04x with 8 ms coalescing; the implementation, timing,
+  commit, dirty-worktree flag, script digest, UTC clock, and seed are recorded for every trial.
+  The current clock is observed, not frozen. Provider/model/prompt/tool/KB fields remain null.
+- Wilson intervals include one-trial and zero-trial cases. Measured gates use their lower bound
+  and minimum per-case trial count. `pass^k` uses distinct trials and reports insufficient data
+  explicitly. Baseline comparisons pair case/mode/seed outcomes with an exact McNemar test.
+- Reports are static, escaped HTML plus versioned JSON under `docs/evals/`, ignored by Git and
+  uploaded as CI artifacts. Main-branch CI deploys `/evals/` using GitHub Pages Actions after
+  both backend and browser gates pass. The repository must enable GitHub Actions as its Pages
+  source; hosted publication cannot be verified from this local workspace.
+- `--mode replay` is implemented; `--mode live` fails with a clear deferred-feature message.
+  See [evals/README.md](../evals/README.md) for filtering, seed reproduction, updates, and baselines.
 
 ---
 

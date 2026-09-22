@@ -385,10 +385,22 @@ highest-leverage piece of the whole system, which is why it is built second rath
 **Cases drive the real HTTP API**, not internals. One runner serves both the test suite and the
 `zagent evals` CLI, so there is no second code path that can pass while production fails.
 
+PLAN2 implements this through a local instance of the production HTTP application on an
+ephemeral loopback port and a dedicated test database. Each case starts with `POST /sessions`;
+evidence comes from SSE plus `GET /snapshot`. Case groups, requirement links, and expected
+transcripts live under `evals/`. Golden references execute twice to reject hidden nondeterminism.
+Goldens cover projected chat state as well as normalized events, so reducer regressions are
+visible. Unknown assertions are configuration errors, not ignored extensions.
+
 **Statistics are reported honestly.** k trials per case at production settings. Wilson intervals
 on pass rates, gated on the lower bound. `pass^k` reported separately for properties that must
 hold on every attempt. Version comparisons use paired tests, so "regression" is a claim with
 support rather than a difference in two numbers.
+
+The PLAN2 scripted fixture accelerates timing and records that exception in provenance; it
+does not measure model quality or latency. Its report uses per-case distinct-trial `pass^k`
+estimates and exact paired McNemar comparisons. Measured gates require their registered sample
+minimum as well as a sufficient Wilson lower bound. Uncovered requirements fail the gate.
 
 **Simulated users** carry hidden goals for multi-turn slot filling, and are scored on whether
 the final draft matches the goal. The simulator's model is pinned independently so its drift is

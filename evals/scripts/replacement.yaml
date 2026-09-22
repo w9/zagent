@@ -1,0 +1,24 @@
+word_delay_ms: 85
+steps:
+  - delay_ms: 250
+    event:
+      type: text_delta
+      payload:
+        message_id: partial
+        text: "This partial response will be removed."
+  - delay_ms: 200
+    event:
+      type: message_dropped
+      payload:
+        message_id: partial
+  - delay_ms: 250
+    event:
+      type: text_delta
+      payload:
+        message_id: replacement
+        text: "Only the replacement response remains in this conversation."
+  - delay_ms: 200
+    event:
+      type: message_done
+      payload:
+        message_id: replacement

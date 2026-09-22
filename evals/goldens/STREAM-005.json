@@ -1,0 +1,54 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Replace the partial response"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "text": "This partial response will be removed."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_dropped"
+    },
+    {
+      "payload": {
+        "text": "Only the replacement response remains in this conversation."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Replace the partial response"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Only the replacement response remains in this conversation."
+    }
+  ]
+}

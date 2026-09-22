@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Zagent | Evidence</title>
+  <style>
+    :root { --ink: #273330; --muted: #64756b; --line: #dfe7e0; --green: #267359; --red: #a7403c; --amber: #856018; }
+    * { box-sizing: border-box; letter-spacing: 0; }
+    body { margin: 0; color: var(--ink); background: #fafcf9; font: 14px/1.6 'DM Sans Variable', 'Aptos', sans-serif; }
+    a { color: var(--green); text-underline-offset: 3px; }
+    header { border-bottom: 1px solid var(--line); background: #fff; }
+    .inner, main { max-width: 1160px; margin: auto; padding: 24px 28px; }
+    .brand { font-family: 'Newsreader', 'Georgia', serif; font-size: 28px; line-height: 1.1; }
+    .topline, .heading, .trial-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    h1 { font-size: 20px; font-weight: 500; margin: 24px 0 4px; }
+    h2 { font-size: 16px; margin: 0; }
+    h3 { font-size: 14px; margin: 18px 0 8px; }
+    p { margin: 8px 0; }
+    .meta, small { color: var(--muted); font-size: 12px; }
+    .mode { font: 11px 'IBM Plex Mono', monospace; color: var(--muted); }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 24px 0 16px; }
+    .metrics strong { font-size: 23px; font-weight: 500; display: block; }
+    .metrics span { color: var(--muted); font-size: 12px; }
+    .distribution { height: 4px; background: #ebd9d5; }
+    .distribution > span { display: block; height: 100%; background: var(--green); }
+    section { margin: 16px 0 32px; }
+    .table-scroll { overflow-x: auto; margin-top: 14px; }
+    table { width: 100%; min-width: 760px; border-collapse: collapse; background: white; }
+    th { color: var(--muted); text-align: left; font-size: 11px; font-weight: 500; }
+    th, td { padding: 13px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    td:first-child { min-width: 180px; }
+    td.statement { width: 36%; }
+    .status { font: 11px 'IBM Plex Mono', monospace; white-space: nowrap; }
+    .pass { color: var(--green); }
+    .fail, .uncovered { color: var(--red); }
+    .insufficient { color: var(--amber); }
+    code, pre { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+    code { overflow-wrap: anywhere; }
+    details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+    summary { cursor: pointer; overflow-wrap: anywhere; }
+    summary:focus-visible, a:focus-visible { outline: 2px solid var(--green); outline-offset: 4px; }
+    .case-title { margin-left: 5px; font-weight: 600; }
+    .case-meta { margin-left: 14px; color: var(--muted); font-size: 12px; }
+    .trial { margin: 6px 0 6px 16px; padding-left: 12px; border-left: 2px solid var(--line); }
+    .trial[open] { border-left-color: #9cac98; }
+    .trial.failed { border-left-color: #ce8074; }
+    pre { padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; background: #f0f4ef; max-height: 480px; overflow: auto; }
+    pre.diff { color: #823831; background: #f9eeeb; }
+    dl { display: grid; grid-template-columns: 160px minmax(0, 1fr); font-size: 12px; gap: 6px 16px; }
+    dt { color: var(--muted); }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .evidence-links { font-size: 12px; margin: 12px 0; }
+    footer { color: var(--muted); border-top: 1px solid var(--line); font-size: 11px; padding: 16px 0; }
+    @media (max-width: 600px) { .inner, main { padding: 20px 16px; } .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } dl { grid-template-columns: 1fr; gap: 2px; } dd { margin-bottom: 8px; } .trial { margin-left: 5px; } .case-meta { display: block; margin: 4px 0 0 20px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="inner">
+      <div class="topline"><div class="brand">Zagent.</div><span class="mode">SCRIPTED / REPLAY</span></div>
+      <h1>Evidence report</h1>
+      <div class="meta">{{ report.created_at.isoformat() }} &middot; <a href="results.json">Result data</a></div>
+      <div class="metrics">
+        <div><strong class="{{ 'pass' if gate else 'fail' }}">{{ 'PASS' if gate else 'FAIL' }}</strong><span>Requirement gates</span></div>
+        <div><strong>{{ report.requirements|length }}</strong><span>Registered requirements</span></div>
+        <div><strong>{{ passed }} / {{ report.results|length }}</strong><span>Successful trials</span></div>
+        <div><strong>{{ '%.2f'|format(report.duration_seconds) }}s</strong><span>Wall-clock duration</span></div>
+      </div>
+      <div class="distribution" role="img" aria-label="{{ passed }} of {{ report.results|length }} trials passed"><span style="width: {{ success_share }}%"></span></div>
+    </div>
+  </header>
+  <main>
+    <section aria-labelledby="requirements">
+      <div class="heading"><h2 id="requirements">Requirements</h2><small>{{ report.cases|length }} selected cases</small></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Requirement / Tier</th><th>Claim</th><th>Gate</th><th>Trials</th><th>95% Wilson CI</th><th>Mean pass^{{ report.pass_streak }}</th></tr></thead>
+          <tbody>
+          {% for row in rows %}
+            <tr>
+              <td><a href="#{{ row.requirement.id }}">{{ row.requirement.id }}</a><br><small>{{ row.requirement.tier }}</small></td>
+              <td class="statement">{{ row.requirement.statement }}</td>
+              <td><span class="status {{ row.status|lower|replace(' ', '-') }}">{{ row.status }}</span></td>
+              <td>{{ row.successes }}/{{ row.trials }}</td>
+              <td>{% if row.trials %}{{ row.lower|percentage }} &ndash; {{ row.upper|percentage }}{% else %}n/a{% endif %}</td>
+              <td>{{ row.pass_power|percentage }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="meta">Invariant gates require zero failed trials. Measured gates use the Wilson lower bound and the registered minimum trial count. pass^{{ report.pass_streak }} is the mean per-case probability estimate for {{ report.pass_streak }} distinct successful trials; n/a means insufficient samples.</p>
+      {% for row in rows %}
+      <details id="{{ row.requirement.id }}">
+        <summary>{{ row.requirement.id }} &middot; Enforcement and linked cases</summary>
+        <dl>
+          <dt>Evidence mode</dt><dd>{{ row.requirement.verification }}</dd>
+          <dt>Enforced by</dt><dd>{% for path in row.requirement.enforced_by %}<code>{{ path }}</code><br>{% else %}Measured behavior{% endfor %}</dd>
+          <dt>Detecting mutations</dt><dd>{{ row.requirement.mutations|join(', ') or 'Not applicable' }}{% if row.requirement.mutations %} (register only; production mutation switches are deferred){% endif %}</dd>
+          {% if row.requirement.threshold %}<dt>Threshold</dt><dd>Lower bound &ge; {{ row.requirement.threshold.min_lower_bound|percentage }}; at least {{ row.requirement.threshold.trials }} trials per case.</dd>{% endif %}
+          <dt>Linked cases</dt><dd>{% for case_id in row.requirement.cases %}{% if case_id in row.cases %}<a href="#case-{{ case_id }}">{{ case_id }}</a>{% else %}{{ case_id }} (not selected){% endif %} {% else %}None: uncovered{% endfor %}</dd>
+        </dl>
+      </details>
+      {% endfor %}
+    </section>
+    {% if paired %}
+    <section aria-labelledby="comparison"><h2 id="comparison">Paired baseline comparison</h2>
+      <p>{{ paired.matched }} matched trials: {{ paired.improved }} improved, {{ paired.regressed }} regressed, {{ paired.unchanged }} unchanged.</p>
+      <p class="meta">Matched by case, verification mode, and seed. Difference: {{ paired.difference|percentage }}. Exact two-sided McNemar p-value: {{ paired.exact_p_value if paired.exact_p_value is not none else 'n/a' }}. Unpaired: {{ paired.unmatched_current }} current, {{ paired.unmatched_baseline }} baseline.</p>
+    </section>
+    {% endif %}
+    <section aria-labelledby="cases"><h2 id="cases">Case evidence</h2>
+      {% for group in cases %}
+      <details id="case-{{ group.case.id }}" {% if group.results|selectattr('passed', 'equalto', false)|list %}open{% endif %}>
+        <summary><span class="case-title">{{ group.case.id }}</span><span class="case-meta">{{ group.case.agent }} &middot; {{ group.results|length }} trials</span></summary>
+        {% for result in group.results %}
+        <details class="trial {{ 'failed' if not result.passed else '' }}" {% if not result.passed %}open{% endif %}>
+          <summary><span class="status {{ 'pass' if result.passed else 'fail' }}">{{ 'PASS' if result.passed else 'FAIL' }}</span> &middot; {{ result.verification }} &middot; seed {{ result.seed }} &middot; {{ '%.3f'|format(result.duration_seconds) }}s</summary>
+          {% for failure in result.failures %}<pre class="diff">{{ failure }}</pre>{% endfor %}
+          <h3>Provenance</h3>
+          <dl>
+            <dt>Commit</dt><dd><code>{{ result.provenance.commit or 'Unavailable' }}</code>{% if result.provenance.dirty_worktree %} &middot; uncommitted changes{% endif %}</dd>
+            <dt>Agent / Mode</dt><dd>{{ result.provenance.agent_implementation }} / {{ result.provenance.mode }}</dd>
+            <dt>Clock / Seed</dt><dd>{{ result.provenance.clock.isoformat() }} / {{ result.provenance.seed }}</dd>
+            <dt>Script SHA-256</dt><dd><code>{{ result.provenance.script_sha256 }}</code></dd>
+            <dt>Timing</dt><dd>{{ result.provenance.delay_scale }}x script delays; {{ result.provenance.coalesce_seconds }}s coalescing</dd>
+            <dt>HTTP executions</dt><dd>{{ result.executions }} including determinism references when applicable</dd>
+            <dt>Session</dt><dd><code>{{ result.session_id or 'Unavailable' }}</code></dd>
+            <dt>Model / Prompt hash</dt><dd>{{ result.provenance.model or 'Not applicable' }} / {{ result.provenance.prompt_hash or 'Not applicable' }}</dd>
+            <dt>Tool schema / KB</dt><dd>{{ result.provenance.tool_schema_hash or 'Not applicable' }} / {{ result.provenance.kb_version or 'Not applicable' }}</dd>
+          </dl>
+          {% if result.interruption %}<h3>Seeded interruption</h3><pre>{{ result.interruption|tojson(indent=2) }}</pre>{% endif %}
+          <details><summary>Normalized transcript</summary><pre>{{ result.transcript or 'No transcript captured' }}</pre></details>
+        </details>
+        {% endfor %}
+      </details>
+      {% endfor %}
+    </section>
+    <footer>Synthetic data only. Scripted evidence is not a measure of model quality. Execution-layer chaos is cooperative pause/resume, not process-crash recovery.</footer>
+  </main>
+</body>
+</html>

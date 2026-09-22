@@ -6,12 +6,14 @@ ZAGENT_DB_PORT ?= 5432
 DATABASE_URL ?= postgresql://zagent:zagent@localhost:$(ZAGENT_DB_PORT)/zagent
 ZAGENT_TEST_DATABASE_URL ?= postgresql://zagent:zagent@localhost:$(ZAGENT_DB_PORT)/zagent_test
 ZAGENT_SCRIPT ?=
+MODE ?= replay
+EVAL_ARGS ?=
 
 COMPOSE = docker compose --project-directory . -f deploy/compose/compose.yaml
 export UV_LINK_MODE = copy
 export DATABASE_URL ZAGENT_TEST_DATABASE_URL ZAGENT_WEB_PORT ZAGENT_AGENT_PORT ZAGENT_DB_PORT ZAGENT_SCRIPT
 
-.PHONY: up down db install test chaos lint browser transcript logs
+.PHONY: up down db install test evals chaos report lint browser transcript logs
 
 up:
 	$(COMPOSE) up --build -d --wait
@@ -33,8 +35,17 @@ test: install db
 	npm --prefix apps/web run build
 	$(MAKE) lint
 
+evals: db
+	uv run --frozen zagent evals --mode $(MODE) $(EVAL_ARGS)
+
 chaos: db
-	uv run --frozen pytest evals/test_streams.py -m chaos -v
+	uv run --frozen zagent evals --chaos --mode $(MODE) $(EVAL_ARGS)
+
+docs/evals/results.json:
+	$(MAKE) evals
+
+report: docs/evals/results.json
+	uv run --frozen zagent report $(EVAL_ARGS)
 
 lint:
 	uv run --frozen ruff check services/agent evals conftest.py

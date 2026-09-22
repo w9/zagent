@@ -3,7 +3,7 @@
 **An auditable LLM agent for clinical genomics operations.**
 
 [![evals](https://img.shields.io/badge/evals-see%20report-blue)](https://w9.github.io/zagent/evals/)
-[![replay CI](https://img.shields.io/badge/CI-replay%20mode-green)](#running-the-evidence-suite)
+[![replay CI](https://github.com/w9/zagent/actions/workflows/plan1.yml/badge.svg)](https://github.com/w9/zagent/actions/workflows/plan1.yml)
 [![license](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
 Most agent demos show a happy path. Zagent is built to answer the question a stakeholder
@@ -17,10 +17,11 @@ machine-checked evidence, regenerated on every commit.
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md).** The running app has a Postgres event log, a
-scripted background agent, and a resumable three-panel chat client. The domain workflows,
-LLM, privacy boundary, and evidence harness described below are the roadmap, not shipped
-capabilities. No model or clinical system is called in this increment.
+**Implemented: [PLAN1](docs/PLAN1.md) and [PLAN2](docs/PLAN2.md).** The running app has a
+Postgres event log, a scripted background agent, and a resumable three-panel chat client.
+A public-HTTP evidence harness adds golden transcripts, 50 seeded chaos trials, statistics,
+and a traceability report. Domain workflows, LLMs, and the privacy boundary remain roadmap
+capabilities. No model or clinical system is called in these increments.
 
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
@@ -99,7 +100,9 @@ Session URLs survive refresh; reopening `/` restores the last session in that br
 
 ```bash
 make test          # Python tests, 50 seeded reconnect trials, client tests, build, lint.
-make chaos         # Only the 50 seeded SSE interruption trials.
+make evals         # The shared evidence harness; writes docs/evals/index.html.
+make chaos         # 50 interruptions across all cases; checks normal references too.
+make report        # Render stored results; evaluates first if none exist.
 make install       # Local Python and JavaScript dependencies.
 cd apps/web && npx playwright install chromium && cd ../..
 make browser       # Browser acceptance tests against the running app.
@@ -133,8 +136,9 @@ The API now returns `conversation_turn_id`, snapshots expose `conversation_turn`
 events are `conversation_turn_started`, `conversation_turn_finished`, and
 `conversation_turn_failed` in event schema v2. Historical v1 events are translated on read.
 
-`make evals`, `make report`, live providers, and clinical cohort seeding belong to later plans.
-The current evidence and seed-reproduction commands are in [evals/README.md](evals/README.md).
+Live providers and clinical cohort seeding belong to later plans. The harness uses a separate
+test database and an ephemeral HTTP server, so `make evals` needs Postgres but not the web app.
+Commands, golden review, seed reproduction, and statistics are in [evals/README.md](evals/README.md).
 
 ---
 
@@ -191,29 +195,35 @@ evals.
 
 ## Running the evidence suite
 
-**Roadmap:** the harness and report below begin in PLAN2. Today, `make test` runs the two
-hand-written stream requirements plus storage, reducer, HTTP, and CLI checks.
+PLAN2's implemented suite covers the two stream requirements with five cases: a normal reply,
+follow-up conversation turns, a failure, recovery from failure, and partial-message replacement.
+The same evaluator serves pytest and `zagent evals`.
 
 The suite is the point of the project, so it is a first-class artifact rather than a test
 directory.
 
-Every requirement in [ARCHITECTURE.md](ARCHITECTURE.md) has an ID, a tier, a threshold, and
-linked cases. The report is a traceability matrix: requirement, tier, how it is enforced, the
-cases that cover it, and the measured result.
+The implemented requirements are registered in [evals/requirements.yaml](evals/requirements.yaml),
+following [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The report links requirements, enforcement
+sites, cases, outcomes, confidence intervals, per-trial provenance, and readable failure diffs.
 
 ```
 $ make evals
 
-REQ-STREAM-01  invariant   stream resume            120/120   ✓
-REQ-JOB-01     invariant   confirmation required     48/48    ✓
-REQ-PHI-01     invariant   no identifier egress     310/310   ✓  (0 tripwire hits)
-REQ-SCOPE-01   measured    off-topic refused        147/150   98.0%  [94.3, 99.4]
-REQ-SCOPE-02   measured    in-scope not refused     286/300   95.3%  [92.3, 97.3]
-REQ-SLOT-01    measured    slot filling converges    88/100   88.0%  [80.2, 93.0]
-REQ-GROUND-01  measured    no unsupported claims    194/200   97.0%  [93.6, 98.6]
+Requirement          Tier       Gate          Trials     95% Wilson CI
+REQ-STREAM-01        invariant  PASS          5/5        [56.6%, 100.0%]
+REQ-STREAM-02        invariant  PASS          50/50      [92.9%, 100.0%]
+
+2 requirements, 55 trials, 0 failed trials; 60 HTTP case executions.
+Report: docs/evals/index.html
 ```
 
-Three properties of this output are deliberate.
+Each golden reference executes twice to expose hidden nondeterminism without inflating trial
+counts. `--filter`, `--seed`, and `--trials` reproduce a single case; `--update-golden` explicitly
+rewrites deterministic fixtures for review. The report opens directly as a static HTML file.
+CI retains the report and publishes successful main-branch results to GitHub Pages; select
+GitHub Actions as the repository's Pages source to enable deployment.
+
+Three properties of the evidence model are deliberate.
 
 **Measured rows report intervals, and gates use the lower bound.** An evaluation of 300 trials
 at 99% observed supports roughly 97% at the 95% lower bound. Reporting the point estimate alone
@@ -223,14 +233,14 @@ overstates what the evidence can carry.
 below about 1% at 95% confidence. That is the honest reading, and it is why the invariants also
 get property tests and network policy tests rather than resting on trial counts.
 
-**The suite is tested against itself.** `make evals MUTATE=all` flips a set of fault-injection
-flags one at a time (tokenizer off, submit tool exposed, events dropped on reconnect, scope
-guard disabled) and asserts the suite goes red for each. A green suite that cannot detect a
-broken build is not evidence. See [PLAN10.md](PLAN10.md).
+**The suite is tested against itself.** PLAN2 self-tests corrupt the reducer and skip a resume
+event, then require named diffs and a failed stream gate. Production fault-injection switches
+such as tokenizer bypass and submit-tool exposure remain deferred to PLAN10. A green suite
+that cannot detect a broken build is not evidence.
 
 Replay mode makes all of this free and deterministic. Pull requests run the full suite with no
-provider key. Nightly evaluations go live across a model matrix so provider drift shows up as
-a diff instead of a surprise.
+provider key. Live-provider and model-matrix evaluation remains deferred. Execution-layer chaos
+currently pauses and resumes scripted turns; process-crash recovery belongs to PLAN8.
 
 ---
 
@@ -256,7 +266,7 @@ green, so correctness is visible at every step rather than at the end.
 | Plan | Increment | Status |
 |---|---|---|
 | [PLAN1](docs/PLAN1.md) | The spine: event log, SSE resume, scripted agent | Complete |
-| [PLAN2](docs/PLAN2.md) | The evidence harness: golden transcripts, chaos suite | ☐ |
+| [PLAN2](docs/PLAN2.md) | The evidence harness: golden transcripts, chaos suite | Complete |
 | [PLAN3](docs/PLAN3.md) | The working surface: view specs and the view stack | ☐ |
 | [PLAN4](docs/PLAN4.md) | The real agent: LLM gateway, record/replay, tool loop | ☐ |
 | [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | ☐ |

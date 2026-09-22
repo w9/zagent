@@ -97,7 +97,7 @@ inside one process.
 | Deferred | Owner |
 |---|---|
 | Any LLM, any tool call | PLAN4 |
-| The eval harness and golden files | PLAN2 |
+| The general eval harness and case-driven goldens | PLAN2 |
 | Right-panel views | PLAN3 |
 | Session titles, rename, delete, search | PLAN3 or later, as polish |
 | Authentication, multi-user | not a goal (see ARCHITECTURE section 16) |
@@ -210,3 +210,7 @@ finished session. `conversation_turn_finished` in the log is the signal, not con
 
 [PLAN2](PLAN2.md) turns the two hand-written tests into the harness that every later increment
 reports through.
+
+PLAN2 is now implemented: [evals/test_streams.py](../evals/test_streams.py) delegates to the shared
+HTTP evaluator. Five case-driven goldens replace the original single scripted golden, and all
+five cases participate in the 50 seeded chaos trials. See [evals/README.md](../evals/README.md).

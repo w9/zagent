@@ -1,13 +1,8 @@
-import asyncio
 import os
-import socket
-from types import SimpleNamespace
 
-import httpx
 import pytest
-import uvicorn
 from zagent.agent import ScriptedAgent
-from zagent.app import Settings, create_app
+from zagent.evals.environment import local_api
 from zagent.store import Store
 
 
@@ -30,34 +25,8 @@ async def store(database_url):
 
 @pytest.fixture(scope="session")
 async def api(database_url):
-    application = create_app(
-        Settings(database_url=database_url, coalesce_seconds=0.015, poll_seconds=0.05),
-        ScriptedAgent(delay_scale=0.12),
-    )
-    listener = socket.socket()
-    listener.bind(("127.0.0.1", 0))
-    port = listener.getsockname()[1]
-    server = uvicorn.Server(
-        uvicorn.Config(
-            application,
-            log_level="error",
-            timeout_graceful_shutdown=2,
-        )
-    )
-    task = asyncio.create_task(server.serve(sockets=[listener]))
-    try:
-        async with asyncio.timeout(10):
-            while not server.started:
-                if task.done():
-                    await task
-                    raise RuntimeError("Test server did not start")
-                await asyncio.sleep(0.005)
-        async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}", timeout=10) as client:
-            yield SimpleNamespace(client=client, app=application)
-    finally:
-        server.should_exit = True
-        await task
-        listener.close()
+    async with local_api(database_url, ScriptedAgent(delay_scale=0.12)) as environment:
+        yield environment
 
 
 async def read_events(client, session_id, *, after=0, stop_after=None, headers=None):

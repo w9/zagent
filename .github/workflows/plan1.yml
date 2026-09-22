@@ -1,4 +1,4 @@
-name: PLAN1
+name: Evidence
 
 on:
   push:
@@ -38,9 +38,22 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - run: make install
       - run: uv run --frozen pytest
+      - name: Render evidence report
+        if: always()
+        run: uv run --frozen zagent report
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation-evidence
+          path: docs/evals
+          retention-days: 14
       - run: npm --prefix apps/web test
       - run: npm --prefix apps/web run build
       - run: make lint
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        with:
+          path: docs
 
   browser:
     runs-on: ubuntu-latest
@@ -65,3 +78,21 @@ jobs:
         run: docker compose --project-directory . -f deploy/compose/compose.yaml logs
       - if: always()
         run: make down
+
+  publish:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [spine, browser]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - name: Publish evidence to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,51 @@
+cases:
+  - id: STREAM-001
+    requirement: REQ-STREAM-01
+    agent: scripted:default
+    conversation_turns:
+      - user: Hello
+    expect:
+      golden: goldens/STREAM-001.json
+      events_include: [user_message, conversation_turn_started, text_delta, message_done, conversation_turn_finished]
+      events_exclude: [conversation_turn_failed, message_dropped]
+
+  - id: STREAM-002
+    requirement: REQ-STREAM-01
+    agent: scripted:default
+    conversation_turns:
+      - user: Hello
+      - user: Continue
+    expect:
+      golden: goldens/STREAM-002.json
+      events_include: [conversation_turn_finished, message_done]
+      events_exclude: [conversation_turn_failed]
+
+  - id: STREAM-003
+    requirement: REQ-STREAM-01
+    agent: scripted:default
+    conversation_turns:
+      - user: /fail
+    expect:
+      golden: goldens/STREAM-003.json
+      events_include: [text_delta, conversation_turn_failed]
+      events_exclude: [conversation_turn_finished, message_done]
+
+  - id: STREAM-004
+    requirement: REQ-STREAM-01
+    agent: scripted:default
+    conversation_turns:
+      - user: /fail
+      - user: Try again
+    expect:
+      golden: goldens/STREAM-004.json
+      events_include: [conversation_turn_failed, conversation_turn_finished, message_done]
+
+  - id: STREAM-005
+    requirement: REQ-STREAM-01
+    agent: scripted:replacement
+    conversation_turns:
+      - user: Replace the partial response
+    expect:
+      golden: goldens/STREAM-005.json
+      events_include: [message_dropped, message_done, conversation_turn_finished]
+      events_exclude: [conversation_turn_failed]

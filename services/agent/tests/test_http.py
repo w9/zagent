@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID, uuid4
 
 import pytest
-from zagent.events import normalize_transcript, project
+from zagent.events import Projection, normalize_transcript, project
 from zagent.store import NOTIFY_CHANNEL
 
 from conftest import read_events
@@ -66,7 +66,9 @@ async def test_two_subscribers_agree_and_completed_reconnect_terminates(api):
 async def test_snapshot_to_stream_handoff_and_header_precedence(api):
     session_id = await session_with_turn(api)
     initial = await read_events(api.client, session_id, stop_after=4)
-    snapshot = await api.app.state.store.snapshot(UUID(session_id))
+    snapshot = Projection.model_validate(
+        (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    )
     resumed = await read_events(
         api.client, session_id, after=1, headers={"Last-Event-ID": str(snapshot.seq)}
     )
@@ -76,7 +78,9 @@ async def test_snapshot_to_stream_handoff_and_header_precedence(api):
     for event in resumed:
         assert event.seq > snapshot.seq
         state = reduce_event(state, event)
-    complete = await api.app.state.store.snapshot(UUID(session_id))
+    complete = Projection.model_validate(
+        (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    )
     assert state == complete
     assert complete.seq > initial[-1].seq
 

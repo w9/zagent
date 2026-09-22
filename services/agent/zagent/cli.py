@@ -46,6 +46,11 @@ def main() -> None:
     evaluate.add_argument("--scope-concurrency", type=int, default=8)
     evaluate.add_argument("--mutation", choices=["disable_scope_guard"])
     evaluate.add_argument("--update-golden", action="store_true")
+    evaluate.add_argument(
+        "--record-missing",
+        action="store_true",
+        help="In record mode, preserve existing samples and record only absent requests",
+    )
     evaluate.add_argument("--mode", choices=["replay", "record", "live"], default="replay")
     chaos = evaluate.add_mutually_exclusive_group()
     chaos.add_argument("--chaos", action="store_true", help="Only seeded interruption trials")
@@ -71,6 +76,8 @@ def main() -> None:
             return
         baseline = Report.model_validate_json(args.baseline.read_text()) if args.baseline else None
         if args.command == "evals":
+            if args.record_missing and args.mode != "record":
+                raise ValueError("--record-missing requires explicit --mode record")
             if args.mode != "replay" and (not args.no_chaos or not args.filter_value):
                 raise ValueError("Provider access requires --filter and --no-chaos to bound cost")
             if args.mode == "live" and args.update_golden:
@@ -87,6 +94,7 @@ def main() -> None:
                     update_golden=args.update_golden,
                     pass_streak=args.pass_k,
                     mode=args.mode,
+                    record_missing=args.record_missing,
                     scope_concurrency=args.scope_concurrency,
                     mutation=args.mutation,
                     progress=lambda done, total: print(

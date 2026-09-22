@@ -5,11 +5,33 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ViewRenderer } from './view-renderer'
 import { StepMarker } from './step-marker'
 import { RefusalChip } from './refusal-chip'
+import { XrayContent } from './xray-panel'
+import type { XrayData } from '../lib/api'
 import { validateViewSpec } from '../lib/views'
 import type { ChartSpec, TableData, TableSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
 
 afterEach(cleanup)
+
+it('links real identifiers to model tokens without exposing raw values in the model pane', async () => {
+  const empty = { session_id: 'session', seq: 1, messages: [], views: [], steps: [], conversation_turn: null }
+  const data: XrayData = {
+    display: { ...empty, messages: [{ id: 'user', seq: 1, role: 'user', text: 'Find NGC-0041872', status: 'complete' }] },
+    model: empty,
+    bindings: [{ token: '[PT_1]', value: 'NGC-0041872', kind: 'PT' }],
+    executions: [{ conversation_turn_id: 'turn', tool: 'find_patients', arguments: { mrn: 'NGC-0041872' } }],
+    requests: [{ request_id: 'request', conversation_turn_id: 'turn',
+      request: { model: 'test-model', messages: [{ role: 'user', content: 'Find [PT_1]' }] },
+      audit: { purpose: 'agent', mode: 'replay', request_hash: 'digest', outcome: 'completed' } }],
+  }
+  const { container } = render(<XrayContent data={data} />)
+  const source = screen.getAllByRole('button', { name: 'Highlight [PT_1]' })[0]
+  await userEvent.click(source)
+  const linked = container.querySelectorAll('[data-token="[PT_1]"][aria-pressed="true"]')
+  expect(linked.length).toBe(3)
+  expect(screen.getByRole('region', { name: 'Model-visible requests' }).textContent).not.toContain('NGC-0041872')
+  expect(screen.getByText('find_patients')).toBeTruthy()
+})
 
 it('renders refusal reasons and helpful messages as text, not assistant prose or markup', () => {
   const { container } = render(<RefusalChip refusal={{

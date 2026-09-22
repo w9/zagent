@@ -12,6 +12,7 @@ import {
   MessageSquare,
   PanelLeft,
   Plus,
+  ScanEye,
   ShieldCheck,
   Table2,
   X,
@@ -22,6 +23,7 @@ import { IconButton } from './components/ui/icon-button'
 import { StepMarker } from './components/step-marker'
 import { RefusalChip } from './components/refusal-chip'
 import { WorkingSurface } from './components/working-surface'
+import { XrayPanel } from './components/xray-panel'
 import { request } from './lib/api'
 import type { RuntimeHealth, Session } from './lib/api'
 import { useSession } from './lib/use-session'
@@ -325,6 +327,8 @@ function SessionWorkspace({
   const views = session.state?.views ?? []
   const surface = search.panel === 'surface'
 
+  if (search.xray) return <XrayPanel sessionId={sessionId} seq={session.state?.seq ?? 0} />
+
   function selectPanel(showSurface: boolean) {
     void navigate({
       to: '/sessions/$sessionId',
@@ -386,6 +390,7 @@ function SessionWorkspace({
 export default function App() {
   const { sessionId } = useParams({ strict: false })
   const navigate = useNavigate()
+  const search = useSearch({ strict: false })
   const [sessions, setSessions] = useState<Session[]>([])
   const [mode, setMode] = useState<RuntimeHealth['mode'] | null>(null)
   const [creating, setCreating] = useState(false)
@@ -498,6 +503,11 @@ export default function App() {
               <span className="domain-label">Clinical genomics</span>
             </div>
             <div className="environment">
+              {sessionId && <IconButton label="X-ray" aria-pressed={search.xray === true}
+                onClick={() => { void navigate({
+                  to: '/sessions/$sessionId', params: { sessionId },
+                  search: { ...search, xray: search.xray ? undefined : true },
+                }) }}><ScanEye /></IconButton>}
               <span>LOCAL</span>
               <span className="environment-dot" />
               {mode ? mode[0].toUpperCase() + mode.slice(1) : 'Agent'}

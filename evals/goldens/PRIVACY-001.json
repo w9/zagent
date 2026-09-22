@@ -1,0 +1,500 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Give me the metadata of patient [PT_1]. Show the patient table."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "name": "find_patients"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "find_patients",
+        "result": {
+          "count": 1,
+          "handle": "query-0001",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Patient",
+              "type": "string"
+            },
+            {
+              "key": "mrn",
+              "label": "MRN",
+              "type": "string"
+            },
+            {
+              "key": "display_name",
+              "label": "Name",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_patients"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Patient [PT_1]\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Patient\", \"type\": \"string\"}, {\"key\": \"mrn\", \"label\": \"MRN\", \"type\": \"string\"}, {\"key\": \"display_name\", \"label\": \"Name\", \"type\": \"string\"}], \"row_count\": 1}}}",
+        "name": "push_view"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "id",
+                "label": "Patient",
+                "type": "string"
+              },
+              {
+                "key": "mrn",
+                "label": "MRN",
+                "type": "string"
+              },
+              {
+                "key": "display_name",
+                "label": "Name",
+                "type": "string"
+              }
+            ],
+            "handle": "query-0001",
+            "row_count": 1,
+            "title": "Patient [PT_1]"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Patient [PT_1]"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "push_view"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "Published the table **Patient [PT_1]** (1 row) in the working surface, with columns Patient, MRN, and Name."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    },
+    {
+      "payload": {
+        "text": "Show the specimens received in the last day for that patient."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+        "name": "find_specimens"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "find_specimens",
+        "result": {
+          "count": 3,
+          "handle": "query-0002",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Specimen",
+              "type": "string"
+            },
+            {
+              "key": "kind",
+              "label": "Type",
+              "type": "string"
+            },
+            {
+              "key": "purity",
+              "label": "Purity",
+              "type": "number"
+            },
+            {
+              "key": "received_at",
+              "label": "Received",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_specimens"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"handle\": \"query-0002\", \"row_count\": 3, \"title\": \"Specimens for [PT_1] - last 24 hours\"}, \"version\": 1}}",
+        "name": "push_view"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "kind",
+                "label": "Type",
+                "type": "string"
+              },
+              {
+                "key": "purity",
+                "label": "Purity",
+                "type": "number"
+              },
+              {
+                "key": "received_at",
+                "label": "Received",
+                "type": "string"
+              }
+            ],
+            "handle": "query-0002",
+            "row_count": 3,
+            "title": "Specimens for [PT_1] - last 24 hours"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Specimens for [PT_1] - last 24 hours"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "push_view"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "Published the table **Specimens for [PT_1] - last 24 hours** \u2014 3 specimens, with columns Specimen, Type, Purity, and Received."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Give me the metadata of patient [PT_1]. Show the patient table."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Published the table **Patient [PT_1]** (1 row) in the working surface, with columns Patient, MRN, and Name."
+    },
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Show the specimens received in the last day for that patient."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Published the table **Specimens for [PT_1] - last 24 hours** \u2014 3 specimens, with columns Specimen, Type, Purity, and Received."
+    }
+  ],
+  "steps": [
+    {
+      "detail": "find_patients",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "name": "find_patients",
+          "result": {
+            "count": 1,
+            "handle": "query-0001",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Patient",
+                "type": "string"
+              },
+              {
+                "key": "mrn",
+                "label": "MRN",
+                "type": "string"
+              },
+              {
+                "key": "display_name",
+                "label": "Name",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "push_view",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Patient [PT_1]\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Patient\", \"type\": \"string\"}, {\"key\": \"mrn\", \"label\": \"MRN\", \"type\": \"string\"}, {\"key\": \"display_name\", \"label\": \"Name\", \"type\": \"string\"}], \"row_count\": 1}}}",
+          "name": "push_view",
+          "result": {
+            "kind": "table",
+            "ok": true,
+            "title": "Patient [PT_1]",
+            "view_id": "view-0001"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 3"
+    },
+    {
+      "detail": "find_specimens",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+          "name": "find_specimens",
+          "result": {
+            "count": 3,
+            "handle": "query-0002",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "kind",
+                "label": "Type",
+                "type": "string"
+              },
+              {
+                "key": "purity",
+                "label": "Purity",
+                "type": "number"
+              },
+              {
+                "key": "received_at",
+                "label": "Received",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "push_view",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"handle\": \"query-0002\", \"row_count\": 3, \"title\": \"Specimens for [PT_1] - last 24 hours\"}, \"version\": 1}}",
+          "name": "push_view",
+          "result": {
+            "kind": "table",
+            "ok": true,
+            "title": "Specimens for [PT_1] - last 24 hours",
+            "view_id": "view-0002"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 3"
+    }
+  ],
+  "views": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Patient",
+            "type": "string"
+          },
+          {
+            "key": "mrn",
+            "label": "MRN",
+            "type": "string"
+          },
+          {
+            "key": "display_name",
+            "label": "Name",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0001",
+        "row_count": 1,
+        "title": "Patient [PT_1]"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "kind",
+            "label": "Type",
+            "type": "string"
+          },
+          {
+            "key": "purity",
+            "label": "Purity",
+            "type": "number"
+          },
+          {
+            "key": "received_at",
+            "label": "Received",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0002",
+        "row_count": 3,
+        "title": "Specimens for [PT_1] - last 24 hours"
+      },
+      "version": 1
+    }
+  ]
+}

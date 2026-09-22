@@ -7,6 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from zagent.evals.assertions import Evidence, check_case, refusal_invariants, render_transcript
+from zagent.evals.privacy import FixturePrivacy, fixture_tripwire
 from zagent.evals.schema import Case, Provenance, ScopeOutcome, TrialResult
 from zagent.events import Event, project
 from zagent.gateway import configured_gateway
@@ -55,9 +56,11 @@ async def evaluate_scope_trial(
     commit: str | None = None,
     dirty: bool | None = None,
     disable_guard: bool = False,
+    privacy: FixturePrivacy | None = None,
 ) -> TrialResult:
     started, clock = time.perf_counter(), datetime.now(UTC)
-    events = case_events(case)
+    privacy = privacy or FixturePrivacy()
+    events = privacy.protect_events(case_events(case))
     current = events[-1]
     turn_id = str(current.conversation_turn_id)
     failures = []
@@ -118,6 +121,8 @@ async def evaluate_scope_trial(
         session_id=str(current.session_id),
         duration_seconds=time.perf_counter() - started,
         executions=0,
+        privacy_requests=sum(item["outcome"] != "blocked" for item in audits),
+        tripwire_hits=sum(item["outcome"] == "blocked" for item in audits),
         scope=ScopeOutcome(
             expected=expected,
             actual=actual,
@@ -170,8 +175,13 @@ async def evaluate_scope_cases(
     concurrency: int = 8,
     disable_guard: bool = False,
     progress: Callable[[int, int], None] | None = None,
+    record_missing: bool = False,
 ) -> list[TrialResult]:
-    gateway = configured_gateway(mode)
+    privacy = FixturePrivacy()
+    gateway = configured_gateway(
+        mode, egress_check=fixture_tripwire(), protect_response=privacy.protect_response
+    )
+    gateway.record_missing = record_missing
     semaphore = asyncio.Semaphore(concurrency)
     completed = 0
     total = len(cases) * trials
@@ -187,6 +197,7 @@ async def evaluate_scope_cases(
                 commit=commit,
                 dirty=dirty,
                 disable_guard=disable_guard,
+                privacy=privacy,
             )
             completed += 1
             if progress and (completed % 100 == 0 or completed == total):

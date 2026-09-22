@@ -1,0 +1,27 @@
+cases:
+  - id: PRIVACY-001
+    requirement: REQ-PHI-03
+    agent: llm:default
+    conversation_turns:
+      - user: Give me the metadata of patient NGC-0041872. Show the patient table.
+      - user: Show the specimens received in the last day for that patient.
+    expect:
+      golden: goldens/PRIVACY-001.json
+      refusal: none
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      tool_calls:
+        - name: find_patients
+          args_resolved: {mrn: NGC-0041872}
+      display:
+        contains: [NGC-0041872]
+        contains_fixture: patient.display_name
+      tools_only_handles: true
+      view_narration: true
+      events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
+      events_exclude: [conversation_turn_failed, privacy_alert]
+      views:
+        - kind: table
+          props_match: {row_count: 1}
+        - kind: table
+          props_match: {row_count: 3}

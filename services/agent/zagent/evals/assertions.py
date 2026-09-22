@@ -1,7 +1,7 @@
 import json
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from difflib import unified_diff
 from pathlib import Path
 from typing import Any, get_args
@@ -21,6 +21,12 @@ from zagent.views import ViewPushed
 class Evidence:
     events: list[Event]
     projection: Projection
+    requests: list[dict] = field(default_factory=list)
+    display: Projection | None = None
+    executions: list[dict] = field(default_factory=list)
+    bindings: list[dict] = field(default_factory=list)
+    display_rows: list[list] = field(default_factory=list)
+    audit: list[dict] = field(default_factory=list)
 
 
 def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
@@ -234,6 +240,75 @@ def tools_called(evidence: Evidence, expected: Any, root: Path, case_id: str) ->
     return f"{case_id}: expected tools were not exercised: {sorted(missing)}" if missing else None
 
 
+@assertion("egress")
+def egress_private(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    from zagent.evals.privacy import fixture_tripwire
+    from zagent.privacy import EgressBlocked
+
+    if not evidence.requests:
+        return f"{case_id}: no recorded gateway requests to verify"
+    try:
+        check = fixture_tripwire()
+        for request in evidence.requests:
+            check(request)
+    except EgressBlocked:
+        return f"{case_id}: REQ-PHI-01 identifier in a recorded model request"
+    return None
+
+
+@assertion("event_log")
+def event_log_private(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    from zagent.evals.privacy import fixture_identifiers
+    from zagent.privacy import Detector
+
+    detector = Detector(fixture_identifiers())
+    if any(detector.contains(event.payload) for event in evidence.events):
+        return f"{case_id}: REQ-PHI-02 identifier in the model-visible event log"
+    return None
+
+
+@assertion("tool_calls")
+def resolved_tool_calls(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    for tool in expected:
+        matches = [entry for entry in evidence.executions if entry["tool"] == tool["name"]]
+        if not any(
+            all(
+                entry["arguments"].get(key) == value for key, value in tool["args_resolved"].items()
+            )
+            for entry in matches
+        ):
+            return f"{case_id}: REQ-PHI-03 resolved tool arguments did not match the fixture"
+    return None
+
+
+@assertion("display")
+def display_fixture(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    if evidence.display is None:
+        return f"{case_id}: no resolved display evidence"
+    visible = json.dumps(evidence.display.model_dump(mode="json")) + json.dumps(
+        evidence.display_rows
+    )
+    if "contains_fixture" in expected:
+        from zagent.cohort import FROZEN_NOW, generate_cohort
+
+        patient = generate_cohort(FROZEN_NOW)["patients"][0]
+        field_name = expected["contains_fixture"].removeprefix("patient.")
+        if patient.get(field_name, "missing fixture value") not in visible:
+            return f"{case_id}: REQ-PHI-03 displayed fixture value is missing"
+    for value in expected.get("contains", []):
+        if value not in visible:
+            return f"{case_id}: REQ-PHI-03 expected resolved display value is missing"
+    return None
+
+
+@assertion("detected")
+def detected_identifiers(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    bound = {binding["value"] for binding in evidence.bindings}
+    if not set(expected) <= bound:
+        return f"{case_id}: REQ-PHI-04 literal identifier was not detected"
+    return event_log_private(evidence, "no_known_identifiers", root, case_id)
+
+
 def table_headers(text: str) -> list[set[str]]:
     tables: list[set[str]] = []
     in_header = False
@@ -359,7 +434,10 @@ def validate_expectations(case: Case, root: Path) -> None:
     unknown = case.expect.keys() - ASSERTIONS.keys()
     if unknown:
         raise ValueError(f"{case.id}: unknown assertions {sorted(unknown)}")
-    if case.agent.startswith("guard:"):
+    if case.agent.startswith("detector:"):
+        if "detected" not in case.expect or not isinstance(case.expect["detected"], list):
+            raise ValueError(f"{case.id}: detector cases require explicit identifier labels")
+    elif case.agent.startswith("guard:"):
         if "refusal" not in case.expect:
             raise ValueError(f"{case.id}: a guard case requires a refusal label")
     elif "golden" not in case.expect or not isinstance(case.expect["golden"], str):
@@ -368,6 +446,19 @@ def validate_expectations(case: Case, root: Path) -> None:
         fixture_path(root, case.expect["golden"])
     if "refusal" in case.expect and case.expect["refusal"] != "none":
         RefuseArguments.model_validate(case.expect["refusal"])
+    for name in ("egress", "event_log"):
+        if name in case.expect and case.expect[name] != "no_known_identifiers":
+            raise ValueError(f"{case.id}: unsupported privacy assertion")
+    if "tool_calls" in case.expect:
+        if not isinstance(case.expect["tool_calls"], list) or any(
+            not isinstance(item, dict)
+            or set(item) != {"name", "args_resolved"}
+            or not isinstance(item["args_resolved"], dict)
+            for item in case.expect["tool_calls"]
+        ):
+            raise ValueError(f"{case.id}: tool_calls requires named resolved-argument expectations")
+    if "display" in case.expect and not isinstance(case.expect["display"], dict):
+        raise ValueError(f"{case.id}: display must be an object")
     if "tools_called" in case.expect and (
         not isinstance(case.expect["tools_called"], list)
         or any(tool not in RESPONSE_SCHEMAS for tool in case.expect["tools_called"])

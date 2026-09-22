@@ -25,6 +25,7 @@ from zagent.evals.assertions import (
     validate_expectations,
 )
 from zagent.evals.environment import PausedAgent, local_api
+from zagent.evals.privacy import evaluate_detector, private_gateway, scan_privacy_corpus
 from zagent.evals.schema import (
     Case,
     Provenance,
@@ -89,7 +90,12 @@ def scripted_agent(case: Case, root: Path, plan: ChaosPlan | None = None) -> Age
 
 @asynccontextmanager
 async def case_agent(
-    case: Case, root: Path, database_url: str, mode: str = "replay", plan: ChaosPlan | None = None
+    case: Case,
+    root: Path,
+    database_url: str,
+    mode: str = "replay",
+    plan: ChaosPlan | None = None,
+    record_missing: bool = False,
 ):
     if case.agent.startswith("scripted:"):
         yield scripted_agent(case, root, plan)
@@ -111,7 +117,7 @@ async def case_agent(
                 raise AssertionError(f"REQ-ISO-01: wrong-role isolation failed for {table}")
         agent = LlmAgent(
             store,
-            configured_gateway(mode),
+            private_gateway(mode, store.privacy, record_missing=record_missing),
             ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical))),
             route=case.agent.removeprefix("llm:"),
         )
@@ -162,7 +168,7 @@ async def capture_case(
                     client,
                     "GET",
                     f"/sessions/{session_id}/events",
-                    params={"from": 0 if resumed else state.seq},
+                    params={"from": 0 if resumed else state.seq, "representation": "model"},
                     headers=resume_headers(state.seq) if resumed else {},
                 ) as stream:
                     stream.response.raise_for_status()
@@ -212,7 +218,9 @@ async def capture_case(
                         f"{case.id}: SSE ended before a terminal conversation-turn event"
                     )
                 break
-            response = await client.get(f"/sessions/{session_id}/snapshot")
+            response = await client.get(
+                f"/sessions/{session_id}/snapshot", params={"representation": "model"}
+            )
             response.raise_for_status()
             snapshot = Projection.model_validate(response.json())
             if snapshot != state:
@@ -227,7 +235,24 @@ async def capture_case(
                 )
     if plan is not None and plan.disconnected_at_seq is None:
         raise AssertionError(f"{case.id}: chaos did not interrupt the event feed")
-    return Evidence(events, state)
+    evidence = Evidence(events, state)
+    if any(name in case.expect for name in ("egress", "tool_calls", "display")):
+        response = await client.get(f"/sessions/{session_id}/xray")
+        response.raise_for_status()
+        inspected = response.json()
+        evidence.requests = [item["request"] for item in inspected["requests"]]
+        evidence.audit = [item["audit"] for item in inspected["requests"]]
+        evidence.display = Projection.model_validate(inspected["display"])
+        evidence.executions = inspected["executions"]
+        evidence.bindings = inspected["bindings"]
+        for view in state.views:
+            if "handle" in view.spec.props:
+                resolved = await client.get(
+                    f"/sessions/{session_id}/handles/{view.spec.props['handle']}"
+                )
+                resolved.raise_for_status()
+                evidence.display_rows.extend(resolved.json()["rows"])
+    return evidence
 
 
 def git_provenance(root: Path) -> tuple[str | None, bool | None]:
@@ -263,6 +288,7 @@ async def evaluate_case(
     commit: str | None = None,
     dirty_worktree: bool | None = None,
     mode: str = "replay",
+    record_missing: bool = False,
 ) -> list[TrialResult]:
     if min(standard_trials, chaos_trials, seed) < 0 or standard_trials + chaos_trials == 0:
         raise ValueError("Evaluation requires positive trial counts and a nonnegative seed")
@@ -317,6 +343,10 @@ async def evaluate_case(
                 session_id=str(evidence.projection.session_id) if evidence is not None else None,
                 duration_seconds=time.perf_counter() - started,
                 executions=executions,
+                privacy_requests=len(evidence.requests) if evidence else 0,
+                tripwire_hits=sum(item.get("outcome") == "blocked" for item in evidence.audit)
+                if evidence
+                else 0,
                 provenance=Provenance(
                     commit=commit,
                     dirty_worktree=dirty_worktree,
@@ -338,7 +368,7 @@ async def evaluate_case(
 
     try:
         async with (
-            case_agent(case, root, database_url, mode) as agent,
+            case_agent(case, root, database_url, mode, record_missing=record_missing) as agent,
             local_api(database_url, agent, coalesce_seconds=0.008) as environment,
         ):
             reference_executions += 1
@@ -459,6 +489,7 @@ async def evaluate_suite(
     scope_concurrency: int = 8,
     mutation: str | None = None,
     progress: Callable[[int, int], None] | None = None,
+    record_missing: bool = False,
 ) -> Report:
     if trials is not None and trials < 1:
         raise ValueError("--trials must be positive")
@@ -517,9 +548,14 @@ async def evaluate_suite(
                 concurrency=scope_concurrency,
                 disable_guard=mutation == "disable_scope_guard",
                 progress=progress,
+                record_missing=record_missing,
             )
         )
     for case in selected:
+        if case.agent.startswith("detector:"):
+            if not chaos_only:
+                results.append(evaluate_detector(case, root, seed=seed, commit=commit, dirty=dirty))
+            continue
         if case.agent.startswith("guard:"):
             continue
         case_trials = standard_trials
@@ -548,8 +584,12 @@ async def evaluate_suite(
                 commit=commit,
                 dirty_worktree=dirty,
                 mode=mode,
+                record_missing=record_missing,
             )
         )
+    scan = None
+    if filter_value is None and mode == "replay":
+        scan = await scan_privacy_corpus(root, configured_gateway().cassette_dir, database_url)
     return Report(
         created_at=clock,
         duration_seconds=time.perf_counter() - started,
@@ -558,4 +598,5 @@ async def evaluate_suite(
         verifications=verifications,
         results=results,
         pass_streak=pass_streak,
+        privacy_scan=scan,
     )

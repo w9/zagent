@@ -36,6 +36,7 @@ export type Payloads = {
   view_pushed: { view_id: string; spec: ViewSpec }
   refused: { code: RefusalCode; message: string }
   draft_updated: Record<string, unknown>
+  privacy_alert: { code: 'egress_identifier'; message: string }
 }
 
 export type EventType = keyof Payloads

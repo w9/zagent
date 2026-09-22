@@ -15,10 +15,14 @@ PLAN5 adds a separate guard measurement using 300 explicitly labeled examples in
 context and draft fixtures, through the same model gateway. Seven additional HTTP cases verify
 that structured refusals reach the client and that `yes` after clarification reaches real tools.
 
+PLAN6 captures token-only model SSE/snapshots and separately reads resolved display/X-ray
+evidence. Goldens contain tokens; assertions verify actual execution arguments and displayed
+fixture values without writing those values into model requests or golden transcripts.
+
 ## Commands
 
 ```bash
-make evals                    # 3,000 guard samples, 24 HTTP standard trials, 180 chaos trials.
+make evals                    # 3,000 guard samples, 100 detector cases, 25 HTTP standard + 190 chaos.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -31,6 +35,9 @@ uv run zagent evals --filter 'REAL-*' --mode record --no-chaos --update-golden
 uv run zagent evals --filter 'SCOPE-*' --no-chaos
 uv run zagent evals --filter 'SCOPE-*' --mode record --no-chaos --scope-concurrency 8
 uv run zagent evals --filter 'SCOPE-*' --no-chaos --mutation disable_scope_guard
+uv run zagent evals --filter 'PRIVACY-*' --no-chaos
+uv run zagent evals --filter 'DETECT-*' --no-chaos
+uv run zagent evals --filter 'SCOPE-*' --mode record --record-missing --no-chaos
 ```
 
 `make evals EVAL_ARGS='--filter REQ-STREAM-02 --trials 2'` passes options to the CLI.
@@ -40,7 +47,7 @@ trial and ten chaos trials per case, raised to the registered minimum for measur
 Each HTTP standard reference executes twice; those duplicate
 determinism checks are reported as HTTP executions, not inflated trial counts. `--chaos` selects
 only interrupted trials; `--no-chaos` selects only standard trials. Every newly registered case
-automatically participates in chaos mode unless it is a guard-only classification case.
+automatically participates in chaos mode unless it is a guard-only or detector-only case.
 
 The report is [docs/evals/index.html](../docs/evals/index.html), with structured data in
 [docs/evals/results.json](../docs/evals/results.json). Both are generated and ignored by Git;
@@ -63,6 +70,10 @@ modes are labeled explicitly, never shown as passing. Provider access with `--mo
 for the first HTTP reference only, then replays for agreement and remaining HTTP trials. For
 guard cases, record makes one provider call per sample, without retries or selecting only passing
 responses. Live does not assert deterministic text or update goldens.
+
+`--record-missing` requires explicit record mode. It preserves existing responses and failures
+and calls the provider only for absent recordings/samples. Replay never falls through. PLAN6
+used it to preserve 2,690 already-clean scope samples and record 310 changed tokenized requests.
 
 ## Provider Cassettes
 
@@ -112,10 +123,10 @@ bucket results, and every case with mixed outcomes appear in the terminal and HT
 Code mismatches remain failed exact-label trials without conflating them with binary recall;
 provider/parse errors count against the relevant behavior gate.
 
-The retained measurement has 1,000/1,000 refusals and 1,933/2,000 accepted in-scope samples.
-Its 67 failed trials are deliberately retained: 66 over-refusals and one provider connection
-failure, including six mixed-outcome cases. Scope precision is 93.8% [92.2%, 95.1%], recall
-100% [99.6%, 100%], and acceptance 96.7% [95.8%, 97.4%]. An earlier 120-token configuration
+After tokenization the retained measurement has 1,000/1,000 refusals and 1,925/2,000 accepted
+in-scope samples. Its 75 failed trials remain: 74 over-refusals and one original provider
+connection failure, with seven mixed-outcome cases. Scope precision is 93.1% [91.4%, 94.5%],
+recall 100% [99.6%, 100%], and acceptance 96.2% [95.3%, 97.0%]. An earlier 120-token configuration
 truncated responses and failed acceptance; the whole corpus was rerecorded after fixing that
 configuration. Labels were not changed to make the gates pass. This is a development corpus,
 not a held-out generalization claim, and repeated prompts are clustered by case.
@@ -129,6 +140,37 @@ The content-free SQLite gateway audit records hashes, purpose, turn ID, mode, sa
 provider-call count, and usage. It persists outside cassettes and source control. A refused
 production turn has one `scope_guard` entry and no `agent` entries. Record/live entries count
 actual provider calls; replay entries count zero. The audit never stores request or response text.
+PLAN6 adds a separate `model_requests` table for token-only outbound bodies after the tripwire
+passes, used by X-ray and the corpus scan. Blocked request bodies are never persisted.
+
+## Privacy Evidence
+
+`REQ-PHI-01/02/03` cover outbound requests, the active event log, and correct execution/display
+despite tokenization. `PRIVACY-001` looks up metadata, displays the fixture MRN/name, and follows
+up on specimens. Assertions are `egress: no_known_identifiers`,
+`event_log: no_known_identifiers`, `tool_calls` with `args_resolved`, and `display` with
+`contains` or `contains_fixture`.
+
+`REQ-PHI-04` measures 100 literal MRN/name mentions from all 50 patients across five sites. The
+denominator is distinct labeled mentions, not repeated deterministic runs. Obfuscated and
+adversarial variants belong to PLAN10 and are not claimed here.
+
+Full replay scans every current cassette, golden, active stored event, and gateway request
+record. Any violation fails the report regardless of behavioral gates. The report shows corpus
+sizes, tripwire hits, request counts, and the implied violation-rate upper bound. A separate
+negative-control test bypasses tokenization and proves blocking before network access, an alert,
+and no stored raw request body. Replayed requests are not independent new model draws.
+
+Identifier-bearing pre-PLAN6 cassettes were moved to an owner-only archive outside the repository
+before re-recording; already-clean samples were retained. Original database events are preserved
+in `privacy.legacy_events`, which the runtime cannot read, while active payloads become tokens.
+Historical Git objects are not rewritten. Fixture inputs, resolved-argument expectations, and
+clinical data intentionally contain synthetic identifiers; they are not agent-zone recordings.
+
+Tests attempt resolution using runtime capabilities and query clinical/vault tables under
+`zagent_runtime`. Display property tests split tokens arbitrarily and resume at every boundary.
+The event-ingress registry fails if a new event type has no explicit privacy role. PLAN7
+interactions and PLAN8 logs/retrieval have reserved roles but no implemented workflows yet.
 
 ## Cases And Goldens
 
@@ -152,6 +194,8 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | REFUSE-001 through REFUSE-006 | Arithmetic, poem, job wrapper, and all four reason codes | REQ-SCOPE-03 |
 | ALLOW-001 | A real clarifying question followed by `yes` and a library table | REQ-SCOPE-03 |
 | SCOPE-* | 300 labeled guard-only examples, ten independent samples each | REQ-SCOPE-01, REQ-SCOPE-02, REQ-SCOPE-03 |
+| PRIVACY-001 | Token-only metadata/specimen conversation with resolved execution/display | REQ-PHI-01, REQ-PHI-02, REQ-PHI-03 |
+| DETECT-* | Literal MRN/name mentions across five sites | REQ-PHI-04 |
 
 Stream and view requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: view validation is checked across the entire
 corpus, including cases that legitimately push no views. Requirement rows may share trials;
@@ -238,7 +282,8 @@ a resume event, then require named diffs and a failed REQ-STREAM-02 gate.
 Replay omits scripted presentation delays and uses 8 ms coalescing. Chaos trials reuse the
 HTTP service for each case but create fresh sessions and retain distinct seeds and interruptions.
 The original 125-trial PLAN4 suite was verified in under a minute. PLAN5 expands this to
-3,204 trials, including 180 HTTP interruptions and 3,000 sampled classifications. Provenance records timing,
+3,315 trials, including 190 HTTP interruptions, 100 detector cases, and 3,000 sampled
+classifications. Provenance records timing,
 clock, commit, dirty worktree, implementation, seed, and either script digest or model, normalized
 prompt hash, and tool-schema hash. No production-latency claim is made.
 

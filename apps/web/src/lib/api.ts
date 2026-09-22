@@ -1,7 +1,27 @@
+import type { Projection } from './events'
+
 export type Session = { id: string; seq: number; created_at: string }
 export type RuntimeHealth = {
   status: 'ok'
   mode: 'scripted' | 'replay' | 'record' | 'live'
+}
+
+export type PrivacyBinding = { token: string; value: string; kind: string }
+export type XrayData = {
+  display: Projection
+  model: Projection
+  bindings: PrivacyBinding[]
+  executions: { conversation_turn_id: string; tool: string; arguments: Record<string, unknown> }[]
+  requests: {
+    request_id: string
+    conversation_turn_id: string
+    request: {
+      model: string
+      messages: { role: string; content?: string | null; tool_calls?: unknown[]; tool_call_id?: string }[]
+      tools?: unknown[]
+    }
+    audit: { purpose: string; mode: string; request_hash: string; outcome: string }
+  }[]
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from zagent.agent import Agent, Emit
 from zagent.events import EventDraft
+from zagent.privacy import EgressBlocked
 from zagent.store import AgentSession, Store
 
 logger = logging.getLogger(__name__)
@@ -109,7 +110,21 @@ class Runtime:
                 detail = "Invalid event payload: " + "; ".join(
                     issue["msg"] for issue in error.errors(include_input=False, include_url=False)
                 )
-            logger.warning("Conversation turn %s failed: %s", session.conversation_turn_id, detail)
+            logger.warning(
+                "Conversation turn %s failed: %s",
+                session.conversation_turn_id,
+                type(error).__name__,
+            )
+            if isinstance(error, EgressBlocked):
+                await append(
+                    EventDraft(
+                        type="privacy_alert",
+                        payload={
+                            "code": "egress_identifier",
+                            "message": "Privacy tripwire blocked the model request.",
+                        },
+                    )
+                )
             await self.store.finish_conversation_turn(
                 session.id, session.conversation_turn_id, detail
             )

@@ -9,7 +9,8 @@ import yaml
 from pydantic import BaseModel, Field, model_validator
 
 from zagent.events import Event, EventDraft, EventType
-from zagent.llm import Completer, CompletionRequest, canonical_json
+from zagent.llm import AssistantMessage, Completer, CompletionRequest, canonical_json
+from zagent.privacy import Raw
 from zagent.scope import (
     REFUSE_TOOL,
     SCOPE_POLICY,
@@ -33,6 +34,8 @@ SYSTEM_PROMPT = (
 Answer the user's question using the four available tools when clinical data is needed.
 The session is already scoped to one hospital. Never invent patient or specimen details.
 Data tools return only query handles, counts and column schemas. You cannot see row contents.
+Patient identifiers arrive as stable tokens such as [PT_1]. Pass tokens unchanged to tools;
+never guess or reconstruct the underlying identifier. The display edge restores real values.
 Use find_patients with an exact MRN, then find_specimens with that patient_handle.
 Use received_within P1D for yesterday/the last 24 hours, P7D for the last week, or P30D.
 Use find_libraries with a specimen_handle for library follow-ups such as "those".
@@ -154,7 +157,12 @@ class LlmAgent:
                     metadata={**metadata, "purpose": "agent"},
                 )
             )
-            message = completion.message
+            protected = await self.store.privacy.tokenize(
+                session.id,
+                Raw(value=completion.message.as_message()),
+                path="assistant_output",
+            )
+            message = AssistantMessage.model_validate(protected.value)
             refusals = [call for call in message.tool_calls if call.function.name == "refuse"]
             if refusals:
                 if len(message.tool_calls) != 1:

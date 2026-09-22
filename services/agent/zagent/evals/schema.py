@@ -81,7 +81,7 @@ class ScopeCorpus(StrictModel):
 class Case(StrictModel):
     id: str = Field(pattern=r"^[A-Z][A-Z0-9-]+$")
     requirement: str
-    agent: str = Field(pattern=r"^(scripted|llm|guard):[a-z][a-z0-9_-]*$")
+    agent: str = Field(pattern=r"^(scripted|llm|guard|detector):[a-z][a-z0-9_-]*$")
     conversation_turns: list[ConversationTurn] = Field(min_length=1)
     expect: dict[str, Any]
     bucket: ScopeBucket | None = None
@@ -146,6 +146,26 @@ def load_suite(root: Path) -> Suite:
                 for entry in requirements:
                     if entry["id"] in {requirement, "REQ-SCOPE-03"}:
                         entry.setdefault("cases", []).append(example.id)
+    if any(entry["id"] == "REQ-PHI-04" for entry in requirements):
+        from zagent.cohort import FROZEN_NOW, generate_cohort
+
+        for index, patient in enumerate(generate_cohort(FROZEN_NOW)["patients"], 1):
+            for label, field in (("MRN", "mrn"), ("NAME", "display_name")):
+                identity = f"DETECT-{label}-{index:03d}"
+                cases.append(
+                    Case(
+                        id=identity,
+                        requirement="REQ-PHI-04",
+                        agent="detector:default",
+                        conversation_turns=[
+                            {"user": f"Find {patient[field]} in this site's records."}
+                        ],
+                        expect={"detected": [patient[field]]},
+                    )
+                )
+                next(entry for entry in requirements if entry["id"] == "REQ-PHI-04")[
+                    "cases"
+                ].append(identity)
     return Suite(requirements=requirements, cases=cases)
 
 
@@ -198,6 +218,8 @@ class TrialResult(StrictModel):
     interruption: dict[str, Any] | None = None
     scope: ScopeOutcome | None = None
     requirement_outcomes: dict[str, bool] = Field(default_factory=dict)
+    privacy_requests: int = Field(default=0, ge=0)
+    tripwire_hits: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
     def outcome_matches_failures(self) -> "TrialResult":
@@ -206,6 +228,15 @@ class TrialResult(StrictModel):
         if self.seed != self.provenance.seed:
             raise ValueError("Trial and provenance seeds must agree")
         return self
+
+
+class PrivacyScan(StrictModel):
+    cassettes: int = 0
+    goldens: int = 0
+    stored_events: int = 0
+    recorded_requests: int = 0
+    violations: list[str] = Field(default_factory=list)
+    legacy_archive: str = "privacy.legacy_events (clinical-only)"
 
 
 class Report(StrictModel):
@@ -217,6 +248,7 @@ class Report(StrictModel):
     verifications: list[Literal["standard", "chaos"]]
     results: list[TrialResult]
     pass_streak: int = Field(default=3, ge=1)
+    privacy_scan: PrivacyScan | None = None
 
     @model_validator(mode="after")
     def unique_trials(self) -> "Report":

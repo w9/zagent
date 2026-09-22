@@ -18,7 +18,7 @@ async def stream_report(database_url):
 
 
 @pytest.mark.parametrize(
-    "case_id", [case.id for case in CASES if not case.agent.startswith("guard:")]
+    "case_id", [case.id for case in CASES if not case.agent.startswith(("guard:", "detector:"))]
 )
 async def test_case_golden_transcript(stream_report, case_id):
     result = next(
@@ -35,7 +35,7 @@ async def test_case_golden_transcript(stream_report, case_id):
     [
         pytest.param(case.id, seed, id=f"{case.id}-seed-{seed:02d}")
         for case in CASES
-        if not case.agent.startswith("guard:")
+        if not case.agent.startswith(("guard:", "detector:"))
         for seed in range(10)
     ],
 )

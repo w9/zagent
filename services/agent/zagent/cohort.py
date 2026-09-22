@@ -59,6 +59,22 @@ def generate_cohort(now: datetime, seed: int = 41872) -> dict[str, list[dict[str
                     "id": patient_id,
                     "site_id": site,
                     "mrn": mrn,
+                    "display_name": (
+                        (
+                            "Mira",
+                            "Kellan",
+                            "Tessa",
+                            "Arin",
+                            "Nella",
+                            "Ciro",
+                            "Elara",
+                            "Vesa",
+                            "Lorin",
+                            "Sela",
+                        )[patient_index]
+                        + " "
+                        + ("Vellorin", "Neralis", "Corvellan", "Merovin", "Talvessa")[site_index]
+                    ),
                     "birth_year": randomizer.randint(1940, 2005),
                 }
             )
@@ -119,6 +135,10 @@ class ClinicalStore:
                     f"ON CONFLICT (id, site_id) DO UPDATE SET {updates}",
                     [tuple(record[column] for column in columns) for record in records],
                 )
+        from zagent.privacy_store import PrivacyStore
+
+        if isinstance(self.store.privacy, PrivacyStore):
+            self.store.privacy.detector = None
 
     @asynccontextmanager
     async def site_connection(self, site_id: str) -> AsyncIterator[asyncpg.Connection]:

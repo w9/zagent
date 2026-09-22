@@ -4,7 +4,7 @@
 **Depends on:** [PLAN6](PLAN6.md)
 **Shippable outcome:** chat and a form in the right panel edit one object, and nothing is submitted
 without a human confirming the exact version they were shown. Titled references in chat open the
-corresponding working-surface views.
+corresponding working-surface views. Sessions appear newest first with persistent topic titles.
 
 ---
 
@@ -37,6 +37,10 @@ Click a table, chart, or draft reference in chat to return to that exact view, e
 views have arrived. On mobile, the same action opens the working-surface tab. Opening a draft
 does not edit or confirm it.
 
+Create a session and it appears at the top of the sidebar. After its first meaningful exchange,
+its fallback name becomes a short topic title such as "Specimen intake review". Rename it by
+hand and that title stays yours, including after refresh or later conversation turns.
+
 ---
 
 ## What makes the invariant hold
@@ -60,6 +64,28 @@ stronger and more precisely stateable: the user confirmed exactly this.
 ---
 
 ## Scope
+
+**Session organization.** List sessions newest-created first, using descending `created_at` with
+a stable ID tie-breaker. Use the same ordering for the API response and immediate client insertion;
+new activity or a title change must not reorder older sessions. Selection remains keyed by session
+ID, so inserting a new session does not change which existing conversation is open.
+
+Persist a short title and its origin (fallback, automatic, or manual) with the session. Every
+session gets a stable fallback independent of its position in the list. Backfill existing sessions
+with stable fallbacks; reversing the list must not renumber their names. Sidebar and conversation
+heading use the same persisted title and reflect changes across refreshes and browser tabs.
+
+After the first completed in-scope exchange, generate one concise topic title through the existing
+LLM gateway. Use only the tokenized conversation, preserve the PLAN6 boundary for generated and
+manually entered titles, and prefer a topic description over patient-identifying details. This
+is a bounded background operation: it does not delay the answer, block the next turn, or perform
+clinical tool calls. Failure or an unavailable recording leaves the fallback intact without
+failing the conversation or silently calling a live provider in replay mode. Do not regenerate
+the title on every turn.
+
+Manual rename takes precedence. An automatic result is applied only if the title is still
+eligible for automatic naming; a user rename while generation is in flight wins atomically.
+Later turns, refresh, and replay must never overwrite that manual choice.
 
 **Draft objects.** Persisted rows with a version counter and a content hash. Fields: app id,
 sample selection (by handle), parameters, validation state. Every mutation emits `draft_updated`
@@ -118,6 +144,7 @@ separately so its drift is not misread as agent drift.
 | Actual execution, queue, workers | PLAN8 |
 | Live job monitoring | PLAN8 |
 | Job cancellation and re-run | PLAN8 |
+| Session deletion, search, and bulk organization | later usability work |
 | Multi-step or dependent workflows | not a goal |
 
 Confirm in this increment writes a job row in `pending` and renders a static card. Execution is
@@ -145,10 +172,26 @@ explanation and proposal.
 the target. Labels and routes come from validated receipt/history metadata, not model-written
 URLs. One mechanism serves every view kind without constraining the agent's explanatory prose.
 
+**Session identity is independent of ordering and naming.** Creation time determines list order;
+session ID determines selection; persisted metadata determines the title. Model-generated naming
+is optional assistance, never a dependency of answering or a replacement for an explicit user edit.
+
 ---
 
 ## Definition of done
 
+- [ ] New sessions appear first immediately and after reload, with deterministic ordering when
+  creation timestamps tie; title changes and new turns do not reorder the list.
+- [ ] Existing and new sessions have stable persisted fallback names independent of list index;
+  sidebar, conversation heading, selected session, and multiple tabs remain consistent.
+- [ ] The first completed in-scope exchange triggers one bounded, privacy-aware topic-title
+  generation through the record/replay gateway, without delaying the answer or next turn.
+- [ ] Manual rename persists and wins over an in-flight automatic title; subsequent turns and
+  refresh never overwrite it. A concurrency test covers the delayed-generation race.
+- [ ] Title generation failure or replay cassette miss leaves the fallback and conversation
+  usable, with no silent live fallback; empty or refused-only sessions keep their fallback.
+- [ ] Topic-title cases cover different conversation subjects, while privacy tests verify that
+  title generation and manual renaming introduce no raw-identifier path into model context.
 - [ ] A natural-language request produces a pre-filled form with correct field values.
 - [ ] A chat correction updates the form live, without a refresh.
 - [ ] A form edit is visible to the agent on the next turn.
@@ -172,6 +215,17 @@ URLs. One mechanism serves every view kind without constraining the agent's expl
 ---
 
 ## Evidence added
+
+**REQ-SESSION-01 (invariant).** Session ordering is newest-created first and deterministic;
+selection and persisted titles do not depend on list position. API and desktop/mobile browser
+tests cover insertion, timestamp ties, reload, existing-session fallback migration, and stable
+selection when the list changes.
+
+**REQ-SESSION-02 (invariant).** Automatic naming cannot overwrite a manual title or block a
+conversation. Tests cover concurrent rename/generation, failed or missing recordings, one-time
+generation, and cross-tab consistency. Title ingress and gateway requests remain subject to
+PLAN6's privacy assertions. Whether a generated title describes the topic well is model behavior,
+covered by representative recorded cases rather than claimed as an invariant.
 
 **REQ-VIEW-03 (invariant).** A chat reference resolves only to its published view in the current
 session, and activation performs navigation without workflow mutations. Replay/projection tests
@@ -208,6 +262,10 @@ expect:
 ---
 
 ## Traps
+
+**Reversing the list while keeping index-based names.** The current generated labels depend on
+list position. Persist stable fallbacks before changing ordering, and never use the display title
+as session identity. Protect manual naming at write time, not only by checking before a model call.
 
 **A reference that means "latest" instead of "this view".** Even a reference to the current head
 must retain its explicit identity when later views arrive. Do not reuse an auto-follow shortcut

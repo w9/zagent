@@ -618,6 +618,16 @@ def test_duplicate_trials_are_rejected():
         Report.model_validate(data)
 
 
+def test_privacy_scan_and_trial_outcome_validation_remain_separate():
+    from zagent.evals.schema import PrivacyScan, TrialResult
+
+    assert PrivacyScan(cassettes=1).violations == []
+    trial = sample_report().results[0].model_dump()
+    trial["passed"] = False
+    with pytest.raises(ValidationError, match="Pass/fail"):
+        TrialResult.model_validate(trial)
+
+
 @pytest.mark.integration
 async def test_broken_resume_turns_req_stream_02_red(tmp_path, database_url, monkeypatch):
     from zagent.evals import runner

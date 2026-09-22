@@ -1,4 +1,5 @@
 import json
+import os
 from datetime import datetime
 from importlib.resources import files
 from uuid import UUID, uuid4
@@ -7,11 +8,35 @@ import asyncpg
 from pydantic import BaseModel
 
 from zagent.events import Event, EventDraft, Projection, project
+from zagent.privacy import Raw
+from zagent.privacy_client import PrivacyClient, Tokenizer
+from zagent.privacy_store import PrivacyStore
 from zagent.views import ViewSpec
 
 DEFAULT_DATABASE_URL = "postgresql://zagent:zagent@localhost:5432/zagent"
 SEED_SESSION_ID = UUID("01950000-0000-7000-8000-000000000001")
 NOTIFY_CHANNEL = "zagent_events"
+EVENT_INGRESS = {
+    "user_message": "user_message",
+    "text_delta": "assistant_output",
+    "step_started": "assistant_output",
+    "step_finished": "assistant_output",
+    "tool_call": "tool_arguments",
+    "tool_result": "tool_result",
+    "view_pushed": "view_spec",
+    "draft_updated": "draft_updated",
+    "refused": "assistant_output",
+    "conversation_turn_failed": "assistant_output",
+    "privacy_alert": "assistant_output",
+}
+LIFECYCLE_EVENTS = frozenset(
+    {
+        "conversation_turn_started",
+        "conversation_turn_finished",
+        "message_done",
+        "message_dropped",
+    }
+)
 
 
 class NotFound(Exception):
@@ -43,8 +68,13 @@ async def configure_connection(connection: asyncpg.Connection) -> None:
 
 
 class Store:
-    def __init__(self, pool: asyncpg.Pool):
+    def __init__(self, pool: asyncpg.Pool, privacy: Tokenizer | None = None):
         self.pool = pool
+        self.privacy = privacy or (
+            PrivacyClient.configured()
+            if os.environ.get("ZAGENT_PRIVACY_URL")
+            else PrivacyStore(pool)
+        )
 
     @classmethod
     async def open(cls, database_url: str) -> "Store":
@@ -79,6 +109,22 @@ class Store:
                 await connection.execute(
                     "INSERT INTO sessions (id) VALUES ($1) ON CONFLICT DO NOTHING", SEED_SESSION_ID
                 )
+        if isinstance(self.privacy, PrivacyStore):
+            await self.privacy.migrate_history()
+
+    async def protect_event(self, session_id: UUID, event: EventDraft) -> EventDraft:
+        event = EventDraft.model_validate(event.model_dump())
+        if event.type in LIFECYCLE_EVENTS and not event.payload:
+            return event
+        path = EVENT_INGRESS.get(event.type)
+        if path is None:
+            if event.type not in LIFECYCLE_EVENTS:
+                raise ValueError("Event has no registered privacy ingress")
+            path = "assistant_output"
+        payload = (
+            await self.privacy.tokenize(session_id, Raw(value=event.payload), path=path)
+        ).value
+        return EventDraft(type=event.type, payload=payload)
 
     async def create_session(self, site_id: str = "northgate") -> Session:
         row = await self.pool.fetchrow(
@@ -105,6 +151,13 @@ class Store:
         return [Session.model_validate(dict(row)) for row in rows]
 
     async def begin_conversation_turn(self, session_id: UUID, text: str) -> AgentSession:
+        text = (
+            await self.privacy.tokenize(
+                session_id,
+                Raw(value=text),
+                path="user_message",
+            )
+        ).value
         conversation_turn_id = uuid4()
         async with self.pool.acquire() as connection, connection.transaction():
             session = await connection.fetchrow(
@@ -175,12 +228,22 @@ class Store:
     async def append(
         self, session_id: UUID, conversation_turn_id: UUID, event: EventDraft
     ) -> Event:
+        event = await self.protect_event(session_id, event)
         async with self.pool.acquire() as connection, connection.transaction():
             return await self._append(connection, session_id, conversation_turn_id, event)
 
     async def publish_view(
         self, session_id: UUID, conversation_turn_id: UUID, spec: ViewSpec
     ) -> Event:
+        spec = ViewSpec.model_validate(
+            (
+                await self.privacy.tokenize(
+                    session_id,
+                    Raw(value=spec.model_dump()),
+                    path="view_spec",
+                )
+            ).value
+        )
         async with self.pool.acquire() as connection, connection.transaction():
             exists = await connection.fetchval(
                 "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
@@ -215,6 +278,14 @@ class Store:
     async def finish_conversation_turn(
         self, session_id: UUID, conversation_turn_id: UUID, error: str | None = None
     ) -> None:
+        if error is not None:
+            error = (
+                await self.privacy.tokenize(
+                    session_id,
+                    Raw(value=error),
+                    path="assistant_output",
+                )
+            ).value
         async with self.pool.acquire() as connection, connection.transaction():
             await connection.fetchval(
                 "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id

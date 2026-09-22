@@ -263,6 +263,28 @@ async def test_default_recording_does_not_replace_independent_samples(tmp_path, 
         assert (await gateway.complete(request(sample=sample))).message.content == "Allowed"
 
 
+async def test_record_missing_preserves_existing_errors_and_calls_only_for_missing_samples(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    calls = []
+
+    def provider(incoming):
+        calls.append(incoming)
+        return httpx.Response(503)
+
+    gateway = LlmGateway(tmp_path, mode="record", transport=httpx.MockTransport(provider))
+    gateway.record_missing = True
+    for sample in (0, 0, 1):
+        with pytest.raises(GatewayError, match="HTTP 503"):
+            await gateway.complete(request(sample=sample))
+    assert len(calls) == 2
+    gateway.mode = "replay"
+    with pytest.raises(CassetteMiss):
+        await gateway.complete(request(sample=2))
+    assert len(calls) == 2
+
+
 async def test_corrupt_cassette_and_unknown_route_fail_closed(tmp_path):
     gateway = LlmGateway(tmp_path)
     with pytest.raises(GatewayError, match="Unknown model route"):

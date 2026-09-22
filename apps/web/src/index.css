@@ -128,6 +128,119 @@ a:focus-visible {
   min-width: 0;
   min-height: 0;
 }
+.xray-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: #fbfcfb;
+}
+.xray-heading {
+  flex-shrink: 0;
+}
+.xray-panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  min-height: 0;
+}
+.xray-pane {
+  min-width: 0;
+  overflow: auto;
+  padding: 22px 24px;
+}
+.xray-model {
+  border-left: 1px solid var(--border);
+  background: #f3f6fa;
+}
+.xray-pane > h3 {
+  margin: 0 0 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.xray-message, .xray-execution {
+  margin: 0 0 22px;
+  min-width: 0;
+}
+.xray-message h4, .xray-execution h4 {
+  font: 11px var(--mono);
+  color: #69796f;
+  margin: 0 0 9px;
+  overflow-wrap: anywhere;
+}
+.xray-message p, .xray-pane pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.75;
+}
+.xray-pane pre {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.xray-request, .xray-executions, .xray-system {
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+.xray-pane summary {
+  cursor: pointer;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.xray-request summary > span {
+  float: right;
+  font: 10px var(--mono);
+  color: #6a7990;
+}
+.xray-request-meta {
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 16px;
+  color: #6a7990;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.xray-system pre, .xray-execution {
+  margin-top: 12px;
+}
+.privacy-token {
+  display: inline;
+  border: 0;
+  border-bottom: 1px solid #b39a46;
+  border-radius: 2px;
+  padding: 1px 2px;
+  color: #554816;
+  background: #f8efbe;
+  font: inherit;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.privacy-token[aria-pressed='true'] {
+  background: #cfecd9;
+  color: #195638;
+  outline: 1px solid #498662;
+}
+.privacy-token:focus-visible {
+  outline: 2px solid var(--primary);
+}
+.xray-empty {
+  margin: 24px;
+  color: #6a7990;
+  font-size: 12px;
+}
+.xray-tabs {
+  display: none;
+}
+@media (max-width: 760px) {
+  .xray-panes { grid-template-columns: minmax(0, 1fr); }
+  .xray-pane { padding: 18px 16px; }
+  .xray-tabs { display: flex; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+  .xray-tabs button { flex: 1; padding: 12px; border: 0; background: #f4f6f3; font-size: 12px; }
+  .xray-tabs button[aria-selected='true'] { background: #fff; box-shadow: inset 0 -2px var(--primary); }
+  .xray-panes[data-mobile-pane='display'] > .xray-model,
+  .xray-panes[data-mobile-pane='model'] > .xray-display { display: none; }
+}
 .workspace-mobile-tabs {
   display: none;
 }

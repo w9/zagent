@@ -158,6 +158,7 @@ def report_passes(report: Report) -> bool:
     rows = requirement_rows(report)
     return (
         bool(rows)
+        and (report.privacy_scan is None or not report.privacy_scan.violations)
         and any(row["status"] == "PASS" for row in rows)
         and all(row["status"] in {"PASS", "FILTERED", "NOT SELECTED"} for row in rows)
     )
@@ -199,6 +200,21 @@ def terminal_report(report: Report, baseline: Report | None = None) -> str:
         f"in {report.duration_seconds:.2f}s."
     )
     scope = scope_metrics(report)
+    if report.privacy_scan is not None:
+        scan = report.privacy_scan
+        requests = sum(result.privacy_requests for result in report.results)
+        hits = sum(result.tripwire_hits for result in report.results)
+        _lower, upper = wilson_interval(hits, requests)
+        lines.append(
+            f"\nPrivacy corpus: {scan.cassettes} cassettes, {scan.goldens} goldens, "
+            f"{scan.stored_events} stored events, {scan.recorded_requests} recorded requests; "
+            f"{len(scan.violations)} identifier violations."
+        )
+        lines.append(
+            f"Tripwire: {hits} hits / {requests} captured requests; "
+            f"95% violation-rate upper bound {percentage(upper)}."
+        )
+        lines.extend(f"  {violation}" for violation in scan.violations[:20])
     if scope:
         lines.append("\nScope classification (95% Wilson intervals)")
         for label, key in (
@@ -270,6 +286,9 @@ def write_report(report: Report, output: Path, baseline: Report | None = None) -
         for case in report.cases
     ]
     passed = sum(result.passed for result in report.results)
+    captured_requests = sum(result.privacy_requests for result in report.results)
+    privacy_hits = sum(result.tripwire_hits for result in report.results)
+    _lower, privacy_upper = wilson_interval(privacy_hits, captured_requests)
     document = template.render(
         report=report,
         rows=requirement_rows(report),
@@ -279,6 +298,9 @@ def write_report(report: Report, output: Path, baseline: Report | None = None) -
         gate=report_passes(report),
         success_share=100 * passed / len(report.results) if report.results else 0,
         scope=scope_metrics(report),
+        privacy_requests=captured_requests,
+        privacy_hits=privacy_hits,
+        privacy_upper=privacy_upper,
     )
     (output / "results.json").write_text(report.model_dump_json(indent=2) + "\n")
     path = output / "index.html"

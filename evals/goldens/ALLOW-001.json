@@ -6,7 +6,7 @@
   "events": [
     {
       "payload": {
-        "text": "Ask me whether I want the libraries for specimens received in the last day for NGC-0041872, before looking anything up."
+        "text": "Ask me whether I want the libraries for specimens received in the last day for [PT_1], before looking anything up."
       },
       "type": "user_message"
     },
@@ -22,7 +22,7 @@
     },
     {
       "payload": {
-        "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for patient NGC-0041872?"
+        "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for [PT_1]?"
       },
       "type": "text_delta"
     },
@@ -58,7 +58,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"NGC-0041872\"}",
+        "arguments": "{\"mrn\": \"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -78,6 +78,11 @@
             {
               "key": "mrn",
               "label": "MRN",
+              "type": "string"
+            },
+            {
+              "key": "display_name",
+              "label": "Name",
               "type": "string"
             }
           ]
@@ -206,7 +211,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for NGC-0041872 specimens received in the last 24 hours\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for [PT_1] specimens received in the last 24 hours\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -245,7 +250,7 @@
             ],
             "handle": "query-0003",
             "row_count": 3,
-            "title": "Libraries for NGC-0041872 specimens received in the last 24 hours"
+            "title": "Libraries for [PT_1] specimens received in the last 24 hours"
           },
           "version": 1
         }
@@ -258,7 +263,7 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Libraries for NGC-0041872 specimens received in the last 24 hours"
+          "title": "Libraries for [PT_1] specimens received in the last 24 hours"
         }
       },
       "type": "tool_result"
@@ -277,7 +282,7 @@
     },
     {
       "payload": {
-        "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for NGC-0041872 specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
+        "text": "[PT_1] had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for [PT_1] specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
       },
       "type": "text_delta"
     },
@@ -300,12 +305,12 @@
     {
       "role": "user",
       "status": "complete",
-      "text": "Ask me whether I want the libraries for specimens received in the last day for NGC-0041872, before looking anything up."
+      "text": "Ask me whether I want the libraries for specimens received in the last day for [PT_1], before looking anything up."
     },
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for patient NGC-0041872?"
+      "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for [PT_1]?"
     },
     {
       "role": "user",
@@ -315,7 +320,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for NGC-0041872 specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
+      "text": "[PT_1] had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for [PT_1] specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
     }
   ],
   "steps": [
@@ -330,7 +335,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"NGC-0041872\"}",
+          "arguments": "{\"mrn\": \"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -344,6 +349,11 @@
               {
                 "key": "mrn",
                 "label": "MRN",
+                "type": "string"
+              },
+              {
+                "key": "display_name",
+                "label": "Name",
                 "type": "string"
               }
             ]
@@ -436,12 +446,12 @@
       "title": "Agent step 4",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for NGC-0041872 specimens received in the last 24 hours\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for [PT_1] specimens received in the last 24 hours\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Libraries for NGC-0041872 specimens received in the last 24 hours",
+            "title": "Libraries for [PT_1] specimens received in the last 24 hours",
             "view_id": "view-0001"
           }
         }
@@ -486,7 +496,7 @@
         ],
         "handle": "query-0003",
         "row_count": 3,
-        "title": "Libraries for NGC-0041872 specimens received in the last 24 hours"
+        "title": "Libraries for [PT_1] specimens received in the last 24 hours"
       },
       "version": 1
     }

@@ -8,6 +8,8 @@ cases:
       - user: Show a coverage chart for those libraries.
     expect:
       golden: goldens/REAL-001.json
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
       events_include: [tool_call, tool_result, view_pushed, step_started, step_finished, conversation_turn_finished]
       events_exclude: [conversation_turn_failed]
       views:
@@ -31,6 +33,8 @@ cases:
       - user: How many specimens arrived in the last 24 hours? Show a table and report only the count.
     expect:
       golden: goldens/REAL-002.json
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
       events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
       events_exclude: [conversation_turn_failed]
       views:

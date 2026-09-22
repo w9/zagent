@@ -8,9 +8,10 @@ import App from './App'
 const rootRoute = createRootRoute({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { view?: string; panel?: 'surface' } => ({
+  ): { view?: string; panel?: 'surface'; xray?: true } => ({
     view: typeof search.view === 'string' ? search.view : undefined,
     panel: search.panel === 'surface' ? 'surface' : undefined,
+    xray: search.xray === true ? true : undefined,
   }),
 })
 const indexRoute = createRoute({

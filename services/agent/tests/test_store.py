@@ -1,10 +1,12 @@
 import asyncio
 from importlib.resources import files
+from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 import asyncpg
 import pytest
 from zagent.events import EventDraft
+from zagent.privacy import Tokenized
 from zagent.store import ConversationTurnConflict, Store, configure_connection
 
 pytestmark = pytest.mark.integration
@@ -94,15 +96,15 @@ async def test_migration_and_seed_are_idempotent(store):
 
 
 async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, database_url):
-    schema = f"migration_{uuid4().hex}"
-    await store.pool.execute(f'CREATE SCHEMA "{schema}"')
+    database = f"migration_{uuid4().hex}"
+    await store.pool.execute(f'CREATE DATABASE "{database}"')
+    isolated_url = urlunsplit(urlsplit(database_url)._replace(path=f"/{database}"))
     isolated = Store(
         await asyncpg.create_pool(
-            database_url,
+            isolated_url,
             min_size=1,
             max_size=2,
             init=configure_connection,
-            server_settings={"search_path": schema},
         )
     )
     try:
@@ -121,9 +123,9 @@ async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, data
             session_id,
         )
         for seq, kind, payload in [
-            (1, "user_message", {"message_id": "user", "text": "Hello"}),
+            (1, "user_message", {"message_id": "user", "text": "Hello NGC-0041872"}),
             (2, "run_started", {}),
-            (3, "text_delta", {"message_id": "answer", "text": "Saved response"}),
+            (3, "text_delta", {"message_id": "answer", "text": "Saved response NGC-0041872"}),
             (4, "run_finished", {}),
         ]:
             await isolated.pool.execute(
@@ -139,18 +141,23 @@ async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, data
         await isolated.migrate(seed=False)
         await isolated.migrate(seed=False)
         migrated = await isolated.pool.fetch("SELECT * FROM events ORDER BY seq")
-        assert [dict(row) for row in migrated] == [
+        original = [
             {
                 ("conversation_turn_id" if key == "run_id" else key): value
                 for key, value in dict(row).items()
             }
             for row in original
         ]
+        archived = await isolated.pool.fetch("SELECT * FROM privacy.legacy_events ORDER BY seq")
+        assert [dict(row) for row in archived] == original
+        for before, after in zip(original, migrated, strict=True):
+            restored = await isolated.privacy.resolve(session_id, Tokenized(value=after["payload"]))
+            assert {**dict(after), "payload": restored.value} == before
         snapshot = await isolated.snapshot(session_id)
         assert snapshot.seq == 4
         assert snapshot.conversation_turn.id == turn_id
         assert snapshot.conversation_turn.status == "finished"
-        assert snapshot.messages[-1].text == "Saved response"
+        assert snapshot.messages[-1].text == "Saved response [PT_1]"
         turn = await isolated.begin_conversation_turn(session_id, "Next")
         await isolated.finish_conversation_turn(session_id, turn.conversation_turn_id)
         events = await isolated.events_after(session_id, 0)
@@ -161,4 +168,4 @@ async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, data
             await isolated.pool.execute("DELETE FROM events")
     finally:
         await isolated.close()
-        await store.pool.execute(f'DROP SCHEMA "{schema}" CASCADE')
+        await store.pool.execute(f'DROP DATABASE "{database}"')

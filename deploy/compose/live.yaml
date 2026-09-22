@@ -13,6 +13,12 @@ services:
   agent:
     environment:
       ZAGENT_LLM_MODE: live
+  bff:
+    environment:
+      ZAGENT_LLM_MODE: live
+  privacy:
+    environment:
+      ZAGENT_LLM_MODE: live
 
 secrets:
   openrouter_api_key:

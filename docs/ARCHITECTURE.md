@@ -4,11 +4,11 @@ This document records the decisions that are expensive to reverse and the reason
 them. It deliberately stops short of implementation detail: where a choice is local to one
 module and cheap to change later, it is the implementer's call, not this document's.
 
-**Implementation status:** PLAN1 through PLAN5 are implemented. The privacy/tokenization zones,
-jobs, knowledge retrieval, and Kubernetes policies below describe subsequent plans.
-The local stack enforces database RLS and gateway-only internet egress and measures a contextual
-scope guard with independently recorded labeled trials. User-provided
-synthetic identifiers are not tokenized yet.
+**Implementation status:** PLAN1 through PLAN6 are implemented. The local stack tokenizes at
+ingress, resolves only at clinical tool/display edges, restricts runtime database credentials,
+and checks outbound requests with a keyed-hash tripwire. X-ray shows actual recorded model
+requests. Jobs, knowledge retrieval, and Kubernetes NetworkPolicy remain later plans; this local
+development deployment is not a production security certification.
 
 **Contents**
 

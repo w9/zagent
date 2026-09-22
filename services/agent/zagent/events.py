@@ -22,6 +22,7 @@ EventType = Literal[
     "view_pushed",
     "refused",
     "draft_updated",
+    "privacy_alert",
 ]
 
 
@@ -97,6 +98,12 @@ class EventDraft(BaseModel):
             ToolReturned.model_validate(self.payload)
         elif self.type == "refused":
             Refusal.model_validate(self.payload)
+        elif self.type == "privacy_alert":
+            if self.payload != {
+                "code": "egress_identifier",
+                "message": "Privacy tripwire blocked the model request.",
+            }:
+                raise ValueError("Invalid privacy alert")
         return self
 
 

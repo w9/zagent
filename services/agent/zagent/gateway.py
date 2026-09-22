@@ -16,6 +16,8 @@ from zagent.llm import (
     LlmGateway,
     ModelRoute,
 )
+from zagent.privacy import EgressBlocked, PrivacyError
+from zagent.privacy_client import GatewayPrivacy, PrivacyClient
 
 
 async def forward_connection(
@@ -53,15 +55,29 @@ async def forward_connection(
         )
 
 
-def configured_gateway(mode: str | None = None) -> LlmGateway:
+def configured_gateway(
+    mode: str | None = None, *, egress_check=None, protect_response=None
+) -> LlmGateway:
     routes = {
         name: ModelRoute.model_validate(route)
         for name, route in json.loads(os.environ.get("ZAGENT_MODEL_ROUTES") or "{}").items()
     } or {"default": ModelRoute(model=os.environ.get("ZAGENT_MODEL", DEFAULT_MODEL))}
+    if os.environ.get("ZAGENT_PRIVACY_URL"):
+        privacy = GatewayPrivacy(PrivacyClient.configured("gateway"))
+        egress_check = privacy.check
+        protect_response = privacy.protect_response
+    elif egress_check is None:
+
+        def unconfigured(_request):
+            raise PrivacyError("Configure the privacy service before model access")
+
+        egress_check = unconfigured
     return LlmGateway(
         Path(os.environ.get("ZAGENT_CASSETTE_DIR", str(files("zagent").joinpath("cassettes")))),
         mode=mode or os.environ.get("ZAGENT_LLM_MODE", "replay"),
         routes=routes,
+        egress_check=egress_check,
+        protect_response=protect_response,
         audit_path=Path(
             os.environ.get(
                 "ZAGENT_GATEWAY_AUDIT",
@@ -94,7 +110,7 @@ def create_gateway_app(gateway: LlmGateway | None = None) -> FastAPI:
 
         async with AsyncExitStack() as resources:
             if os.environ.get("ZAGENT_LOCAL_INGRESS") == "1":
-                for host, port in (("web", 5173), ("agent", 8000), ("postgres", 5432)):
+                for host, port in (("web", 5173), ("bff", 8000), ("postgres", 5432)):
                     listener = await asyncio.start_server(handler(host, port), "0.0.0.0", port)
                     await resources.enter_async_context(listener)
             try:
@@ -107,6 +123,18 @@ def create_gateway_app(gateway: LlmGateway | None = None) -> FastAPI:
 
     app = FastAPI(title="Zagent model gateway", lifespan=lifespan)
 
+    @app.exception_handler(PrivacyError)
+    async def privacy_error(_request: Request, error: PrivacyError):
+        return JSONResponse(
+            status_code=502,
+            content={
+                "code": "egress_identifier"
+                if isinstance(error, EgressBlocked)
+                else "privacy_unavailable",
+                "detail": str(error),
+            },
+        )
+
     @app.exception_handler(GatewayError)
     async def gateway_error(_request: Request, error: GatewayError):
         return JSONResponse(status_code=502, content={"detail": str(error)})
@@ -118,6 +146,10 @@ def create_gateway_app(gateway: LlmGateway | None = None) -> FastAPI:
     @app.post("/complete", response_model=Completion)
     async def complete(request: CompletionRequest):
         return await gateway.complete(request)
+
+    @app.get("/sessions/{session_id}/model-requests")
+    async def model_requests(session_id: str):
+        return await asyncio.to_thread(gateway.requests_for_session, session_id)
 
     return app
 

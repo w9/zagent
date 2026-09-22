@@ -1,6 +1,6 @@
 # PLAN6: The Privacy Boundary
 
-**Status:** not started
+**Status:** implemented
 **Depends on:** [PLAN5](PLAN5.md)
 **Shippable outcome:** patient identifiers never reach the model provider, tool calls still work,
 the right answer still comes back, and the X-ray toggle shows you both sides.
@@ -124,20 +124,48 @@ is the main lever for strengthening the guarantee over time.
 
 ## Definition of done
 
-- [ ] A message containing an MRN produces an event log in which the MRN does not appear.
-- [ ] The tool call executes against the real MRN and returns the correct result.
-- [ ] The displayed answer shows real values.
-- [ ] Token numbering is stable within a session and consistent across turns.
-- [ ] The tripwire fires when tokenization is disabled, and the request does not go out.
-- [ ] X-ray shows both transcripts with linked highlighting.
-- [ ] Streamed display detokenization never shows a partial token.
-- [ ] A full-corpus scan finds zero identifiers in the event log, the gateway's recorded requests
+- [x] A message containing an MRN produces an event log in which the MRN does not appear.
+- [x] The tool call executes against the real MRN and returns the correct result.
+- [x] The displayed answer shows real values.
+- [x] Token numbering is stable within a session and consistent across turns.
+- [x] The tripwire fires when tokenization is disabled, and the request does not go out.
+- [x] X-ray shows both transcripts with linked highlighting.
+- [x] Streamed display detokenization never shows a partial token.
+- [x] A full-corpus scan finds zero identifiers in the event log, the gateway's recorded requests
       or the cassettes.
-- [ ] Cassettes recorded before this increment are re-recorded or verified clean.
+- [x] Cassettes recorded before this increment are re-recorded or verified clean.
 
 The last item matters. Cassettes are checked into a public repository, and a cassette recorded
 before tokenization contains synthetic identifiers in a form the project claims never leaves the
 clinical zone. Even synthetic, that inconsistency undermines the demonstration.
+
+### Implementation Evidence
+
+- Python `Raw[T]` and `Tokenized[T]` values, a registered ingress map, annotated tool fields,
+  registry names/MRNs, and site-format rules cover current model inputs. The persistent session
+  vault provides stable PT/SP/LB tokens and escapes literal token-shaped user input.
+- The BFF tokenizes before append; the runtime rejects raw messages. Clinical tools resolve
+  immediately before execution and retain real arguments only in a private execution audit.
+  Tool/model outputs and view/error payloads are tokenized before persistence or reuse. Encoded
+  JSON arguments are parsed, including Unicode escapes.
+- The gateway receives only a keyed-hash manifest and key. Its check precedes replay/provider
+  access; only passing token-only bodies enter X-ray storage. Bypass tests verify a blocked
+  call, zero provider calls, no raw trace, and a persisted `privacy_alert`.
+- Dedicated privacy and BFF services use separate capability volumes. The runtime has
+  tokenize-only access and cannot query clinical rows, the vault, or private legacy history.
+  Capability and database denials were checked in tests and deployed containers. NetworkPolicy
+  remains PLAN9.
+- X-ray uses recorded gateway requests. Desktop/mobile tests verify linked highlights, real
+  display values, token-only model panes, refresh, and follow-ups. Holdback property tests cover
+  arbitrary token splits and reconnects at every event boundary.
+- A transactional migration privately archives original event rows before tokenizing active
+  payloads. Raw legacy cassettes were archived outside git and re-recorded; clean independent
+  samples and failures were retained. Historical Git commits still contain synthetic older
+  recordings; history was not rewritten.
+- Detector evidence covers 100 literal MRN/name mentions across five sites. Full-suite scans
+  cover events, gateway request records, cassettes, and goldens. Obfuscated mentions, unknown
+  free-text names, quasi-identifiers, and production credential management are not a total
+  de-identification guarantee.
 
 ---
 

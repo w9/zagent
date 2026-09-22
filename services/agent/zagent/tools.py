@@ -14,6 +14,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
+from zagent.privacy import PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
 
@@ -26,7 +27,12 @@ class StrictModel(BaseModel):
 
 
 class FindPatients(StrictModel):
-    mrn: str | None = Field(default=None, min_length=1, max_length=100)
+    mrn: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        json_schema_extra={"x-identifier": "PT"},
+    )
 
 
 class FindSpecimens(StrictModel):
@@ -126,6 +132,7 @@ COLUMNS = {
     "patients": [
         {"key": "id", "label": "Patient", "type": "string"},
         {"key": "mrn", "label": "MRN", "type": "string"},
+        {"key": "display_name", "label": "Name", "type": "string"},
     ],
     "specimens": [
         {"key": "id", "label": "Specimen", "type": "string"},
@@ -152,6 +159,47 @@ class ClinicalTools:
         self.clinical = clinical
 
     async def dispatch(
+        self,
+        session_id: UUID,
+        name: str,
+        arguments: dict,
+        *,
+        conversation_turn_id: UUID | None = None,
+    ) -> dict:
+        try:
+            resolved = await self.clinical.store.privacy.resolve(
+                session_id,
+                Tokenized(value=arguments),
+                strict=True,
+            )
+            if conversation_turn_id is not None:
+                await self.clinical.store.pool.execute(
+                    """INSERT INTO privacy.execution_audit
+                              (session_id, conversation_turn_id, tool, arguments)
+                              VALUES ($1, $2, $3, $4)""",
+                    session_id,
+                    conversation_turn_id,
+                    name,
+                    resolved.value,
+                )
+            result = await self._dispatch(
+                session_id,
+                name,
+                resolved.value,
+                conversation_turn_id=conversation_turn_id,
+            )
+            return (
+                await self.clinical.store.privacy.tokenize(
+                    session_id,
+                    Raw(value=result),
+                    path="tool_result",
+                    schema=RESPONSE_SCHEMAS.get(name),
+                )
+            ).value
+        except PrivacyError:
+            return failure("invalid_arguments", "Unknown or inaccessible identifier token")
+
+    async def _dispatch(
         self,
         session_id: UUID,
         name: str,
@@ -327,6 +375,14 @@ class ToolsGateway:
             if model is None:
                 result = failure("unknown_tool", "Tool is not allowlisted")
             else:
+                arguments = (
+                    await self.store.privacy.tokenize(
+                        session.id,
+                        Raw(value=arguments),
+                        path="tool_arguments",
+                        schema=model.model_json_schema(),
+                    )
+                ).value
                 params = model.model_validate(arguments)
                 result = await self.client.call(
                     session, name, params.model_dump(mode="json", exclude_none=True)
@@ -350,6 +406,14 @@ class ToolsGateway:
             result = failure("invalid_arguments", "Arguments must be a bounded JSON object")
         except Exception:
             result = failure("unavailable", "Tool service is unavailable")
+        result = (
+            await self.store.privacy.tokenize(
+                session.id,
+                Raw(value=result),
+                path="tool_result",
+                schema=RESPONSE_SCHEMAS.get(name),
+            )
+        ).value
         await self.store.pool.execute(
             """INSERT INTO tool_audit (session_id, conversation_turn_id, tool, arguments, result)
                VALUES ($1, $2, $3, $4, $5)""",

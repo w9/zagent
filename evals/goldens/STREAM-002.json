@@ -57,37 +57,37 @@
             "row_count": 14,
             "rows": [
               [
-                "SPC-0001",
+                "[SP_1]",
                 "DNA",
                 "Northlake",
                 "Ready"
               ],
               [
-                "SPC-0002",
+                "[SP_2]",
                 "DNA",
                 "Northlake",
                 "Review"
               ],
               [
-                "SPC-0003",
+                "[SP_3]",
                 "RNA",
                 "Westhaven",
                 "Ready"
               ],
               [
-                "SPC-0004",
+                "[SP_4]",
                 "DNA",
                 "Eastmere",
                 "Ready"
               ],
               [
-                "SPC-0005",
+                "[SP_5]",
                 "RNA",
                 "Westhaven",
                 "Ready"
               ],
               [
-                "SPC-0006",
+                "[SP_6]",
                 "DNA",
                 "Eastmere",
                 "Ready"
@@ -149,25 +149,25 @@
             "row_count": 4,
             "rows": [
               [
-                "SPC-0001",
+                "[SP_1]",
                 "Library yield",
                 "Within range",
                 true
               ],
               [
-                "SPC-0002",
+                "[SP_2]",
                 "Sample identity",
                 "Review required",
                 false
               ],
               [
-                "SPC-0003",
+                "[SP_3]",
                 "RNA integrity",
                 "Within range",
                 true
               ],
               [
-                "SPC-0004",
+                "[SP_4]",
                 "Library yield",
                 "Within range",
                 true
@@ -253,37 +253,37 @@
             "row_count": 14,
             "rows": [
               [
-                "SPC-0001",
+                "[SP_1]",
                 "DNA",
                 "Northlake",
                 "Ready"
               ],
               [
-                "SPC-0002",
+                "[SP_2]",
                 "DNA",
                 "Northlake",
                 "Review"
               ],
               [
-                "SPC-0003",
+                "[SP_3]",
                 "RNA",
                 "Westhaven",
                 "Ready"
               ],
               [
-                "SPC-0004",
+                "[SP_4]",
                 "DNA",
                 "Eastmere",
                 "Ready"
               ],
               [
-                "SPC-0005",
+                "[SP_5]",
                 "RNA",
                 "Westhaven",
                 "Ready"
               ],
               [
-                "SPC-0006",
+                "[SP_6]",
                 "DNA",
                 "Eastmere",
                 "Ready"
@@ -345,25 +345,25 @@
             "row_count": 4,
             "rows": [
               [
-                "SPC-0001",
+                "[SP_1]",
                 "Library yield",
                 "Within range",
                 true
               ],
               [
-                "SPC-0002",
+                "[SP_2]",
                 "Sample identity",
                 "Review required",
                 false
               ],
               [
-                "SPC-0003",
+                "[SP_3]",
                 "RNA integrity",
                 "Within range",
                 true
               ],
               [
-                "SPC-0004",
+                "[SP_4]",
                 "Library yield",
                 "Within range",
                 true
@@ -470,37 +470,37 @@
         "row_count": 14,
         "rows": [
           [
-            "SPC-0001",
+            "[SP_1]",
             "DNA",
             "Northlake",
             "Ready"
           ],
           [
-            "SPC-0002",
+            "[SP_2]",
             "DNA",
             "Northlake",
             "Review"
           ],
           [
-            "SPC-0003",
+            "[SP_3]",
             "RNA",
             "Westhaven",
             "Ready"
           ],
           [
-            "SPC-0004",
+            "[SP_4]",
             "DNA",
             "Eastmere",
             "Ready"
           ],
           [
-            "SPC-0005",
+            "[SP_5]",
             "RNA",
             "Westhaven",
             "Ready"
           ],
           [
-            "SPC-0006",
+            "[SP_6]",
             "DNA",
             "Eastmere",
             "Ready"
@@ -538,25 +538,25 @@
         "row_count": 4,
         "rows": [
           [
-            "SPC-0001",
+            "[SP_1]",
             "Library yield",
             "Within range",
             true
           ],
           [
-            "SPC-0002",
+            "[SP_2]",
             "Sample identity",
             "Review required",
             false
           ],
           [
-            "SPC-0003",
+            "[SP_3]",
             "RNA integrity",
             "Within range",
             true
           ],
           [
-            "SPC-0004",
+            "[SP_4]",
             "Library yield",
             "Within range",
             true
@@ -594,37 +594,37 @@
         "row_count": 14,
         "rows": [
           [
-            "SPC-0001",
+            "[SP_1]",
             "DNA",
             "Northlake",
             "Ready"
           ],
           [
-            "SPC-0002",
+            "[SP_2]",
             "DNA",
             "Northlake",
             "Review"
           ],
           [
-            "SPC-0003",
+            "[SP_3]",
             "RNA",
             "Westhaven",
             "Ready"
           ],
           [
-            "SPC-0004",
+            "[SP_4]",
             "DNA",
             "Eastmere",
             "Ready"
           ],
           [
-            "SPC-0005",
+            "[SP_5]",
             "RNA",
             "Westhaven",
             "Ready"
           ],
           [
-            "SPC-0006",
+            "[SP_6]",
             "DNA",
             "Eastmere",
             "Ready"
@@ -662,25 +662,25 @@
         "row_count": 4,
         "rows": [
           [
-            "SPC-0001",
+            "[SP_1]",
             "Library yield",
             "Within range",
             true
           ],
           [
-            "SPC-0002",
+            "[SP_2]",
             "Sample identity",
             "Review required",
             false
           ],
           [
-            "SPC-0003",
+            "[SP_3]",
             "RNA integrity",
             "Within range",
             true
           ],
           [
-            "SPC-0004",
+            "[SP_4]",
             "Library yield",
             "Within range",
             true

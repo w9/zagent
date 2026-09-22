@@ -22,13 +22,19 @@ services:
       context: .
       dockerfile: services/agent/Dockerfile
     environment:
-      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      DATABASE_URL: postgresql://zagent_runtime:zagent_runtime@postgres:5432/zagent
       ZAGENT_SCRIPT: "${ZAGENT_SCRIPT:-}"
       ZAGENT_AGENT: "${ZAGENT_AGENT:-llm}"
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_GATEWAY_URL: http://gateway:8001
       ZAGENT_TOOLS_URL: http://tools:8002/mcp
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+      ZAGENT_DISPLAY_MODE: "0"
+      ZAGENT_MIGRATE: "0"
+      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tokenize.key
+    volumes:
+      - privacy_tokenize:/run/privacy:ro
     networks: [internal]
     depends_on:
       postgres:
@@ -36,6 +42,8 @@ services:
       gateway:
         condition: service_healthy
       tools:
+        condition: service_healthy
+      privacy:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
@@ -54,13 +62,19 @@ services:
       ZAGENT_MODEL_ROUTES: "${ZAGENT_MODEL_ROUTES:-}"
       ZAGENT_LOCAL_INGRESS: "1"
       ZAGENT_GATEWAY_AUDIT: /var/lib/zagent/gateway-audit.sqlite3
+      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/gateway.key
     volumes:
       - gateway_audit:/var/lib/zagent
+      - privacy_gateway:/run/privacy:ro
     ports:
       - "127.0.0.1:${ZAGENT_WEB_PORT:-5173}:5173"
       - "127.0.0.1:${ZAGENT_AGENT_PORT:-8000}:8000"
       - "127.0.0.1:${ZAGENT_DB_PORT:-5432}:5432"
     networks: [internal, egress]
+    depends_on:
+      privacy:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
       interval: 2s
@@ -76,12 +90,80 @@ services:
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tools.key
+    volumes:
+      - privacy_tools:/run/privacy:ro
     networks: [internal]
     depends_on:
       postgres:
         condition: service_healthy
+      privacy:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  privacy-init:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["python", "-m", "zagent.privacy_init"]
+    networks: [internal]
+    volumes:
+      - privacy_master:/keys/master
+      - privacy_tokenize:/keys/tokenize
+      - privacy_display:/keys/display
+      - privacy_tools:/keys/tools
+      - privacy_gateway:/keys/gateway
+
+  privacy:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.privacy_server:app", "--host", "0.0.0.0", "--port", "8003"]
+    environment:
+      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+    volumes:
+      - privacy_master:/run/privacy:ro
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      privacy-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8003/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  bff:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_DISPLAY_MODE: "1"
+      ZAGENT_MIGRATE: "0"
+      ZAGENT_RUNTIME_URL: http://agent:8000
+      ZAGENT_GATEWAY_URL: http://gateway:8001
+      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/display.key
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+    volumes:
+      - privacy_display:/run/privacy:ro
+    networks: [internal]
+    depends_on:
+      agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
       interval: 2s
       timeout: 5s
       retries: 30
@@ -91,10 +173,10 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     environment:
-      AGENT_URL: http://agent:8000
+      AGENT_URL: http://bff:8000
     networks: [internal]
     depends_on:
-      agent:
+      bff:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
@@ -105,6 +187,11 @@ services:
 volumes:
   postgres_data:
   gateway_audit:
+  privacy_master:
+  privacy_tokenize:
+  privacy_display:
+  privacy_tools:
+  privacy_gateway:
 
 networks:
   internal:

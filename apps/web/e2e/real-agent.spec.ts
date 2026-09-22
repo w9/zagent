@@ -148,3 +148,55 @@ test('yes after a clarifying question reaches the clinical tools', async ({ page
   await surface(page)
   await expect(page.getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
 })
+
+test('X-ray links resolved identifiers to the actual token-only model requests', async ({
+  page, request,
+}, testInfo) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  const session = await (await request.post('/api/sessions')).json()
+  await page.goto(`/sessions/${session.id}`)
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText('Ready')
+  await send(page, 'Give me the metadata of patient NGC-0041872. Show the patient table.')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
+  await surface(page)
+  await expect(page.getByRole('cell', { name: 'NGC-0041872', exact: true })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'Mira Vellorin', exact: true })).toBeVisible()
+  const model = await (await request.get(`/api/sessions/${session.id}/snapshot?representation=model`)).json()
+  expect(JSON.stringify(model)).not.toContain('NGC-0041872')
+  expect(JSON.stringify(model)).not.toContain('Mira Vellorin')
+  expect(JSON.stringify(model)).toContain('[PT_1]')
+
+  await page.getByRole('button', { name: 'X-ray', exact: true }).click()
+  const displayed = page.getByRole('region', { name: 'Displayed conversation' })
+  const modelPane = page.getByRole('region', { name: 'Model-visible requests' })
+  await expect(displayed).toContainText('NGC-0041872')
+  await expect(displayed).toContainText('find_patients')
+  const source = displayed.getByRole('button', { name: 'Highlight [PT_1]', exact: true }).first()
+  await source.click()
+  if (testInfo.project.name === 'mobile') {
+    await page.getByRole('tab', { name: 'Model', exact: true }).click()
+  }
+  await expect(modelPane).toBeVisible()
+  await expect(modelPane).toContainText('[PT_1]')
+  await expect(modelPane).not.toContainText('NGC-0041872')
+  await expect(modelPane).not.toContainText('Mira Vellorin')
+  await expect(modelPane.locator('.privacy-token[aria-pressed="true"]:visible').first()).toBeVisible()
+  const xray = await (await request.get(`/api/sessions/${session.id}/xray`)).json()
+  expect(xray.requests.length).toBeGreaterThan(1)
+  expect(JSON.stringify(xray.requests)).not.toContain('NGC-0041872')
+  expect(xray.executions.some((entry: { tool: string; arguments: { mrn?: string } }) =>
+    entry.tool === 'find_patients' && entry.arguments.mrn === 'NGC-0041872',
+  )).toBe(true)
+  if (testInfo.project.name === 'mobile') await page.setViewportSize({ width: 320, height: 568 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('privacy-xray.png'), animations: 'disabled' })
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'X-ray', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'X-ray', exact: true }).click()
+  await send(page, 'Show the specimens received in the last day for that patient.')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
+  await surface(page)
+  await expect(page.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
+  expect(errors).toEqual([])
+})

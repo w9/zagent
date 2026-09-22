@@ -1,11 +1,12 @@
 import asyncio
 import hashlib
+import inspect
 import json
 import os
 import sqlite3
 import stat
 import tempfile
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Protocol
@@ -13,6 +14,8 @@ from uuid import uuid4
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
+
+from zagent.privacy import EgressBlocked
 
 DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash"
 PROVIDERS = {
@@ -149,8 +152,10 @@ class LlmGateway:
         mode: Literal["replay", "record", "live"] = "replay",
         routes: dict[str, ModelRoute] | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
-        egress_check: Callable[[dict[str, Any]], None] | None = None,
+        egress_check: Callable[[dict[str, Any]], Awaitable[None] | None] | None = None,
         audit_path: Path | None = None,
+        protect_response: Callable[[CompletionRequest, Completion], Awaitable[Completion]]
+        | None = None,
     ):
         if mode not in {"replay", "record", "live"}:
             raise ValueError("Gateway mode must be replay, record, or live")
@@ -160,6 +165,8 @@ class LlmGateway:
         self.transport = transport
         self.egress_check = egress_check
         self.audit_path = audit_path
+        self.protect_response = protect_response
+        self.record_missing = False
         self.record_locks: dict[str, asyncio.Lock] = {}
 
     async def complete(self, request: CompletionRequest) -> Completion:
@@ -182,6 +189,9 @@ class LlmGateway:
             return completion
         except BaseException as error:
             entry["error_type"] = type(error).__name__
+            if isinstance(error, EgressBlocked):
+                entry["outcome"] = "blocked"
+                entry["alert"] = "egress_identifier"
             if (
                 self.mode == "record"
                 and isinstance(error, GatewayError)
@@ -195,6 +205,7 @@ class LlmGateway:
 
     def _audit(self, entry: dict) -> None:
         self.audit_path.parent.mkdir(parents=True, exist_ok=True)
+        model_request = entry.pop("model_request", None)
         with sqlite3.connect(self.audit_path, timeout=30) as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS gateway_audit "
@@ -208,6 +219,47 @@ class LlmGateway:
                 "INSERT INTO gateway_audit VALUES (?, ?, ?)",
                 (entry["request_id"], entry["conversation_turn_id"], canonical_json(entry)),
             )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS model_requests "
+                "(request_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, "
+                "conversation_turn_id TEXT NOT NULL, body TEXT NOT NULL)"
+            )
+            if model_request is not None:
+                connection.execute(
+                    "INSERT INTO model_requests VALUES (?, ?, ?, ?)",
+                    (
+                        entry["request_id"],
+                        entry["session_id"],
+                        entry["conversation_turn_id"],
+                        canonical_json(model_request),
+                    ),
+                )
+
+    def requests_for_session(self, session_id: str) -> list[dict]:
+        if self.audit_path is None or not self.audit_path.exists():
+            return []
+        with sqlite3.connect(self.audit_path, timeout=30) as connection:
+            exists = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'model_requests'"
+            ).fetchone()
+            if not exists:
+                return []
+            rows = connection.execute(
+                "SELECT requests.request_id, requests.conversation_turn_id, "
+                "requests.body, audit.entry "
+                "FROM model_requests AS requests JOIN gateway_audit AS audit USING (request_id) "
+                "WHERE requests.session_id = ? ORDER BY requests.rowid",
+                (session_id,),
+            )
+            return [
+                {
+                    "request_id": row[0],
+                    "conversation_turn_id": row[1],
+                    "request": json.loads(row[2]),
+                    "audit": json.loads(row[3]),
+                }
+                for row in rows
+            ]
 
     def audit_for_turn(self, conversation_turn_id: str) -> list[dict]:
         if self.audit_path is None or not self.audit_path.exists():
@@ -236,9 +288,36 @@ class LlmGateway:
             }
         )
         path = self.cassette_dir / f"{digest}.json"
-        if self.mode == "replay":
+        body = {
+            "model": route.model,
+            "messages": request.messages,
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+        }
+        if request.tools:
+            body["tools"] = request.tools
+        if request.tool_choice is not None:
+            body["tool_choice"] = request.tool_choice
+        if request.reasoning == "disabled" and route.provider == "openrouter":
+            body["reasoning"] = {"enabled": False}
+        if self.egress_check is not None:
+            checked = self.egress_check(body)
+            if inspect.isawaitable(checked):
+                await checked
+        audit["model_request"] = body
+        recorded = None
+        if self.mode == "record" and self.record_missing and path.exists():
+            recorded = json.loads(await asyncio.to_thread(path.read_text))
+            existing = (
+                recorded.get("response")
+                if request.sample is None
+                else recorded.get("samples", {}).get(str(request.sample))
+            )
+            if existing is None:
+                recorded = None
+        if self.mode == "replay" or recorded is not None:
             try:
-                cassette = json.loads(await asyncio.to_thread(path.read_text))
+                cassette = recorded or json.loads(await asyncio.to_thread(path.read_text))
             except FileNotFoundError:
                 raise CassetteMiss(
                     f"Cassette miss: {digest}. Re-record with ZAGENT_LLM_MODE=record "
@@ -264,22 +343,8 @@ class LlmGateway:
                 raise GatewayError(response["gateway_error"])
             return Completion.model_validate(response)
 
-        if self.egress_check is not None:
-            self.egress_check(normalized)
         endpoint, key_name = PROVIDERS[route.provider]
         key = await asyncio.to_thread(provider_key, key_name)
-        body = {
-            "model": route.model,
-            "messages": request.messages,
-            "temperature": request.temperature,
-            "max_tokens": request.max_tokens,
-        }
-        if request.tools:
-            body["tools"] = request.tools
-        if request.tool_choice is not None:
-            body["tool_choice"] = request.tool_choice
-        if request.reasoning == "disabled" and route.provider == "openrouter":
-            body["reasoning"] = {"enabled": False}
         try:
             async with httpx.AsyncClient(transport=self.transport, timeout=60) as client:
                 audit["provider_calls"] = 1
@@ -310,6 +375,8 @@ class LlmGateway:
             raise GatewayError("Model provider returned an invalid completion") from None
         if completion.finish_reason in {"length", "content_filter"}:
             raise GatewayError(f"Model completion interrupted: {completion.finish_reason}")
+        if self.protect_response is not None:
+            completion = await self.protect_response(request, completion)
         if self.mode == "record":
             await self._record_response(request, completion.model_dump())
         return completion
@@ -362,7 +429,10 @@ class GatewayClient:
             async with httpx.AsyncClient(timeout=90) as client:
                 response = await client.post(f"{self.url}/complete", json=request.model_dump())
             if response.is_error:
-                detail = response.json().get("detail", "Model gateway failed")
+                data = response.json()
+                if data.get("code") == "egress_identifier":
+                    raise EgressBlocked("Privacy tripwire blocked the model request.")
+                detail = data.get("detail", "Model gateway failed")
                 raise GatewayError(str(detail))
             return Completion.model_validate(response.json())
         except httpx.HTTPError:

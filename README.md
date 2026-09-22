@@ -12,12 +12,14 @@ actually asks after the demo: **how do you know it behaves that way every time?*
 It is a working agent over a synthetic pediatric genomics cohort. You can ask about specimens
 and libraries, follow up on previous results, and display tables or charts. Tool results expose
 handles and counts, not rows. A context-aware scope guard emits structured refusals for unrelated
-or unavailable work. Identifier tokenization and analysis jobs remain roadmap capabilities.
+or unavailable work. A privacy service tokenizes registered identifiers before they enter the
+agent log, and X-ray shows the displayed conversation beside actual token-only model requests.
+Analysis jobs remain roadmap capabilities.
 
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN5](docs/PLAN5.md).**
+**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN6](docs/PLAN6.md).**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
@@ -101,7 +103,7 @@ stack, run `make down` once before `make up` to replace the network layout; volu
 
 ```bash
 git clone https://github.com/w9/zagent && cd zagent
-make up            # Postgres, MCP tools, model gateway, agent, and web in replay mode.
+make up            # Postgres, privacy, BFF, MCP tools, model gateway, agent, and web in replay.
 # Open http://localhost:5173
 ```
 
@@ -117,6 +119,12 @@ In fresh sessions, `What's 2+2?`, `Write a poem about the ocean.`, and
 For a recorded contextual continuation, ask `Ask me whether I want the libraries for specimens received in the last day for NGC-0041872, before looking anything up.`, then reply `yes`.
 An unrecorded request fails with its request hash and a re-recording hint. Replay never falls
 through to a paid provider call.
+
+For the privacy workflow, start a fresh session with `Give me the metadata of patient NGC-0041872. Show the patient table.`
+The table contains the real synthetic MRN and name. Toggle **X-ray** in the header: the Model pane
+contains `[PT_1]`, while Display and tool-execution arguments show the resolved identifier.
+Select a highlighted value to highlight its token across both panes. Follow up with
+`Show the specimens received in the last day for that patient.`
 
 Previous/next controls and the history menu let you revisit earlier views. Navigating back pins
 that view while new ones arrive; selecting the latest resumes following. Refresh keeps the
@@ -149,14 +157,15 @@ inexpensive Flash model: one nonreasoning guard call with a 256-token cap, then 
 main-agent iterations at 1,200 output tokens each for allowed requests. A guard refusal stops
 before any main-agent or clinical tool call.
 
-Only the gateway joins the internet-facing network. The web, agent, MCP service, and database
-stay on an internal network. Fixed TCP forwards on the gateway publish loopback-only web,
-API, and database ports, since Docker does not publish ports from internal-only endpoints.
+Only the gateway joins the internet-facing network. The web, BFF, privacy service, agent, MCP
+service, and database stay on an internal network. Fixed TCP forwards on the gateway publish
+loopback-only web, BFF API, and database ports. A one-shot `privacy-init` container generates
+private capability files in Docker volumes and exits; it does not contain the provider key.
 
 ```bash
 make test          # Python tests, client/component tests, build, lint.
 make evals         # The shared evidence harness; writes docs/evals/index.html.
-make chaos         # 180 interruptions across HTTP cases; checks normal references too.
+make chaos         # 190 interruptions across HTTP cases; checks normal references too.
 make report        # Render stored results; evaluates first if none exist.
 make install       # Local Python and JavaScript dependencies.
 cd apps/web && npx playwright install chromium && cd ../..
@@ -165,6 +174,8 @@ make browser ZAGENT_AGENT=scripted  # Against a stack started in scripted mode.
 uv run zagent transcript <session_id>
 uv run zagent evals --filter 'SCOPE-*' --no-chaos
 uv run zagent evals --filter 'SCOPE-*' --no-chaos --mutation disable_scope_guard
+uv run zagent evals --filter 'PRIVACY-*' --no-chaos
+uv run zagent evals --filter 'DETECT-*' --no-chaos
 make down          # Stops containers; keeps the Postgres volume.
 ```
 
@@ -187,20 +198,23 @@ usage, never prompts, completions, or credentials. Compose persists it in the `g
 volume at `/var/lib/zagent/gateway-audit.sqlite3`. Host runs use
 `~/.local/state/zagent/gateway-audit.sqlite3`; `ZAGENT_GATEWAY_AUDIT` overrides that location.
 The `gateway_audit` SQLite table can be queried by `conversation_turn_id` to verify that a
-refusal had exactly one `scope_guard` call.
+refusal had exactly one `scope_guard` call. A separate `model_requests` table stores the actual
+outbound body after the tripwire passes, with tokens rather than identifiers, for X-ray. Blocked
+requests are not stored there. Provider response text is tokenized before cassette storage.
 
-For host-side hot reload, use separate terminals for `zagent.gateway:app`,
-`zagent.tools_server:app`, and `zagent.app:app` with uvicorn, plus the Vite dev server.
-Choose free ports and set `ZAGENT_GATEWAY_URL`, `ZAGENT_TOOLS_URL`, and `AGENT_URL` accordingly;
-`make db` starts Postgres and its gateway ingress, which reserves the configured published ports.
-Network isolation is enforced by the Compose stack, not by native host processes.
+Compose is the reference deployment for the capability split. Native test servers use an
+in-process privacy vault over the dedicated test database. Native live gateway processes require
+`ZAGENT_PRIVACY_URL` and their gateway capability file; unconfigured provider access fails closed.
+`make db` starts Postgres, privacy initialization, the privacy service, and gateway ingress.
+Choose free ports for host-side servers; the configured published ports are already reserved.
 
 The runtime is deliberately single-process in PLAN1. Browser disconnections never cancel a
 conversation turn. A service restart marks interrupted conversation turns as failed;
 resuming execution after a process crash belongs to PLAN8. This local stack has no
 authentication and must not be exposed publicly. Bindings are loopback-only.
 
-Existing PLAN1 databases migrate automatically without rewriting stored event history.
+Existing PLAN1 databases migrate automatically. PLAN6 preserves raw legacy history privately
+while converting active event payloads to tokens.
 The API now returns `conversation_turn_id`, snapshots expose `conversation_turn`, and lifecycle
 events are `conversation_turn_started`, `conversation_turn_finished`, and
 `conversation_turn_failed` in event schema v2. Historical v1 events are translated on read.
@@ -215,13 +229,36 @@ The harness uses a separate test database and an ephemeral HTTP server, so `make
 Postgres but not the web app. Its clock is frozen and the simulator is paused.
 Commands, golden review, seed reproduction, and statistics are in [evals/README.md](evals/README.md).
 
+### Privacy Boundary
+
+The BFF tokenizes raw user input before forwarding it. The agent API accepts typed tokenized
+messages and rejects raw identifiers at that boundary. Every event payload passes an explicit
+ingress policy before persistence. Structured tool fields use schema annotations; free text uses
+the registry dictionary and five site-format rules. Tokens have session-stable numbering.
+
+Only the clinical MCP service and BFF receive resolution capabilities. The runtime receives a
+tokenize-only capability and uses `zagent_runtime`, which cannot read clinical tables, query rows,
+the token vault, or private legacy history. The gateway receives a keyed-hash manifest and key,
+not the raw registry. A tripwire hit emits `privacy_alert` and fails the turn before provider access.
+
+The BFF resolves snapshots and SSE with token holdback, including reconnects mid-token.
+`representation=model` returns the tokenized event projection. X-ray reads actual gateway request
+records and the private execution audit; it does not infer provider inputs from displayed chat.
+
+The one-time PLAN6 migration archives original events in `privacy.legacy_events`, then tokenizes
+active payloads in one transaction. Sequence numbers and lifecycle history remain intact, and
+the append-only trigger is restored before commit. Stop the old runtime before upgrading so no
+legacy writer can append raw events during the transition. Identifier-bearing cassettes were
+archived outside the checkout and re-recorded; clean independent samples and failures were kept.
+Historical Git commits still contain synthetic pre-PLAN6 recordings; history was not rewritten.
+
 ---
 
 ## Things to try
 
 The table below is the planned full demo. Queries, tables, charts, follow-ups, and stream
-durability and structured scope refusals are available. Tokenization, job workflows, and X-ray
-remain deferred.
+durability, structured scope refusals, tokenization, and X-ray are available. Job workflows remain
+deferred.
 Each workflow exercises a specific row in the guarantee table.
 
 | Ask it | What happens | Guarantee |
@@ -273,9 +310,11 @@ low library coverage, and a missing matched normal. Evals use a frozen clock and
 
 ## Running the evidence suite
 
-The suite covers twelve requirements with 318 cases. Eighteen HTTP cases cover streams, views,
+The suite covers sixteen requirements with 419 cases. Nineteen HTTP cases cover streams, views,
 tools, RLS, real conversations, refusals, and contextual continuation. The 300 labeled guard
 cases span obvious requests, short continuations, near-boundary questions, and scope wrappers.
+Another 100 detector cases cover literal MRNs and names across all five sites. Full runs scan
+active events, gateway request records, cassettes, and goldens for known identifiers.
 The same evaluator serves pytest and `zagent evals`.
 
 The suite is the point of the project, so it is a first-class artifact rather than a test
@@ -299,16 +338,20 @@ REQ-GROUND-01        measured   PASS          6/6        [61.0%, 100.0%]
 REQ-CTX-01           measured   PASS          3/3        [43.9%, 100.0%]
 REQ-PRESENT-01       measured   PASS          9/9        [70.1%, 100.0%]
 REQ-SCOPE-01         measured   PASS          1000/1000  [99.6%, 100.0%]
-REQ-SCOPE-02         measured   PASS          1933/2000  [95.8%, 97.4%]
+REQ-SCOPE-02         measured   PASS          1925/2000  [95.3%, 97.0%]
 REQ-SCOPE-03         invariant  PASS          3009/3009  [99.9%, 100.0%]
+REQ-PHI-01           invariant  PASS          10/10      [72.2%, 100.0%]
+REQ-PHI-02           invariant  PASS          10/10      [72.2%, 100.0%]
+REQ-PHI-03           invariant  PASS          1/1        [20.7%, 100.0%]
+REQ-PHI-04           measured   PASS          100/100    [96.3%, 100.0%]
 
-12 requirements, 3204 trials, 67 failed trials; 222 HTTP case executions.
+16 requirements, 3315 trials, 75 failed trials; 234 HTTP case executions.
 Report: docs/evals/index.html
 ```
 
-The scope gates pass without hiding failures: 66 in-scope samples were over-refused and one
-provider connection failed. Refusal precision is 93.8% [92.2%, 95.1%]; recall is 100%
-[99.6%, 100%]. In-scope acceptance is 96.7% [95.8%, 97.4%]. Six cases have differing trial
+The scope gates pass without hiding failures: 74 in-scope samples were over-refused and one
+provider connection failed. Refusal precision is 93.1% [91.4%, 94.5%]; recall is 100%
+[99.6%, 100%]. In-scope acceptance is 96.2% [95.3%, 97.0%]. Seven cases have differing trial
 outcomes and are listed for review. These figures describe this curated corpus, not a held-out
 estimate of production accuracy or prompt-injection resistance.
 
@@ -350,9 +393,9 @@ refresh cannot lose a stream. The same log is the eval trace, so behavioral asse
 against the exact bytes the UI rendered. The model works with query handles rather than rows;
 the browser resolves data through a session-scoped endpoint. MCP dispatch validates arguments,
 allowlists tools, bounds results, and writes an audit log. Clinical queries run under fixed
-per-site Postgres roles. The gateway owns provider routing, record/replay, and a future egress
-tripwire hook. User-provided synthetic identifiers still reach the model: tokenization is PLAN6,
-and Kubernetes NetworkPolicy is PLAN9.
+per-site Postgres roles. The privacy service owns detection and the vault; the BFF and clinical
+tools resolve at their respective edges. The gateway owns provider routing, record/replay,
+token-only request recording, and the keyed-hash tripwire. Kubernetes NetworkPolicy is PLAN9.
 
 Before the tool loop, the scope guard reads recent conversation and the latest draft state.
 It and the main agent share one hashed scope-policy fragment. Refusals have a closed reason code
@@ -375,7 +418,7 @@ green, so correctness is visible at every step rather than at the end.
 | [PLAN3](docs/PLAN3.md) | The working surface: view specs and the view stack | Complete |
 | [PLAN4](docs/PLAN4.md) | The real agent: LLM gateway, record/replay, tool loop | Complete |
 | [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | Complete |
-| [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | ☐ |
+| [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | Complete |
 | [PLAN7](docs/PLAN7.md) | Job drafts and version-bound confirmation | ☐ |
 | [PLAN8](docs/PLAN8.md) | Execution: dispatcher, OTel job logs, live views | ☐ |
 | [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | ☐ |
@@ -405,9 +448,11 @@ Choices and the reasoning behind them are in [docs/ARCHITECTURE.md](docs/ARCHITE
 - **Not affiliated with any institution.** This is an independent personal project. It
   implements no proprietary pipeline, schema or interface, and it is not derived from any
   employer's codebase.
-- **The privacy boundary is not implemented yet.** Never enter real identifiers or clinical
-  data. PLAN6 adds tokenization and a tripwire; detector recall will be measured separately.
-  Nothing here is a compliance certification.
+- **Privacy is precisely scoped.** Never enter real clinical data. Registered literal names,
+  MRNs, specimen/library IDs, annotated fields, and site-format rules are protected. Obfuscated
+  mentions, unknown free-text names, rare diagnoses, dates, or combinations of site and age are
+  not a total de-identification guarantee. Adversarial detector expansion is PLAN10. This local,
+  unauthenticated demo uses development database credentials and is not a security certification.
 
 ## License
 

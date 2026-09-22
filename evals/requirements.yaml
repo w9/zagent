@@ -102,3 +102,30 @@
     - services/agent/zagent/evals/assertions.py
   mutations: [emit_unstructured_refusal, invent_refusal_reason]
   cases: [REFUSE-001, REFUSE-002, REFUSE-003, REFUSE-004, REFUSE-005, REFUSE-006, ALLOW-001]
+
+- id: REQ-PHI-01
+  tier: invariant
+  statement: Rule-matched identifiers never appear in recorded outbound model requests.
+  enforced_by: [services/agent/zagent/privacy.py, services/agent/zagent/llm.py]
+  mutations: [bypass_ingress_tokenization]
+  cases: [PRIVACY-001, REAL-001, REAL-002, ALLOW-001]
+
+- id: REQ-PHI-02
+  tier: invariant
+  statement: Active event logs, goldens and cassettes contain no known clinical identifiers.
+  enforced_by: [services/agent/zagent/store.py, services/agent/zagent/evals/privacy.py]
+  mutations: [persist_raw_event_payload]
+  cases: [PRIVACY-001, REAL-001, REAL-002, ALLOW-001]
+
+- id: REQ-PHI-03
+  tier: invariant
+  statement: Tokenized patient queries execute with the correct real MRN and resolve fixture values for display.
+  enforced_by: [services/agent/zagent/tools.py, services/agent/zagent/display.py]
+  mutations: [resolve_wrong_session_token, disable_display_resolution]
+  cases: [PRIVACY-001]
+
+- id: REQ-PHI-04
+  tier: measured
+  statement: The detector recognizes literal MRNs and names across all five fixture sites.
+  threshold: {min_lower_bound: 0.95, trials: 1}
+  cases: []

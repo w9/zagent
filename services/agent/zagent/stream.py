@@ -7,6 +7,7 @@ from uuid import UUID
 import asyncpg
 from fastapi import Request
 
+from zagent.display import SessionDisplay
 from zagent.store import NOTIFY_CHANNEL, Store
 
 
@@ -50,6 +51,7 @@ async def tail_events(
     *,
     follow: bool,
     poll_seconds: float,
+    display: SessionDisplay | None = None,
 ):
     yield "retry: 1000\n\n"
     async with notifications.subscribe(session_id) as signal:
@@ -58,7 +60,8 @@ async def tail_events(
             signal.clear()
             events = await store.events_after(session_id, cursor)
             for event in events:
-                yield f"id: {event.seq}\nevent: log\ndata: {event.model_dump_json()}\n\n"
+                rendered = await display.event(event) if display is not None else event
+                yield f"id: {event.seq}\nevent: log\ndata: {rendered.model_dump_json()}\n\n"
                 cursor = event.seq
             if events:
                 continue

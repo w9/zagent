@@ -76,6 +76,8 @@ cases:
       - user: "yes"
     expect:
       golden: goldens/ALLOW-001.json
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
       refusal: none
       events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
       events_exclude: [refused, conversation_turn_failed]

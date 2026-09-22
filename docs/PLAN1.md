@@ -1,6 +1,6 @@
 # PLAN1: The Spine
 
-**Status:** not started
+**Status:** complete
 **Depends on:** nothing
 **Shippable outcome:** tokens stream into a chat panel, and refreshing the browser mid-stream
 picks up exactly where it left off.
@@ -125,14 +125,35 @@ It is fifteen lines and it is the foundation of every later assertion.
 
 ## Definition of done
 
-- [ ] `make up` brings up Postgres, the agent service and the web app, seeded and migrated.
-- [ ] Sending a message streams visible text into the chat panel with realistic pacing.
-- [ ] Refreshing mid-stream resumes with no gap and no duplication.
-- [ ] Closing the tab mid-stream and reopening shows the completed run.
-- [ ] Two tabs on one session stream simultaneously and agree.
-- [ ] A run that raises emits `run_failed` and the UI shows a failed state rather than hanging.
-- [ ] `zagent transcript <session_id>` prints the normalized transcript.
-- [ ] The two tests below pass.
+- [x] `make up` brings up Postgres, the agent service and the web app, seeded and migrated.
+- [x] Sending a message streams visible text into the chat panel with realistic pacing.
+- [x] Refreshing mid-stream resumes with no gap and no duplication.
+- [x] Closing the tab mid-stream and reopening shows the completed run.
+- [x] Two tabs on one session stream simultaneously and agree.
+- [x] A run that raises emits `run_failed` and the UI shows a failed state rather than hanging.
+- [x] `zagent transcript <session_id>` prints the normalized transcript.
+- [x] The two tests below pass.
+
+## Implementation notes
+
+- Backend: [services/agent/zagent](../services/agent/zagent), with separate store, runtime,
+	agent, stream, and HTTP modules. Startup runs versioned SQL migrations and seeds one empty
+	session. Event updates and deletes are rejected by a database trigger.
+- Client: [apps/web](../apps/web), using a snapshot cursor followed by native `EventSource`.
+	Duplicate sequences are ignored, gaps trigger a fresh snapshot, and `message_dropped`
+	removes a message in both the browser and server projections.
+- `/events` defaults to a finite feed once a nonempty session is caught up and its run is
+	terminal. `follow=true` keeps a live session subscription open for future runs and other
+	tabs. A `caught_up` control frame reports the current cursor and active-run state without
+	allocating an event sequence. The UI's completion state comes from terminal log events.
+- Deltas flush every 180 ms. NOTIFY wakes readers; a two-second poll is the backstop.
+	Normalization merges consecutive deltas for the same message before comparing goldens,
+	making timer boundaries irrelevant to transcript evidence.
+- Send `/fail` to exercise an agent exception. Runtime restarts fail abandoned runs; journal
+	recovery remains out of scope. Deploy exactly one agent runtime process in this increment.
+- Verification: `make test`, `make chaos`, and `make browser`. Browser tests cover refresh,
+	two tabs, physical SSE socket interruption with native `Last-Event-ID`, tab closure,
+	failed runs, and desktop/mobile layouts. See [evals/README.md](../evals/README.md).
 
 ---
 

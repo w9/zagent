@@ -17,6 +17,11 @@ machine-checked evidence, regenerated on every commit.
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
+**Implemented: [PLAN1](docs/PLAN1.md).** The running app has a Postgres event log, a
+scripted background agent, and a resumable three-panel chat client. The domain workflows,
+LLM, privacy boundary, and evidence harness described below are the roadmap, not shipped
+capabilities. No model or clinical system is called in this increment.
+
 ---
 
 ## The idea
@@ -74,34 +79,60 @@ Two controls matter more than the rest:
 
 ## Quick start
 
-Replay mode is the default. It needs no API key, makes no network calls, and is deterministic,
-so the demo and the full evidence suite run identically on your laptop and in CI.
+Prerequisites: Docker with Docker Compose v2. PLAN1 runs a deterministic YAML script, needs
+no API key, and makes no external calls at runtime. Images and dependencies download on the
+first build. For local tests and the CLI, install uv, Python 3.12, and Node.js 24 or newer.
 
 ```bash
 git clone https://github.com/w9/zagent && cd zagent
-make up            # Postgres, agent, web. Seeds the synthetic cohort.
-open http://localhost:5173
+make up            # Postgres 16, agent, web; migrates and seeds an empty session.
+# Open http://localhost:5173
 ```
+
+Send any message, refresh halfway through, or open the same session URL in two tabs. Sending
+`/fail` exercises the failed-run state. The working surface is intentionally empty in PLAN1.
+Session URLs survive refresh; reopening `/` restores the last session in that browser.
 
 ```bash
-make evals         # the full suite in replay mode. No key, no cost.
-make chaos         # 50 interrupted runs, diffed against goldens.
-make report        # regenerate docs/evals/index.html
+make test          # Python tests, 50 seeded reconnect trials, client tests, build, lint.
+make chaos         # Only the 50 seeded SSE interruption trials.
+make install       # Local Python and JavaScript dependencies.
+cd apps/web && npx playwright install chromium && cd ../..
+make browser       # Browser acceptance tests against the running app.
+uv run zagent transcript <session_id>
+make down          # Stops containers; keeps the Postgres volume.
 ```
 
-To run against a live provider:
+API docs: <http://localhost:8000/docs>. The CLI can also run inside the agent container:
 
 ```bash
-cp .env.example .env    # set ZAGENT_LLM_PROVIDER and the matching key
-make up MODE=live
-make evals MODE=live    # records new cassettes as it goes
+docker compose --project-directory . -f deploy/compose/compose.yaml exec agent \
+  zagent transcript <session_id>
 ```
+
+Configuration is listed in [.env.example](.env.example); copy it to `.env` for Make/Compose
+overrides. `ZAGENT_WEB_PORT`, `ZAGENT_AGENT_PORT`, and `ZAGENT_DB_PORT` change the published
+ports. Update `DATABASE_URL` and `ZAGENT_TEST_DATABASE_URL` too when changing the database
+port for host-side commands. Browser tests accept `ZAGENT_WEB_URL`.
+
+For hot-reload development, run `make db`, `uv run uvicorn zagent.app:app --reload`, and
+`npm --prefix apps/web run dev` in separate terminals, with the Compose agent and web stopped.
+The Vite proxy uses `AGENT_URL` (default `http://127.0.0.1:8000`).
+
+The runtime is deliberately single-process in PLAN1. Browser disconnections never cancel a
+run. A service restart marks interrupted runs as failed instead of leaving them hanging;
+resuming execution after a process crash belongs to PLAN8. This local stack has no
+authentication and must not be exposed publicly. Bindings are loopback-only.
+
+`make evals`, `make report`, live providers, and clinical cohort seeding belong to later plans.
+The current evidence and seed-reproduction commands are in [evals/README.md](evals/README.md).
 
 ---
 
 ## Things to try
 
-Each of these exercises a specific row in the guarantee table.
+The table below is the planned full demo. Only stream durability is available in PLAN1.
+Each workflow exercises a specific row in the guarantee table.
 
 | Ask it | What happens | Guarantee |
 |---|---|---|
@@ -150,6 +181,9 @@ evals.
 ---
 
 ## Running the evidence suite
+
+**Roadmap:** the harness and report below begin in PLAN2. Today, `make test` runs the two
+hand-written stream requirements plus storage, reducer, HTTP, and CLI checks.
 
 The suite is the point of the project, so it is a first-class artifact rather than a test
 directory.
@@ -212,7 +246,7 @@ green, so correctness is visible at every step rather than at the end.
 
 | Plan | Increment | Status |
 |---|---|---|
-| [PLAN1](docs/PLAN1.md) | The spine: event log, SSE resume, scripted agent | ☐ |
+| [PLAN1](docs/PLAN1.md) | The spine: event log, SSE resume, scripted agent | Complete |
 | [PLAN2](docs/PLAN2.md) | The evidence harness: golden transcripts, chaos suite | ☐ |
 | [PLAN3](docs/PLAN3.md) | The working surface: view specs and the view stack | ☐ |
 | [PLAN4](docs/PLAN4.md) | The real agent: LLM gateway, record/replay, tool loop | ☐ |

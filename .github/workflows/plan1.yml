@@ -1,0 +1,67 @@
+name: PLAN1
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  spine:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: zagent
+          POSTGRES_PASSWORD: zagent
+          POSTGRES_DB: zagent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zagent -d zagent_test"
+          --health-interval 1s --health-timeout 5s --health-retries 30
+    env:
+      ZAGENT_TEST_DATABASE_URL: postgresql://zagent:zagent@localhost:5432/zagent_test
+      UV_PYTHON: "3.12"
+      UV_LINK_MODE: copy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.3"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: make install
+      - run: uv run --frozen pytest
+      - run: npm --prefix apps/web test
+      - run: npm --prefix apps/web run build
+      - run: make lint
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm --prefix apps/web ci
+      - run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - run: make up
+      - run: make browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-evidence
+          path: apps/web/test-results
+          retention-days: 7
+      - if: failure()
+        run: docker compose --project-directory . -f deploy/compose/compose.yaml logs
+      - if: always()
+        run: make down

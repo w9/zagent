@@ -1,0 +1,24 @@
+word_delay_ms: 85
+steps:
+  - delay_ms: 400
+    event:
+      type: text_delta
+      payload:
+        message_id: answer
+        text: "Message received.\n\n"
+  - delay_ms: 250
+    event:
+      type: text_delta
+      payload:
+        message_id: answer
+        text: "For this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\n"
+  - delay_ms: 300
+    event:
+      type: text_delta
+      payload:
+        message_id: answer
+        text: "No records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
+  - event:
+      type: message_done
+      payload:
+        message_id: answer

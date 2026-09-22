@@ -1,0 +1,7 @@
+[
+  {"type": "user_message", "payload": {"text": "Hello"}},
+  {"type": "run_started", "payload": {}},
+  {"type": "text_delta", "payload": {"text": "Message received.\n\nFor this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\nNo records have been queried and no analysis has been started. This response is a fixed script, independent of your message."}},
+  {"type": "message_done", "payload": {}},
+  {"type": "run_finished", "payload": {}}
+]

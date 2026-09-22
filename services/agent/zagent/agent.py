@@ -11,6 +11,14 @@ from pydantic import BaseModel, Field, model_validator
 
 from zagent.events import Event, EventDraft, EventType
 from zagent.llm import Completer, CompletionRequest, canonical_json
+from zagent.scope import (
+    REFUSE_TOOL,
+    SCOPE_POLICY,
+    SCOPE_POLICY_HASH,
+    RefuseArguments,
+    ScopeGuard,
+    refusal,
+)
 from zagent.store import AgentSession, Store
 from zagent.tools import TOOL_DEFINITIONS, ToolsGateway
 
@@ -21,7 +29,8 @@ class Agent(Protocol):
     async def run_turn(self, session: AgentSession, emit: Emit) -> None: ...
 
 
-SYSTEM_PROMPT = """You are the assistant in a synthetic genomics workbench.
+SYSTEM_PROMPT = (
+    """You are the assistant in a synthetic genomics workbench.
 Answer the user's question using the four available tools when clinical data is needed.
 The session is already scoped to one hospital. Never invent patient or specimen details.
 Data tools return only query handles, counts and column schemas. You cannot see row contents.
@@ -36,7 +45,12 @@ Make numeric claims about cohort data only when supported by tool counts in this
 Do not claim to have inspected individual values. Explain that row-level analysis would require
 an explicit aggregate tool if the available counts and schemas cannot answer a question.
 Keep answers concise. Do not claim that an analysis or job was run.
+If a refusal is needed, call refuse(code) without any accompanying prose or other tool calls.
 """
+    "Never improvise refusal prose. Answer platform capability questions helpfully, "
+    "including limitations.\n" + SCOPE_POLICY
+)
+MAIN_TOOLS = [*TOOL_DEFINITIONS, REFUSE_TOOL]
 
 
 def conversation_messages(events: list[Event]) -> list[dict[str, Any]]:
@@ -77,6 +91,8 @@ def conversation_messages(events: list[Event]) -> list[dict[str, Any]]:
                     "content": canonical_json(payload["result"]),
                 }
             )
+        elif event.type == "refused":
+            messages.append({"role": "assistant", "content": payload["message"]})
     return messages
 
 
@@ -89,6 +105,7 @@ class LlmAgent:
         *,
         max_iterations: int = 8,
         route: str = "default",
+        guard: ScopeGuard | None = None,
     ):
         if not 1 <= max_iterations <= 20:
             raise ValueError("max_iterations must be between 1 and 20")
@@ -97,9 +114,20 @@ class LlmAgent:
         self.tools = tools
         self.max_iterations = max_iterations
         self.route = route
+        self.guard = guard if guard is not None else ScopeGuard(gateway, route=route)
 
     async def run_turn(self, session: AgentSession, emit: Emit) -> None:
-        messages = conversation_messages(await self.store.snapshot_events(session.id))
+        events = await self.store.snapshot_events(session.id)
+        metadata = {
+            "session_id": str(session.id),
+            "conversation_turn_id": str(session.conversation_turn_id),
+            "scope_hash": SCOPE_POLICY_HASH,
+        }
+        rejected = await self.guard.classify(events, metadata=metadata)
+        if rejected is not None:
+            await emit(EventDraft(type="refused", payload=rejected.model_dump()))
+            return
+        messages = conversation_messages(events)
         for iteration in range(1, self.max_iterations + 1):
             step_id = f"{session.conversation_turn_id}:step-{iteration}"
             await emit(
@@ -115,10 +143,29 @@ class LlmAgent:
                 CompletionRequest(
                     route=self.route,
                     messages=messages,
-                    tools=TOOL_DEFINITIONS,
+                    tools=MAIN_TOOLS,
+                    metadata={**metadata, "purpose": "agent"},
                 )
             )
             message = completion.message
+            refusals = [call for call in message.tool_calls if call.function.name == "refuse"]
+            if refusals:
+                if len(message.tool_calls) != 1:
+                    raise RuntimeError("A refusal cannot be combined with other tool calls")
+                rejected = refusal(
+                    RefuseArguments.model_validate_json(refusals[0].function.arguments).code
+                )
+                await emit(EventDraft(type="refused", payload=rejected.model_dump()))
+                await emit(
+                    EventDraft(
+                        type="step_finished",
+                        payload={
+                            "step_id": step_id,
+                            "detail": "Request declined",
+                        },
+                    )
+                )
+                return
             messages.append(message.as_message())
             if message.content:
                 message_id = f"{session.conversation_turn_id}:answer-{iteration}"

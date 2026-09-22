@@ -4,11 +4,23 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ViewRenderer } from './view-renderer'
 import { StepMarker } from './step-marker'
+import { RefusalChip } from './refusal-chip'
 import { validateViewSpec } from '../lib/views'
 import type { ChartSpec, TableData, TableSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
 
 afterEach(cleanup)
+
+it('renders refusal reasons and helpful messages as text, not assistant prose or markup', () => {
+  const { container } = render(<RefusalChip refusal={{
+    id: 'turn', seq: 3, code: 'requires_human_authority',
+    message: 'An authorized person must approve this. <script>not markup</script>',
+  }} />)
+  expect(screen.getByRole('status').textContent).toBe('Human authorization required')
+  expect(screen.getByTestId('refusal').getAttribute('data-reason')).toBe('requires_human_authority')
+  expect(screen.getByText(/An authorized person/)).toBeTruthy()
+  expect(container.querySelector('script')).toBeNull()
+})
 
 const embed = vi.hoisted(() => vi.fn(async () => ({
   finalize: vi.fn(),

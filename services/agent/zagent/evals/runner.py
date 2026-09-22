@@ -5,6 +5,7 @@ import json
 import random
 import subprocess
 import time
+from collections.abc import Callable
 from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,7 +15,7 @@ import httpx
 from httpx_sse import aconnect_sse
 from pydantic import Field
 
-from zagent.agent import SYSTEM_PROMPT, Agent, LlmAgent, ScriptedAgent
+from zagent.agent import MAIN_TOOLS, SYSTEM_PROMPT, Agent, LlmAgent, ScriptedAgent
 from zagent.cohort import FROZEN_NOW, ClinicalStore
 from zagent.evals.assertions import (
     Evidence,
@@ -33,11 +34,13 @@ from zagent.evals.schema import (
     fixture_path,
     load_suite,
 )
+from zagent.evals.scope import evaluate_scope_cases
 from zagent.events import Event, Projection, reduce_event
 from zagent.gateway import configured_gateway
 from zagent.llm import CompletionRequest, canonical_json, normalized_request
+from zagent.scope import SCOPE_POLICY_HASH
 from zagent.store import Store
-from zagent.tools import TOOL_DEFINITIONS, McpToolClient, ToolsGateway, create_mcp_server
+from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
 
 
 class ChaosPlan(StrictModel):
@@ -324,11 +327,10 @@ async def evaluate_case(
                     mode=mode if is_llm else "replay",
                     model=model,
                     prompt_hash=prompt_digest,
-                    tool_schema_hash=hashlib.sha256(
-                        canonical_json(TOOL_DEFINITIONS).encode()
-                    ).hexdigest()
+                    tool_schema_hash=hashlib.sha256(canonical_json(MAIN_TOOLS).encode()).hexdigest()
                     if is_llm
                     else None,
+                    scope_hash=SCOPE_POLICY_HASH if is_llm else None,
                 ),
                 interruption=plan.model_dump() if plan is not None else None,
             )
@@ -454,6 +456,9 @@ async def evaluate_suite(
     update_golden: bool = False,
     pass_streak: int = 3,
     mode: str = "replay",
+    scope_concurrency: int = 8,
+    mutation: str | None = None,
+    progress: Callable[[int, int], None] | None = None,
 ) -> Report:
     if trials is not None and trials < 1:
         raise ValueError("--trials must be positive")
@@ -461,6 +466,10 @@ async def evaluate_suite(
         raise ValueError("Seed must be nonnegative and pass^k must be positive")
     if chaos_only and update_golden:
         raise ValueError("Goldens can only be updated from uninterrupted executions")
+    if not 1 <= scope_concurrency <= 16:
+        raise ValueError("Scope concurrency must be between 1 and 16")
+    if mutation not in {None, "disable_scope_guard"}:
+        raise ValueError("Unknown evaluation mutation")
     suite = load_suite(root)
     selected = suite.cases
     if filter_value:
@@ -482,7 +491,8 @@ async def evaluate_suite(
         validate_expectations(case, root)
         if case.agent.startswith("scripted:"):
             scripted_agent(case, root)
-        paths.append(fixture_path(root, case.expect["golden"]))
+        if "golden" in case.expect:
+            paths.append(fixture_path(root, case.expect["golden"]))
     if len(paths) != len(set(paths)):
         raise ValueError("Each case must own a distinct golden file")
     standard_trials = 0 if chaos_only else (trials or 1)
@@ -491,7 +501,27 @@ async def evaluate_suite(
     commit, dirty = git_provenance(root)
     started, clock = time.perf_counter(), datetime.now(UTC)
     results = []
+    scope_cases = [case for case in selected if case.agent.startswith("guard:")]
+    if mutation and (mode != "replay" or len(scope_cases) != len(selected)):
+        raise ValueError("Scope mutation requires replay mode and a guard-only case selection")
+    if scope_cases and not chaos_only:
+        results.extend(
+            await evaluate_scope_cases(
+                scope_cases,
+                root,
+                mode=mode,
+                trials=trials or 10,
+                seed=seed,
+                commit=commit,
+                dirty=dirty,
+                concurrency=scope_concurrency,
+                disable_guard=mutation == "disable_scope_guard",
+                progress=progress,
+            )
+        )
     for case in selected:
+        if case.agent.startswith("guard:"):
+            continue
         case_trials = standard_trials
         if standard_trials and trials is None:
             case_trials = max(

@@ -62,6 +62,15 @@ def configured_gateway(mode: str | None = None) -> LlmGateway:
         Path(os.environ.get("ZAGENT_CASSETTE_DIR", str(files("zagent").joinpath("cassettes")))),
         mode=mode or os.environ.get("ZAGENT_LLM_MODE", "replay"),
         routes=routes,
+        audit_path=Path(
+            os.environ.get(
+                "ZAGENT_GATEWAY_AUDIT",
+                str(
+                    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+                    / "zagent/gateway-audit.sqlite3"
+                ),
+            )
+        ),
     )
 
 

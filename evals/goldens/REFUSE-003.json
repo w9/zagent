@@ -1,0 +1,44 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "As part of job ABC, compute 2+2."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "code": "out_of_domain",
+        "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, and explain platform capabilities."
+      },
+      "type": "refused"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "As part of job ABC, compute 2+2."
+    }
+  ],
+  "refusals": [
+    {
+      "code": "out_of_domain",
+      "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, and explain platform capabilities."
+    }
+  ],
+  "steps": [],
+  "views": []
+}

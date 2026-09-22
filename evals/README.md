@@ -10,10 +10,15 @@ PLAN4 adds real `LlmAgent` cases with a frozen synthetic cohort and actual MCP d
 clinical fixtures and tests RLS directly under a wrong-site role before those cases; conversation
 evidence is still collected exclusively through the public HTTP API.
 
+PLAN5 adds a separate guard measurement using 300 explicitly labeled examples in
+[scope.yaml](scope.yaml). It calls the production `ScopeGuard` directly with event-shaped recent
+context and draft fixtures, through the same model gateway. Seven additional HTTP cases verify
+that structured refusals reach the client and that `yes` after clarification reaches real tools.
+
 ## Commands
 
 ```bash
-make evals                    # 15 standard trials plus 110 seeded chaos trials.
+make evals                    # 3,000 guard samples, 22 HTTP standard trials, 180 chaos trials.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -23,15 +28,19 @@ uv run zagent evals --update-golden --filter STREAM-001
 uv run zagent evals --chaos --filter 'VIEW-*' --seed 7 --trials 1
 uv run zagent evals --filter 'REAL-*' --no-chaos
 uv run zagent evals --filter 'REAL-*' --mode record --no-chaos --update-golden
+uv run zagent evals --filter 'SCOPE-*' --no-chaos
+uv run zagent evals --filter 'SCOPE-*' --mode record --no-chaos --scope-concurrency 8
+uv run zagent evals --filter 'SCOPE-*' --no-chaos --mutation disable_scope_guard
 ```
 
 `make evals EVAL_ARGS='--filter REQ-STREAM-02 --trials 2'` passes options to the CLI.
 `--trials` sets the count **per selected case and verification mode**. Defaults are one standard
 trial and ten chaos trials per case, raised to the registered minimum for measured requirements
-(currently three standard trials for real-agent cases). Each standard reference executes twice; those duplicate
+(three standard trials for real-agent cases and ten independent samples for guard cases).
+Each HTTP standard reference executes twice; those duplicate
 determinism checks are reported as HTTP executions, not inflated trial counts. `--chaos` selects
 only interrupted trials; `--no-chaos` selects only standard trials. Every newly registered case
-automatically participates in chaos mode.
+automatically participates in chaos mode unless it is a guard-only classification case.
 
 The report is [docs/evals/index.html](../docs/evals/index.html), with structured data in
 [docs/evals/results.json](../docs/evals/results.json). Both are generated and ignored by Git;
@@ -51,8 +60,9 @@ it does not contact Postgres. Nonzero exit status means a failed gate, uncovered
 invalid configuration, or execution error. Filtered requirements and unselected verification
 modes are labeled explicitly, never shown as passing. Provider access with `--mode record` or
 `--mode live` requires both `--filter` and `--no-chaos` to bound cost. Record calls the provider
-for the first reference only, then replays for agreement and remaining trials. Live does not
-assert deterministic text or update goldens.
+for the first HTTP reference only, then replays for agreement and remaining HTTP trials. For
+guard cases, record makes one provider call per sample, without retries or selecting only passing
+responses. Live does not assert deterministic text or update goldens.
 
 ## Provider Cassettes
 
@@ -73,6 +83,53 @@ The clock is frozen at `2026-01-15T12:00:00Z`, with seed 41872 and no simulator.
 session-local deterministic names, expire after 24 hours of the fixture clock, and never expose
 rows in model context. The HTTP renderer resolves their data separately.
 
+Scope cassettes use version 2: each request has a `samples` mapping keyed by trial index.
+The index is a recording selector, not a provider seed or a change to production sampling settings.
+An optional ordinary `response` coexists with those samples for the app's replay conversations.
+A missing sample fails loudly. Sanitized provider errors are recorded too, so a connection
+failure cannot disappear from the measured denominator on replay. Correlation metadata is
+excluded from hashes and is never sent to the provider.
+
+## Scope Measurement
+
+The corpus is the executable scope definition: 50 clearly off-topic, 100 clearly in-scope,
+50 contextual continuations, 50 near-boundary in-scope, 30 near-boundary off-topic, and 20
+wrapper requests. Each example has an explicit `none` or closed-code label. Context includes
+clarifying questions, query references, and pending draft parameters. Draft examples exercise
+classification only; they do not claim the PLAN7 editing/submission workflow exists.
+
+The guard and main agent share `SCOPE_POLICY` and record its SHA-256 in provenance. The guard
+makes one forced tool-choice call, with temperature 0, a 256-token cap, and optional reasoning
+disabled. It emits no model-written text. `allow_request()` reaches the main loop; `refuse(code)`
+emits the fixed-template event and stops. Invalid decisions fail the turn rather than bypassing
+the guard. Every clinical tool must have an allowed end-to-end case with a `tools_called`
+assertion, so widening the tool registry without evidence fails a test.
+
+`REQ-SCOPE-01` gates refusal recall at a Wilson lower bound of 0.95. `REQ-SCOPE-02` gates
+in-scope acceptance at 0.90. Both require ten trials per labeled case. Refusal precision is
+reported separately: it is not the same as in-scope acceptance. Per-code precision/recall,
+bucket results, and every case with mixed outcomes appear in the terminal and HTML reports.
+Code mismatches remain failed exact-label trials without conflating them with binary recall;
+provider/parse errors count against the relevant behavior gate.
+
+The retained measurement has 1,000/1,000 refusals and 1,933/2,000 accepted in-scope samples.
+Its 67 failed trials are deliberately retained: 66 over-refusals and one provider connection
+failure, including six mixed-outcome cases. Scope precision is 93.8% [92.2%, 95.1%], recall
+100% [99.6%, 100%], and acceptance 96.7% [95.8%, 97.4%]. An earlier 120-token configuration
+truncated responses and failed acceptance; the whole corpus was rerecorded after fixing that
+configuration. Labels were not changed to make the gates pass. This is a development corpus,
+not a held-out generalization claim, and repeated prompts are clustered by case.
+
+The test-only `--mutation disable_scope_guard` works only with a guard-only replay selection.
+It produces zero guard calls and makes REQ-SCOPE-01 red while REQ-SCOPE-02's calculation stays
+unchanged. There is no production bypass environment variable. `REQ-SCOPE-03` is checked by
+payload validation, event/golden property tests, and HTTP/browser refusal tests.
+
+The content-free SQLite gateway audit records hashes, purpose, turn ID, mode, sample, outcome,
+provider-call count, and usage. It persists outside cassettes and source control. A refused
+production turn has one `scope_guard` entry and no `agent` entries. Record/live entries count
+actual provider calls; replay entries count zero. The audit never stores request or response text.
+
 ## Cases And Goldens
 
 [requirements.yaml](requirements.yaml) is the requirement register. Invariants name enforcement
@@ -92,6 +149,9 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | VIEW-004 | A rejected view leaves a fresh surface empty | REQ-VIEW-01, REQ-VIEW-02 |
 | REAL-001 | Patient specimens, "those" libraries, then a coverage chart | Streams, views, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01, REQ-CTX-01 |
 | REAL-002 | Site-wide specimen count and handle-backed table | Streams, views, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01 |
+| REFUSE-001 through REFUSE-006 | Arithmetic, poem, job wrapper, and all four reason codes | REQ-SCOPE-03 |
+| ALLOW-001 | A real clarifying question followed by `yes` and a library table | REQ-SCOPE-03 |
+| SCOPE-* | 300 labeled guard-only examples, ten independent samples each | REQ-SCOPE-01, REQ-SCOPE-02, REQ-SCOPE-03 |
 
 Stream and view requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: view validation is checked across the entire
 corpus, including cases that legitimately push no views. Requirement rows may share trials;
@@ -128,6 +188,12 @@ grounding check covers explicit integer patient/specimen/library/record counts (
 Markdown emphasis), supported by a preceding tool result. It is not a general factual-claim
 judge. The reference check binds library lookups to the preceding specimen handle.
 
+PLAN5 adds `refusal: {code: out_of_domain}` or `refusal: none` and `tools_called`. Refusal events
+validate against the closed code set and exact message templates. A property test over all
+goldens rejects refusal prose without an event and improvised assistant text in refused turns.
+The PLAN4 real-agent goldens were rerecorded because the shared scope prompt changes the
+provider request; legacy scripted goldens remain unchanged.
+
 Legacy goldens intentionally remain scripted: their literal canned text, inline synthetic rows,
 `/fail`, and `/invalid-view` commands are not the real agent's contract. None were rewritten to
 make PLAN4 pass. The real-agent cases run the same public-HTTP, event-prefix, golden, snapshot,
@@ -150,7 +216,8 @@ a resume event, then require named diffs and a failed REQ-STREAM-02 gate.
 
 Replay omits scripted presentation delays and uses 8 ms coalescing. Chaos trials reuse the
 HTTP service for each case but create fresh sessions and retain distinct seeds and interruptions.
-The full 125-trial keyless suite was verified in under a minute. Provenance records timing,
+The original 125-trial PLAN4 suite was verified in under a minute. PLAN5 expands this to
+3,202 trials, including 180 HTTP interruptions and 3,000 sampled classifications. Provenance records timing,
 clock, commit, dirty worktree, implementation, seed, and either script digest or model, normalized
 prompt hash, and tool-schema hash. No production-latency claim is made.
 
@@ -168,9 +235,10 @@ It is reported separately from the gating metric; `--pass-k` defaults to 3.
 
 Baseline comparisons pair by case ID, verification mode, and seed, and report improvements,
 regressions, unmatched trials, paired rate difference, and an exact two-sided McNemar p-value.
-No pairing is fabricated for unmatched cases. Replaying the same model response is not an
-independent model draw: the current intervals describe regression outcomes, not calibrated
-production model quality. Use explicitly selected live trials for fresh model samples; broader
+No pairing is fabricated for unmatched cases. Replaying the same model response is not a new
+independent model draw. Scope recordings contain separate calls, while HTTP replay repeats a
+single recorded conversation. Intervals are conditional on the curated cases and do not establish
+calibrated production model quality. Use explicitly selected live trials for fresh samples; broader
 case sets, judges, and model-matrix evaluation arrive at PLAN10.
 
 ## Development And CI
@@ -195,3 +263,5 @@ snapshots, stable history selection, auto-follow behavior, invalid-view isolatio
 panel navigation. PLAN4 adds desktop/mobile handle resolution, multi-turn charts, expanded tool
 details, visible replay misses, and nonblank chart-pixel checks. CI runs both scripted and LLM
 replay browser modes. Screenshots are inspection artifacts; no pixel-diff gate is introduced.
+PLAN5 also verifies refusal chips after refresh, no improvised refusal messages, continued
+composer access, and an allowed `yes` conversation on desktop and 320-pixel-wide mobile screens.

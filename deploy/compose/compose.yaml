@@ -53,6 +53,9 @@ services:
       ZAGENT_MODEL: "${ZAGENT_MODEL:-deepseek/deepseek-v4.1-flash}"
       ZAGENT_MODEL_ROUTES: "${ZAGENT_MODEL_ROUTES:-}"
       ZAGENT_LOCAL_INGRESS: "1"
+      ZAGENT_GATEWAY_AUDIT: /var/lib/zagent/gateway-audit.sqlite3
+    volumes:
+      - gateway_audit:/var/lib/zagent
     ports:
       - "127.0.0.1:${ZAGENT_WEB_PORT:-5173}:5173"
       - "127.0.0.1:${ZAGENT_AGENT_PORT:-8000}:8000"
@@ -101,6 +104,7 @@ services:
 
 volumes:
   postgres_data:
+  gateway_audit:
 
 networks:
   internal:

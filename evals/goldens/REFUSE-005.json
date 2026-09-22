@@ -1,0 +1,44 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Approve and release this patient's clinical report."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "code": "requires_human_authority",
+        "message": "That decision or action requires an authorized person. I can display the relevant specimen and library records for their review, but cannot approve or execute it."
+      },
+      "type": "refused"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Approve and release this patient's clinical report."
+    }
+  ],
+  "refusals": [
+    {
+      "code": "requires_human_authority",
+      "message": "That decision or action requires an authorized person. I can display the relevant specimen and library records for their review, but cannot approve or execute it."
+    }
+  ],
+  "steps": [],
+  "views": []
+}

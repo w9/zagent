@@ -58,7 +58,7 @@
 <body>
   <header>
     <div class="inner">
-      <div class="topline"><div class="brand">Zagent.</div><span class="mode">SCRIPTED / REPLAY</span></div>
+      <div class="topline"><div class="brand">Zagent.</div><span class="mode">{{ report.results|map(attribute='provenance.mode')|unique|join(' / ')|upper }}</span></div>
       <h1>Evidence report</h1>
       <div class="meta">{{ report.created_at.isoformat() }} &middot; <a href="results.json">Result data</a></div>
       <div class="metrics">
@@ -97,13 +97,48 @@
         <dl>
           <dt>Evidence mode</dt><dd>{{ row.requirement.verification }}</dd>
           <dt>Enforced by</dt><dd>{% for path in row.requirement.enforced_by %}<code>{{ path }}</code><br>{% else %}Measured behavior{% endfor %}</dd>
-          <dt>Detecting mutations</dt><dd>{{ row.requirement.mutations|join(', ') or 'Not applicable' }}{% if row.requirement.mutations %} (register only; production mutation switches are deferred){% endif %}</dd>
+          <dt>Detecting mutations</dt><dd>{{ row.requirement.mutations|join(', ') or 'Not applicable' }}</dd>
           {% if row.requirement.threshold %}<dt>Threshold</dt><dd>Lower bound &ge; {{ row.requirement.threshold.min_lower_bound|percentage }}; at least {{ row.requirement.threshold.trials }} trials per case.</dd>{% endif %}
           <dt>Linked cases</dt><dd>{% for case_id in row.requirement.cases %}{% if case_id in row.cases %}<a href="#case-{{ case_id }}">{{ case_id }}</a>{% else %}{{ case_id }} (not selected){% endif %} {% else %}None: uncovered{% endfor %}</dd>
         </dl>
       </details>
       {% endfor %}
     </section>
+    {% if scope %}
+    <section aria-labelledby="scope"><h2 id="scope">Scope classification</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Metric</th><th>Outcomes</th><th>Estimate</th><th>95% Wilson CI</th></tr></thead>
+        <tbody>
+        {% for label, key in [('Refusal precision', 'precision'), ('Refusal recall', 'recall'), ('In-scope acceptance', 'acceptance'), ('Exact reason / allow', 'reason_accuracy')] %}
+          {% set metric = scope[key] %}
+          <tr><td>{{ label }}</td><td>{{ metric.successes }}/{{ metric.total }}</td><td>{{ metric.rate|percentage }}</td><td>{% if metric.total %}{{ metric.lower|percentage }} &ndash; {{ metric.upper|percentage }}{% else %}n/a{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      <p class="meta">Precision is the share of refusals that were labeled out of scope. Recall is the share of out-of-scope requests refused. In-scope acceptance measures over-refusal separately. The two gates use recall and acceptance, not one combined accuracy.</p>
+      <p class="meta">Ten calls per case are recorded independently at production guard settings. Replay reuses those samples; it does not draw fresh model responses. Intervals describe this curated corpus and do not establish performance on unseen requests. Errors count against the relevant gate.</p>
+      <h3>Reason codes</h3>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Reason</th><th>Labeled</th><th>Predicted</th><th>Precision (95% CI)</th><th>Recall (95% CI)</th></tr></thead>
+        <tbody>{% for reason in scope.reasons %}
+          <tr><td><code>{{ reason.code }}</code></td><td>{{ reason.expected }}</td><td>{{ reason.predicted }}</td>
+          <td>{{ reason.precision.rate|percentage }}{% if reason.precision.total %} [{{ reason.precision.lower|percentage }}, {{ reason.precision.upper|percentage }}]{% endif %}</td>
+          <td>{{ reason.recall.rate|percentage }}{% if reason.recall.total %} [{{ reason.recall.lower|percentage }}, {{ reason.recall.upper|percentage }}]{% endif %}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      <h3>Case buckets</h3>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Bucket</th><th>Correct allow / refuse</th><th>Rate</th><th>95% Wilson CI</th></tr></thead>
+        <tbody>{% for bucket in scope.buckets %}<tr><td>{{ bucket.bucket }}</td><td>{{ bucket.successes }}/{{ bucket.total }}</td><td>{{ bucket.rate|percentage }}</td><td>{{ bucket.lower|percentage }} &ndash; {{ bucket.upper|percentage }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      <h3>Disagreeing cases for review</h3>
+      {% for case in scope.disagreements %}
+        <details><summary><a href="#case-{{ case.case_id }}">{{ case.case_id }}</a> &middot; {{ case.bucket }}</summary>
+        <p>{{ case.request }}</p><dl><dt>Label</dt><dd>{{ case.expected }}</dd><dt>Trial outcomes</dt><dd>{{ case.outcomes }}</dd></dl></details>
+      {% else %}<p>No trial disagreements in the selected cases.</p>{% endfor %}
+      <p class="meta">Gateway audit: {{ scope.gateway_calls }} guard calls; {{ scope.provider_calls }} provider calls this run; {{ scope.errors }} execution errors.</p>
+    </section>
+    {% endif %}
     {% if paired %}
     <section aria-labelledby="comparison"><h2 id="comparison">Paired baseline comparison</h2>
       <p>{{ paired.matched }} matched trials: {{ paired.improved }} improved, {{ paired.regressed }} regressed, {{ paired.unchanged }} unchanged.</p>
@@ -129,6 +164,9 @@
             <dt>Session</dt><dd><code>{{ result.session_id or 'Unavailable' }}</code></dd>
             <dt>Model / Prompt hash</dt><dd>{{ result.provenance.model or 'Not applicable' }} / {{ result.provenance.prompt_hash or 'Not applicable' }}</dd>
             <dt>Tool schema / KB</dt><dd>{{ result.provenance.tool_schema_hash or 'Not applicable' }} / {{ result.provenance.kb_version or 'Not applicable' }}</dd>
+            {% if result.provenance.scope_hash %}<dt>Scope policy SHA-256</dt><dd><code>{{ result.provenance.scope_hash }}</code></dd>{% endif %}
+            {% if result.scope %}<dt>Scope label / Outcome</dt><dd>{{ result.scope.expected or 'allow' }} / {{ 'error' if result.scope.error else result.scope.actual or 'allow' }}</dd><dt>Independent sample</dt><dd>{{ result.provenance.independent_sample }}</dd><dt>Gateway / Provider calls</dt><dd>{{ result.scope.gateway_calls }} / {{ result.scope.provider_calls }}</dd>{% endif %}
+            {% if result.provenance.mutation %}<dt>Negative control</dt><dd>{{ result.provenance.mutation }}</dd>{% endif %}
           </dl>
           {% if result.interruption %}<h3>Seeded interruption</h3><pre>{{ result.interruption|tojson(indent=2) }}</pre>{% endif %}
           <details><summary>Normalized transcript</summary><pre>{{ result.transcript or 'No transcript captured' }}</pre></details>

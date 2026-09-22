@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from uuid import UUID
 
@@ -42,6 +43,8 @@ def main() -> None:
         "--trials", type=int, help="Trials per case and mode (default: 1 normal, 10 chaos)"
     )
     evaluate.add_argument("--seed", type=int, default=0)
+    evaluate.add_argument("--scope-concurrency", type=int, default=8)
+    evaluate.add_argument("--mutation", choices=["disable_scope_guard"])
     evaluate.add_argument("--update-golden", action="store_true")
     evaluate.add_argument("--mode", choices=["replay", "record", "live"], default="replay")
     chaos = evaluate.add_mutually_exclusive_group()
@@ -84,6 +87,11 @@ def main() -> None:
                     update_golden=args.update_golden,
                     pass_streak=args.pass_k,
                     mode=args.mode,
+                    scope_concurrency=args.scope_concurrency,
+                    mutation=args.mutation,
+                    progress=lambda done, total: print(
+                        f"Scope samples: {done}/{total}", file=sys.stderr
+                    ),
                 )
             )
         else:

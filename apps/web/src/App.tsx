@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from './components/ui/button'
 import { IconButton } from './components/ui/icon-button'
 import { StepMarker } from './components/step-marker'
+import { RefusalChip } from './components/refusal-chip'
 import { WorkingSurface } from './components/working-surface'
 import { request } from './lib/api'
 import type { RuntimeHealth, Session } from './lib/api'
@@ -125,6 +126,7 @@ function Chat({
       value,
     })),
     ...(state?.steps ?? []).map((value) => ({ kind: 'step' as const, value })),
+    ...(state?.refusals ?? []).map((value) => ({ kind: 'refusal' as const, value })),
   ].sort((first, second) => first.value.seq - second.value.seq)
 
   useEffect(() => {
@@ -207,6 +209,12 @@ function Chat({
           ) : (
             <ol className="messages" aria-label="Conversation">
               {timeline.map((item) => {
+                if (item.kind === 'refusal')
+                  return (
+                    <li key={`refusal:${item.value.id}`} className="message">
+                      <RefusalChip refusal={item.value} />
+                    </li>
+                  )
                 if (item.kind === 'step')
                   return (
                     <li key={`step:${item.value.id}`} className="step-message">

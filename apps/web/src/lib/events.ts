@@ -3,6 +3,9 @@ import type { PushedView, ViewSpec } from './views'
 
 type MessageRef = { message_id: string }
 type MessageText = MessageRef & { text: string }
+export type RefusalCode = 'out_of_domain' | 'unsupported_capability'
+  | 'requires_human_authority' | 'unsafe_request'
+export type RefusedState = { id: string; seq: number; code: RefusalCode; message: string }
 
 export type Payloads = {
   user_message: MessageText
@@ -31,7 +34,7 @@ export type Payloads = {
     result: Record<string, unknown>
   }
   view_pushed: { view_id: string; spec: ViewSpec }
-  refused: Record<string, unknown>
+  refused: { code: RefusalCode; message: string }
   draft_updated: Record<string, unknown>
 }
 
@@ -76,6 +79,7 @@ export type Projection = {
   messages: ChatMessage[]
   views: PushedView[]
   steps: StepState[]
+  refusals?: RefusedState[]
   conversation_turn: {
     id: string
     status: 'running' | 'finished' | 'failed'
@@ -150,6 +154,17 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
         (message) => message.id !== event.payload.message_id,
       )
       break
+    case 'refused': {
+      if (!['out_of_domain', 'unsupported_capability', 'requires_human_authority', 'unsafe_request']
+        .includes(event.payload.code) || typeof event.payload.message !== 'string')
+        throw new Error('Invalid refusal event')
+      if (!state.refusals?.some((item) => item.id === event.conversation_turn_id)) {
+        next.refusals = [...(state.refusals ?? []), {
+          id: event.conversation_turn_id, seq: event.seq, ...event.payload,
+        }]
+      }
+      break
+    }
     case 'view_pushed': {
       const spec = validateViewSpec(event.payload.spec)
       if (!state.views.some((view) => view.id === event.payload.view_id)) {

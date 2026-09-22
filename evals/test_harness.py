@@ -69,6 +69,34 @@ def test_normalized_evidence_is_stable_across_fresh_identifiers():
     assert render_transcript(sample_evidence()) == render_transcript(sample_evidence())
 
 
+def test_refusal_assertion_accepts_closed_codes_and_detects_unstructured_prose(tmp_path):
+    from zagent.evals.assertions import refusal_invariants
+    from zagent.scope import refusal
+
+    evidence = sample_evidence("I cannot help with unrelated arithmetic.")
+    assert "REQ-SCOPE-03" in refusal_invariants(evidence, "SCOPE-TEST")[0]
+    case = sample_case(agent="guard:default", expect={"refusal": {"code": "out_of_domain"}})
+    events = (
+        evidence.events[:2]
+        + [
+            evidence.events[2].model_copy(
+                update={
+                    "type": "refused",
+                    "payload": refusal("out_of_domain").model_dump(),
+                }
+            )
+        ]
+        + [evidence.events[-1].model_copy(update={"seq": 4})]
+    )
+    evidence = Evidence(events, project(evidence.projection.session_id, events))
+    assert check_case(case, evidence, tmp_path) == []
+    case.expect["refusal"] = "none"
+    assert "in-scope request was refused" in check_case(case, evidence, tmp_path)[0]
+    case.expect["refusal"] = {"code": "unknown"}
+    with pytest.raises(ValidationError):
+        check_case(case, evidence, tmp_path)
+
+
 def test_numeric_grounding_requires_a_preceding_entity_count(tmp_path):
     evidence = sample_evidence("Found **3** specimens.")
     result = evidence.events[0].model_copy(
@@ -417,6 +445,32 @@ def test_html_report_escapes_transcripts_and_roundtrips_results(tmp_path):
     assert "&lt;script&gt;" in document
     assert "Paired baseline comparison" in document
     assert Report.model_validate_json((tmp_path / "results.json").read_text()) == report
+
+
+def test_scope_report_separates_precision_recall_codes_and_disagreements(tmp_path):
+    from zagent.evals.reporting import scope_metrics, terminal_report, write_report
+    from zagent.evals.schema import ScopeOutcome
+
+    report = sample_report(trials=4)
+    for result, expected, actual in zip(
+        report.results,
+        ["out_of_domain", "out_of_domain", None, None],
+        ["out_of_domain", None, "out_of_domain", None],
+        strict=True,
+    ):
+        result.scope = ScopeOutcome(expected=expected, actual=actual, gateway_calls=1)
+    metrics = scope_metrics(report)
+    assert metrics["precision"]["rate"] == 0.5
+    assert metrics["recall"]["rate"] == 0.5
+    assert metrics["acceptance"]["rate"] == 0.5
+    assert metrics["reasons"][0]["precision"]["rate"] == 0.5
+    assert metrics["disagreements"][0]["case_id"] == "STREAM-TEST"
+    assert metrics["disagreements"][0]["outcomes"] == {"out_of_domain": 2, "allow": 2}
+    assert "Refusal precision: 1/2" in terminal_report(report)
+    document = write_report(report, tmp_path).read_text()
+    assert "Disagreeing cases for review" in document
+    assert "Reason codes" in document
+    assert "In-scope acceptance" in document
 
 
 def test_duplicate_trials_are_rejected():

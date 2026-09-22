@@ -4,9 +4,10 @@ This document records the decisions that are expensive to reverse and the reason
 them. It deliberately stops short of implementation detail: where a choice is local to one
 module and cheap to change later, it is the implementer's call, not this document's.
 
-**Implementation status:** PLAN1 through PLAN4 are implemented. The privacy/tokenization zones,
-scope guard, jobs, knowledge retrieval, and Kubernetes policies below describe subsequent plans.
-The local PLAN4 stack enforces database RLS and gateway-only internet egress, but user-provided
+**Implementation status:** PLAN1 through PLAN5 are implemented. The privacy/tokenization zones,
+jobs, knowledge retrieval, and Kubernetes policies below describe subsequent plans.
+The local stack enforces database RLS and gateway-only internet egress and measures a contextual
+scope guard with independently recorded labeled trials. User-provided
 synthetic identifiers are not tokenized yet.
 
 **Contents**

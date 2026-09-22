@@ -17,7 +17,9 @@ async def stream_report(database_url):
     return report
 
 
-@pytest.mark.parametrize("case_id", [case.id for case in CASES])
+@pytest.mark.parametrize(
+    "case_id", [case.id for case in CASES if not case.agent.startswith("guard:")]
+)
 async def test_case_golden_transcript(stream_report, case_id):
     result = next(
         result
@@ -33,6 +35,7 @@ async def test_case_golden_transcript(stream_report, case_id):
     [
         pytest.param(case.id, seed, id=f"{case.id}-seed-{seed:02d}")
         for case in CASES
+        if not case.agent.startswith("guard:")
         for seed in range(10)
     ],
 )
@@ -51,3 +54,19 @@ async def test_case_chaos_resume(stream_report, case_id, seed):
 
 async def test_all_registered_requirements_are_covered(stream_report):
     assert report_passes(stream_report), terminal_report(stream_report)
+
+
+def test_scope_samples_are_independent_and_structured(stream_report):
+    scoped = [result for result in stream_report.results if result.scope]
+    assert len(scoped) == 3000
+    assert all(result.scope.structured for result in scoped)
+    assert all(
+        result.scope.gateway_calls == 1 and result.scope.provider_calls == 0 for result in scoped
+    )
+    for case in CASES:
+        if case.agent.startswith("guard:"):
+            assert {
+                result.provenance.independent_sample
+                for result in scoped
+                if result.case_id == case.id
+            } == set(range(10))

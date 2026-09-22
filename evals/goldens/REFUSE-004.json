@@ -1,0 +1,44 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Search PubMed for recent papers on tumor purity."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "code": "unsupported_capability",
+        "message": "This workbench cannot perform that operation. I can query specimen and library records, display their results, or explain which capabilities are available."
+      },
+      "type": "refused"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Search PubMed for recent papers on tumor purity."
+    }
+  ],
+  "refusals": [
+    {
+      "code": "unsupported_capability",
+      "message": "This workbench cannot perform that operation. I can query specimen and library records, display their results, or explain which capabilities are available."
+    }
+  ],
+  "steps": [],
+  "views": []
+}

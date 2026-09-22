@@ -6,6 +6,89 @@ from jinja2 import Environment, StrictUndefined, select_autoescape
 
 from zagent.evals.schema import Report
 from zagent.evals.statistics import paired_comparison, pass_power, wilson_interval
+from zagent.scope import REFUSAL_MESSAGES
+
+
+def scope_metrics(report: Report) -> dict | None:
+    results = [result for result in report.results if result.scope is not None]
+    if not results:
+        return None
+
+    def estimate(successes: int, total: int) -> dict:
+        lower, upper = wilson_interval(successes, total)
+        return {
+            "successes": successes,
+            "total": total,
+            "rate": successes / total if total else None,
+            "lower": lower,
+            "upper": upper,
+        }
+
+    scopes = [result.scope for result in results]
+    true_positive = sum(
+        not item.error and item.expected is not None and item.actual is not None for item in scopes
+    )
+    refused = sum(item.actual is not None and not item.error for item in scopes)
+    out_of_scope = sum(item.expected is not None for item in scopes)
+    accepted = sum(
+        not item.error and item.expected is None and item.actual is None for item in scopes
+    )
+    reasons = []
+    for code in REFUSAL_MESSAGES:
+        expected = sum(item.expected == code for item in scopes)
+        predicted = sum(item.actual == code and not item.error for item in scopes)
+        correct = sum(
+            item.expected == code and item.actual == code and not item.error for item in scopes
+        )
+        reasons.append(
+            {
+                "code": code,
+                "expected": expected,
+                "predicted": predicted,
+                "precision": estimate(correct, predicted),
+                "recall": estimate(correct, expected),
+            }
+        )
+    buckets = []
+    disagreements = []
+    for bucket in sorted({case.bucket for case in report.cases if case.bucket}):
+        identities = {case.id for case in report.cases if case.bucket == bucket}
+        outcomes = [result.scope for result in results if result.case_id in identities]
+        correct = sum(
+            not item.error and (item.expected is None) == (item.actual is None) for item in outcomes
+        )
+        buckets.append({"bucket": bucket, **estimate(correct, len(outcomes))})
+    for case in report.cases:
+        outcomes = Counter(
+            "error" if result.scope.error else result.scope.actual or "allow"
+            for result in results
+            if result.case_id == case.id
+        )
+        if len(outcomes) > 1:
+            disagreements.append(
+                {
+                    "case_id": case.id,
+                    "bucket": case.bucket,
+                    "request": case.conversation_turns[0].user,
+                    "expected": case.expect.get("refusal"),
+                    "outcomes": dict(outcomes),
+                }
+            )
+    return {
+        "trials": len(results),
+        "errors": sum(item.error for item in scopes),
+        "precision": estimate(true_positive, refused),
+        "recall": estimate(true_positive, out_of_scope),
+        "acceptance": estimate(accepted, len(scopes) - out_of_scope),
+        "reason_accuracy": estimate(
+            sum(not item.error and item.actual == item.expected for item in scopes), len(scopes)
+        ),
+        "reasons": reasons,
+        "buckets": buckets,
+        "disagreements": disagreements,
+        "gateway_calls": sum(item.gateway_calls for item in scopes),
+        "provider_calls": sum(item.provider_calls for item in scopes),
+    }
 
 
 def requirement_rows(report: Report) -> list[dict]:
@@ -18,7 +101,9 @@ def requirement_rows(report: Report) -> list[dict]:
             for result in report.results
             if result.case_id in cases and result.verification == requirement.verification
         ]
-        successes = sum(result.passed for result in outcomes)
+        successes = sum(
+            result.requirement_outcomes.get(requirement.id, result.passed) for result in outcomes
+        )
         trials = len(outcomes)
         counts = Counter(result.case_id for result in outcomes)
         lower, upper = wilson_interval(successes, trials)
@@ -38,7 +123,11 @@ def requirement_rows(report: Report) -> list[dict]:
             status = "PASS" if lower >= requirement.threshold.min_lower_bound else "FAIL"
         estimates = [
             pass_power(
-                sum(result.passed for result in outcomes if result.case_id == case_id),
+                sum(
+                    result.requirement_outcomes.get(requirement.id, result.passed)
+                    for result in outcomes
+                    if result.case_id == case_id
+                ),
                 counts[case_id],
                 report.pass_streak,
             )
@@ -109,6 +198,43 @@ def terminal_report(report: Report, baseline: Report | None = None) -> str:
         f"{failures} failed trials; {executions} HTTP case executions "
         f"in {report.duration_seconds:.2f}s."
     )
+    scope = scope_metrics(report)
+    if scope:
+        lines.append("\nScope classification (95% Wilson intervals)")
+        for label, key in (
+            ("Refusal precision", "precision"),
+            ("Refusal recall", "recall"),
+            ("In-scope acceptance", "acceptance"),
+            ("Exact reason/allow", "reason_accuracy"),
+        ):
+            metric = scope[key]
+            interval = (
+                f"[{percentage(metric['lower'])}, {percentage(metric['upper'])}]"
+                if metric["total"]
+                else "n/a"
+            )
+            lines.append(
+                f"  {label}: {metric['successes']}/{metric['total']} "
+                f"{percentage(metric['rate'])} {interval}"
+            )
+        lines.append("  Per-reason precision / recall:")
+        for reason in scope["reasons"]:
+            precision, recall = reason["precision"], reason["recall"]
+            lines.append(
+                f"    {reason['code']}: {precision['successes']}/{precision['total']} "
+                f"{percentage(precision['rate'])} / {recall['successes']}/{recall['total']} "
+                f"{percentage(recall['rate'])}"
+            )
+        lines.append(
+            f"  Audit: {scope['gateway_calls']} guard calls; "
+            f"{scope['provider_calls']} provider calls this run; {scope['errors']} errors."
+        )
+        lines.append(f"  Disagreeing cases for review: {len(scope['disagreements'])}")
+        for case in scope["disagreements"]:
+            lines.append(f"    {case['case_id']} ({case['bucket']}): {case['outcomes']}")
+        lines.append(
+            "  Replay reuses individually recorded samples; it is not fresh model sampling."
+        )
     if baseline:
         paired = compare_reports(report, baseline)
         lines.append(
@@ -152,6 +278,7 @@ def write_report(report: Report, output: Path, baseline: Report | None = None) -
         passed=passed,
         gate=report_passes(report),
         success_share=100 * passed / len(report.results) if report.results else 0,
+        scope=scope_metrics(report),
     )
     (output / "results.json").write_text(report.model_dump_json(indent=2) + "\n")
     path = output / "index.html"

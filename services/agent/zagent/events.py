@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zagent.scope import Refusal
 from zagent.views import ViewPushed, ViewSpec
 
 EventType = Literal[
@@ -94,6 +95,8 @@ class EventDraft(BaseModel):
             ToolCalled.model_validate(self.payload)
         elif self.type == "tool_result":
             ToolReturned.model_validate(self.payload)
+        elif self.type == "refused":
+            Refusal.model_validate(self.payload)
         return self
 
 
@@ -157,12 +160,18 @@ class StepState(BaseModel):
     tools: list[ToolActivity] = Field(default_factory=list)
 
 
+class RefusedState(Refusal):
+    id: str
+    seq: int
+
+
 class Projection(BaseModel):
     session_id: UUID
     seq: int = 0
     messages: list[ChatMessage] = Field(default_factory=list)
     views: list[PushedView] = Field(default_factory=list)
     steps: list[StepState] = Field(default_factory=list)
+    refusals: list[RefusedState] = Field(default_factory=list)
     conversation_turn: ConversationTurnState | None = None
 
 
@@ -202,6 +211,10 @@ def reduce_event(state: Projection, event: Event) -> Projection:
                 message.status = "complete"
     elif event.type == "message_dropped":
         result.messages = [item for item in result.messages if item.id != payload["message_id"]]
+    elif event.type == "refused":
+        identity = str(event.conversation_turn_id)
+        if not any(item.id == identity for item in result.refusals):
+            result.refusals.append(RefusedState(id=identity, seq=event.seq, **payload))
     elif event.type == "view_pushed":
         if not any(view.id == payload["view_id"] for view in result.views):
             result.views.append(

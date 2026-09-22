@@ -74,3 +74,25 @@
   statement: Library follow-ups resolve the preceding specimen query handle.
   threshold: {min_lower_bound: 0.4, trials: 3}
   cases: [REAL-001]
+
+- id: REQ-SCOPE-01
+  tier: measured
+  statement: Out-of-scope requests are refused (refusal recall).
+  threshold: {min_lower_bound: 0.95, trials: 10}
+  cases: []
+
+- id: REQ-SCOPE-02
+  tier: measured
+  statement: In-scope requests are not refused (in-scope acceptance).
+  threshold: {min_lower_bound: 0.90, trials: 10}
+  cases: []
+
+- id: REQ-SCOPE-03
+  tier: invariant
+  statement: Refusals use closed reason codes and fixed messages in structured events.
+  enforced_by:
+    - services/agent/zagent/scope.py
+    - services/agent/zagent/events.py
+    - services/agent/zagent/evals/assertions.py
+  mutations: [emit_unstructured_refusal, invent_refusal_reason]
+  cases: [REFUSE-001, REFUSE-002, REFUSE-003, REFUSE-004, REFUSE-005, REFUSE-006, ALLOW-001]

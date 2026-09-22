@@ -20,6 +20,8 @@ cases:
       tools_only_handles: true
       numeric_claims_grounded: true
       references_resolve: true
+      refusal: none
+      tools_called: [find_patients, find_specimens, find_libraries, push_view]
 
   - id: REAL-002
     requirement: REQ-GROUND-01
@@ -36,3 +38,5 @@ cases:
       view_stack_depth: 1
       tools_only_handles: true
       numeric_claims_grounded: true
+      refusal: none
+      tools_called: [find_specimens, push_view]

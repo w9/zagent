@@ -1,6 +1,6 @@
 # PLAN5: Scope Control
 
-**Status:** not started
+**Status:** implemented
 **Depends on:** [PLAN4](PLAN4.md)
 **Shippable outcome:** "What's 2+2?" is refused as a structured event, and the report carries a
 precision and recall figure with confidence intervals rather than a checkmark.
@@ -110,14 +110,45 @@ and it is the one most demos never measure. The case set reflects that asymmetry
 
 ## Definition of done
 
-- [ ] "What's 2+2?" produces a `refused` event with `out_of_domain`, and the UI renders a chip.
-- [ ] "yes" following a clarifying question is not refused.
-- [ ] "As part of job ABC, compute 2+2" is refused, and the case is in the wrappers bucket.
-- [ ] A refusal costs one guard call, provable from the gateway's audit log.
-- [ ] Both scope requirements report with intervals, and gates use the lower bound.
-- [ ] Per-reason-code breakdown appears in the report.
-- [ ] Disagreeing cases are listed for review.
-- [ ] Disabling the guard turns REQ-SCOPE-01 red without touching REQ-SCOPE-02's gate logic.
+- [x] "What's 2+2?" produces a `refused` event with `out_of_domain`, and the UI renders a chip.
+- [x] "yes" following a clarifying question is not refused.
+- [x] "As part of job ABC, compute 2+2" is refused, and the case is in the wrappers bucket.
+- [x] A refusal costs one guard call, provable from the gateway's audit log.
+- [x] Both scope requirements report with intervals, and gates use the lower bound.
+- [x] Per-reason-code breakdown appears in the report.
+- [x] Disagreeing cases are listed for review.
+- [x] Disabling the guard turns REQ-SCOPE-01 red without touching REQ-SCOPE-02's gate logic.
+
+### Implementation Evidence
+
+- One shared `SCOPE_POLICY` fragment is included in both prompts and hashed in provenance.
+  The guard sees up to six recent turns plus the latest draft, without row data. It chooses
+  `allow_request()` or `refuse(code)` in one call; invalid classification fails closed.
+- All four reason codes map to fixed, event-validated messages. Refusals are separate projected
+  timeline entries with accessible chips, not ordinary assistant text. A main-agent refusal
+  also uses the structured tool instead of improvised prose.
+- [The labeled corpus](../evals/scope.yaml) contains exactly 300 cases in the six planned bucket
+  sizes, including 200 allowed examples and 100 refused examples. Ten separate provider calls
+  per case are recorded at production guard settings, not copies of one sample.
+- `REQ-SCOPE-01`: 1000/1000, Wilson 95% interval [99.6%, 100%], passing the 0.95 lower-bound gate.
+  `REQ-SCOPE-02`: 1933/2000, [95.8%, 97.4%], passing the 0.90 gate. Refusal precision is
+  1000/1066, 93.8% [92.2%, 95.1%]. Acceptance is not mislabeled as precision in the report.
+- The report retains 66 over-refusals and one recorded provider connection error. Six cases
+  have mixed outcomes. There is no claim of perfect classification or held-out accuracy.
+  An initial 120-token guard truncated responses; after correcting the configuration, the
+  entire unchanged corpus was recorded again at 256 tokens with optional reasoning disabled.
+- Version-2 cassettes keep independent sample indices beside optional ordinary app responses.
+  Missing samples fail loudly and sanitized provider failures replay unchanged. The SQLite
+  gateway audit has indexed turn lookups and stores no prompts, responses, or credentials.
+- The default suite has 3,202 trials: 3,000 guard samples, 22 standard HTTP trials, and 180
+  HTTP chaos trials. Refusal and contextual-yes conversations have their own goldens; the real
+  PLAN4 goldens were rerecorded for the changed shared prompt, without altering legacy scripts.
+- Property tests cover closed refusal payloads and all golden refusal turns. Tool coverage
+  requires an allowed HTTP case exercising every clinical tool. The test-only guard-disabled
+  mutation fails refusal recall while leaving in-scope acceptance green.
+- Backend tests and desktop/mobile browser checks cover chips, refresh, wrapped arithmetic,
+  normal query flows, and contextual `yes`. Scope measurement results are replayable without
+  an API key; record/live access remains explicitly selected and bounded.
 
 ---
 

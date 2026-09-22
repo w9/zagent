@@ -5,6 +5,8 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zagent.scope import ReasonCode
+
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -49,12 +51,42 @@ class ConversationTurn(StrictModel):
         return self
 
 
+class ContextMessage(StrictModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=20000)
+
+
+ScopeBucket = Literal[
+    "clearly_off_topic",
+    "clearly_in_scope",
+    "contextual_continuations",
+    "near_boundary_in_scope",
+    "near_boundary_off_topic",
+    "scope_wrappers",
+]
+
+
+class ScopeExample(StrictModel):
+    id: str = Field(pattern=r"^SCOPE-[A-Z]+-[0-9]{3}$")
+    user: str = Field(min_length=1, max_length=20000)
+    label: ReasonCode | Literal["none"]
+    context: list[ContextMessage] = Field(default_factory=list, max_length=20)
+    draft: dict[str, Any] | None = None
+
+
+class ScopeCorpus(StrictModel):
+    buckets: dict[ScopeBucket, list[ScopeExample]]
+
+
 class Case(StrictModel):
     id: str = Field(pattern=r"^[A-Z][A-Z0-9-]+$")
     requirement: str
-    agent: str = Field(pattern=r"^(scripted|llm):[a-z][a-z0-9_-]*$")
+    agent: str = Field(pattern=r"^(scripted|llm|guard):[a-z][a-z0-9_-]*$")
     conversation_turns: list[ConversationTurn] = Field(min_length=1)
     expect: dict[str, Any]
+    bucket: ScopeBucket | None = None
+    context: list[ContextMessage] = Field(default_factory=list)
+    draft: dict[str, Any] | None = None
 
 
 class CaseGroup(StrictModel):
@@ -89,6 +121,31 @@ def load_suite(root: Path) -> Suite:
     for path in sorted((root / "cases").glob("*.yaml")):
         group = CaseGroup.model_validate(yaml.safe_load(path.read_text()))
         cases.extend(group.cases)
+    scope_path = root / "scope.yaml"
+    if scope_path.exists():
+        corpus = ScopeCorpus.model_validate(yaml.safe_load(scope_path.read_text()))
+        for bucket, examples in corpus.buckets.items():
+            for example in examples:
+                requirement = "REQ-SCOPE-02" if example.label == "none" else "REQ-SCOPE-01"
+                cases.append(
+                    Case(
+                        id=example.id,
+                        requirement=requirement,
+                        agent="guard:default",
+                        conversation_turns=[{"user": example.user}],
+                        expect={
+                            "refusal": "none"
+                            if example.label == "none"
+                            else {"code": example.label}
+                        },
+                        bucket=bucket,
+                        context=example.context,
+                        draft=example.draft,
+                    )
+                )
+                for entry in requirements:
+                    if entry["id"] in {requirement, "REQ-SCOPE-03"}:
+                        entry.setdefault("cases", []).append(example.id)
     return Suite(requirements=requirements, cases=cases)
 
 
@@ -113,6 +170,18 @@ class Provenance(StrictModel):
     prompt_hash: str | None = None
     tool_schema_hash: str | None = None
     kb_version: str | None = None
+    scope_hash: str | None = None
+    independent_sample: int | None = None
+    mutation: Literal["disable_scope_guard"] | None = None
+
+
+class ScopeOutcome(StrictModel):
+    expected: ReasonCode | None
+    actual: ReasonCode | None
+    error: bool = False
+    structured: bool = True
+    gateway_calls: int = Field(default=0, ge=0)
+    provider_calls: int = Field(default=0, ge=0)
 
 
 class TrialResult(StrictModel):
@@ -127,6 +196,8 @@ class TrialResult(StrictModel):
     executions: int = Field(ge=0)
     provenance: Provenance
     interruption: dict[str, Any] | None = None
+    scope: ScopeOutcome | None = None
+    requirement_outcomes: dict[str, bool] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def outcome_matches_failures(self) -> "TrialResult":

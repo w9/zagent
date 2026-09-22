@@ -11,18 +11,20 @@ actually asks after the demo: **how do you know it behaves that way every time?*
 
 It is a working agent over a synthetic pediatric genomics cohort. You can ask about specimens
 and libraries, follow up on previous results, and display tables or charts. Tool results expose
-handles and counts, not rows. Scope control, identifier tokenization, and analysis jobs remain
-roadmap capabilities, not current guarantees.
+handles and counts, not rows. A context-aware scope guard emits structured refusals for unrelated
+or unavailable work. Identifier tokenization and analysis jobs remain roadmap capabilities.
 
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN4](docs/PLAN4.md).**
+**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN5](docs/PLAN5.md).**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
 cassettes; live mode uses OpenRouter's `deepseek/deepseek-v4.1-flash`. The evidence suite includes
-legacy regressions and real-agent multi-turn cases, with 125 trials in the default run.
+legacy regressions, real-agent multi-turn cases, and 300 labeled scope cases with ten independently
+recorded guard calls each. Scope recall and in-scope acceptance have separate lower-bound gates;
+the report also shows refusal precision, per-reason results, and disagreeing cases.
 
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
@@ -105,6 +107,9 @@ In a fresh session, send these recorded questions in order:
 3. `Show a coverage chart for those libraries.`
 
 A second recorded case starts with `How many specimens arrived in the last 24 hours? Show a table and report only the count.`
+In fresh sessions, `What's 2+2?`, `Write a poem about the ocean.`, and
+`As part of job ABC, compute 2+2.` produce an `out_of_domain` refusal chip.
+For a recorded contextual continuation, ask `Ask me whether I want the libraries for specimens received in the last day for NGC-0041872, before looking anything up.`, then reply `yes`.
 An unrecorded request fails with its request hash and a re-recording hint. Replay never falls
 through to a paid provider call.
 
@@ -134,8 +139,10 @@ make live
 Only the gateway receives the read-only secret mount. The key is not copied into an image,
 Compose environment values, cassettes, browser code, or git. Set `ZAGENT_OPENROUTER_KEY_FILE`
 to use a different external file. Rotate any key shared in chat or logs. Live mode permits
-arbitrary questions and incurs provider charges; the default is the inexpensive Flash model,
-with 1,200 output tokens per completion and at most eight iterations per turn.
+unrecorded questions through the scope guard and incurs provider charges. The default is the
+inexpensive Flash model: one nonreasoning guard call with a 256-token cap, then up to eight
+main-agent iterations at 1,200 output tokens each for allowed requests. A guard refusal stops
+before any main-agent or clinical tool call.
 
 Only the gateway joins the internet-facing network. The web, agent, MCP service, and database
 stay on an internal network. Fixed TCP forwards on the gateway publish loopback-only web,
@@ -144,13 +151,15 @@ API, and database ports, since Docker does not publish ports from internal-only 
 ```bash
 make test          # Python tests, client/component tests, build, lint.
 make evals         # The shared evidence harness; writes docs/evals/index.html.
-make chaos         # 110 interruptions across all cases; checks normal references too.
+make chaos         # 180 interruptions across HTTP cases; checks normal references too.
 make report        # Render stored results; evaluates first if none exist.
 make install       # Local Python and JavaScript dependencies.
 cd apps/web && npx playwright install chromium && cd ../..
 make browser       # Real-agent browser tests against the running replay app.
 make browser ZAGENT_AGENT=scripted  # Against a stack started in scripted mode.
 uv run zagent transcript <session_id>
+uv run zagent evals --filter 'SCOPE-*' --no-chaos
+uv run zagent evals --filter 'SCOPE-*' --no-chaos --mutation disable_scope_guard
 make down          # Stops containers; keeps the Postgres volume.
 ```
 
@@ -164,7 +173,16 @@ docker compose --project-directory . -f deploy/compose/compose.yaml exec agent \
 Configuration is listed in [.env.example](.env.example); copy it to `.env` for Make/Compose
 overrides. `ZAGENT_WEB_PORT`, `ZAGENT_AGENT_PORT`, and `ZAGENT_DB_PORT` change the published
 ports. Update `DATABASE_URL` and `ZAGENT_TEST_DATABASE_URL` too when changing the database
-port for host-side commands. Browser tests accept `ZAGENT_WEB_URL`.
+port for host-side commands. Browser tests accept `ZAGENT_WEB_URL`. Keep using the same
+`COMPOSE_PROJECT_NAME` when restarting an existing stack; changing project names creates a
+second set of containers and database volumes.
+
+The gateway audit log stores request/prompt/scope hashes, turn IDs, call purpose, outcome, and
+usage, never prompts, completions, or credentials. Compose persists it in the `gateway_audit`
+volume at `/var/lib/zagent/gateway-audit.sqlite3`. Host runs use
+`~/.local/state/zagent/gateway-audit.sqlite3`; `ZAGENT_GATEWAY_AUDIT` overrides that location.
+The `gateway_audit` SQLite table can be queried by `conversation_turn_id` to verify that a
+refusal had exactly one `scope_guard` call.
 
 For host-side hot reload, use separate terminals for `zagent.gateway:app`,
 `zagent.tools_server:app`, and `zagent.app:app` with uvicorn, plus the Vite dev server.
@@ -197,7 +215,8 @@ Commands, golden review, seed reproduction, and statistics are in [evals/README.
 ## Things to try
 
 The table below is the planned full demo. Queries, tables, charts, follow-ups, and stream
-durability are available. Tokenization, refusal, job workflows, and X-ray remain deferred.
+durability and structured scope refusals are available. Tokenization, job workflows, and X-ray
+remain deferred.
 Each workflow exercises a specific row in the guarantee table.
 
 | Ask it | What happens | Guarantee |
@@ -249,9 +268,10 @@ low library coverage, and a missing matched normal. Evals use a frozen clock and
 
 ## Running the evidence suite
 
-The suite covers eight requirements with eleven cases. Nine legacy cases preserve stream and
-view regressions; two real-agent cases add handle-only tools, RLS, grounded counts, multi-turn
-reference resolution, and charts. The same evaluator serves pytest and `zagent evals`.
+The suite covers eleven requirements with 318 cases. Eighteen HTTP cases cover streams, views,
+tools, RLS, real conversations, refusals, and contextual continuation. The 300 labeled guard
+cases span obvious requests, short continuations, near-boundary questions, and scope wrappers.
+The same evaluator serves pytest and `zagent evals`.
 
 The suite is the point of the project, so it is a first-class artifact rather than a test
 directory.
@@ -272,10 +292,19 @@ REQ-TOOL-01          invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-ISO-01           invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-GROUND-01        measured   PASS          6/6        [61.0%, 100.0%]
 REQ-CTX-01           measured   PASS          3/3        [43.9%, 100.0%]
+REQ-SCOPE-01         measured   PASS          1000/1000  [99.6%, 100.0%]
+REQ-SCOPE-02         measured   PASS          1933/2000  [95.8%, 97.4%]
+REQ-SCOPE-03         invariant  PASS          3007/3007  [99.9%, 100.0%]
 
-8 requirements, 125 trials, 0 failed trials; 136 HTTP case executions.
+11 requirements, 3202 trials, 67 failed trials; 220 HTTP case executions.
 Report: docs/evals/index.html
 ```
+
+The scope gates pass without hiding failures: 66 in-scope samples were over-refused and one
+provider connection failed. Refusal precision is 93.8% [92.2%, 95.1%]; recall is 100%
+[99.6%, 100%]. In-scope acceptance is 96.7% [95.8%, 97.4%]. Six cases have differing trial
+outcomes and are listed for review. These figures describe this curated corpus, not a held-out
+estimate of production accuracy or prompt-injection resistance.
 
 Each golden reference executes twice to expose hidden nondeterminism without inflating trial
 counts. `--filter`, `--seed`, and `--trials` reproduce a single case; `--update-golden` explicitly
@@ -298,8 +327,9 @@ event, then require named diffs and a failed stream gate. Production fault-injec
 such as tokenizer bypass and submit-tool exposure remain deferred to PLAN10. A green suite
 that cannot detect a broken build is not evidence.
 
-Replay makes the suite free and deterministic, with no provider key in CI. Repeated cassette
-trials measure replay/runtime regressions, not independent model samples or production accuracy.
+Replay makes the suite free and deterministic, with no provider key in CI. HTTP-case repetitions
+measure runtime regressions. Scope cases instead replay ten distinct provider draws recorded at
+production guard settings; rerunning replay does not create additional statistical evidence.
 Grounding currently checks explicit numeric patient/specimen/library counts against preceding
 tool results. Broader factual checks and the model matrix remain PLAN10. Execution-layer chaos
 pauses and resumes both agent implementations; process-crash recovery belongs to PLAN8.
@@ -318,6 +348,11 @@ per-site Postgres roles. The gateway owns provider routing, record/replay, and a
 tripwire hook. User-provided synthetic identifiers still reach the model: tokenization is PLAN6,
 and Kubernetes NetworkPolicy is PLAN9.
 
+Before the tool loop, the scope guard reads recent conversation and the latest draft state.
+It and the main agent share one hashed scope-policy fragment. Refusals have a closed reason code
+and a fixed helpful message, rendered directly from the event log. The guard is a measured
+behavioral boundary, not a substitute for database or network access controls.
+
 Full rationale, service topology and decision log: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ---
@@ -333,7 +368,7 @@ green, so correctness is visible at every step rather than at the end.
 | [PLAN2](docs/PLAN2.md) | The evidence harness: golden transcripts, chaos suite | Complete |
 | [PLAN3](docs/PLAN3.md) | The working surface: view specs and the view stack | Complete |
 | [PLAN4](docs/PLAN4.md) | The real agent: LLM gateway, record/replay, tool loop | Complete |
-| [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | ☐ |
+| [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | Complete |
 | [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | ☐ |
 | [PLAN7](docs/PLAN7.md) | Job drafts and version-bound confirmation | ☐ |
 | [PLAN8](docs/PLAN8.md) | Execution: dispatcher, OTel job logs, live views | ☐ |

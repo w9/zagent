@@ -2,11 +2,14 @@ import asyncio
 import hashlib
 import json
 import os
+import sqlite3
 import stat
 import tempfile
 from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Protocol
+from uuid import uuid4
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +34,10 @@ class CompletionRequest(BaseModel):
     tools: list[dict[str, Any]] = Field(default_factory=list, max_length=32)
     temperature: float = Field(default=0.0, ge=0, le=2)
     max_tokens: int = Field(default=1200, ge=1, le=4096)
-    metadata: dict[str, str] = Field(default_factory=dict, exclude=True)
+    metadata: dict[str, str] = Field(default_factory=dict)
+    sample: int | None = Field(default=None, ge=0, le=10000)
+    tool_choice: Literal["required"] | None = None
+    reasoning: Literal["disabled"] | None = None
 
 
 class FunctionCall(BaseModel):
@@ -80,7 +86,7 @@ def canonical_json(value: Any) -> str:
 
 
 def normalized_request(request: CompletionRequest, route: ModelRoute) -> dict[str, Any]:
-    body = request.model_dump()
+    body = request.model_dump(exclude={"metadata", "sample"}, exclude_none=True)
     call_ids: dict[str, str] = {}
     messages = []
     for original in body["messages"]:
@@ -144,6 +150,7 @@ class LlmGateway:
         routes: dict[str, ModelRoute] | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         egress_check: Callable[[dict[str, Any]], None] | None = None,
+        audit_path: Path | None = None,
     ):
         if mode not in {"replay", "record", "live"}:
             raise ValueError("Gateway mode must be replay, record, or live")
@@ -152,13 +159,82 @@ class LlmGateway:
         self.routes = routes if routes is not None else {"default": ModelRoute()}
         self.transport = transport
         self.egress_check = egress_check
+        self.audit_path = audit_path
+        self.record_locks: dict[str, asyncio.Lock] = {}
 
     async def complete(self, request: CompletionRequest) -> Completion:
+        entry = {
+            "request_id": str(uuid4()),
+            "created_at": datetime.now(UTC).isoformat(),
+            "mode": self.mode,
+            "purpose": request.metadata.get("purpose", "agent")[:80],
+            "session_id": request.metadata.get("session_id", "")[:100],
+            "conversation_turn_id": request.metadata.get("conversation_turn_id", "")[:100],
+            "scope_hash": request.metadata.get("scope_hash", "")[:64],
+            "sample": request.sample,
+            "provider_calls": 0,
+            "outcome": "failed",
+        }
+        try:
+            completion = await self._complete(request, entry)
+            entry["outcome"] = "completed"
+            entry["usage"] = completion.usage
+            return completion
+        except BaseException as error:
+            entry["error_type"] = type(error).__name__
+            if (
+                self.mode == "record"
+                and isinstance(error, GatewayError)
+                and entry["provider_calls"]
+            ):
+                await self._record_response(request, {"gateway_error": str(error)})
+            raise
+        finally:
+            if self.audit_path is not None:
+                await asyncio.to_thread(self._audit, entry)
+
+    def _audit(self, entry: dict) -> None:
+        self.audit_path.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(self.audit_path, timeout=30) as connection:
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS gateway_audit "
+                "(request_id TEXT PRIMARY KEY, conversation_turn_id TEXT, entry TEXT NOT NULL)"
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS gateway_audit_turn "
+                "ON gateway_audit (conversation_turn_id)"
+            )
+            connection.execute(
+                "INSERT INTO gateway_audit VALUES (?, ?, ?)",
+                (entry["request_id"], entry["conversation_turn_id"], canonical_json(entry)),
+            )
+
+    def audit_for_turn(self, conversation_turn_id: str) -> list[dict]:
+        if self.audit_path is None or not self.audit_path.exists():
+            return []
+        with sqlite3.connect(self.audit_path, timeout=30) as connection:
+            return [
+                json.loads(row[0])
+                for row in connection.execute(
+                    "SELECT entry FROM gateway_audit WHERE conversation_turn_id = ? ORDER BY rowid",
+                    (conversation_turn_id,),
+                )
+            ]
+
+    async def _complete(self, request: CompletionRequest, audit: dict) -> Completion:
         route = self.routes.get(request.route)
         if route is None:
             raise GatewayError(f"Unknown model route: {request.route}")
         normalized = normalized_request(request, route)
         digest = request_hash(request, route)
+        audit.update(
+            {
+                "request_hash": digest,
+                "prompt_hash": normalized["prompt_hash"],
+                "provider": route.provider,
+                "model": route.model,
+            }
+        )
         path = self.cassette_dir / f"{digest}.json"
         if self.mode == "replay":
             try:
@@ -169,12 +245,24 @@ class LlmGateway:
                     "and a provider key; replay never calls the provider."
                 ) from None
             if (
-                cassette.get("version") != 1
+                cassette.get("version") not in {1, 2}
                 or cassette.get("request_hash") != digest
                 or cassette.get("request") != normalized
             ):
                 raise GatewayError(f"Invalid cassette: {digest}; re-record it.")
-            return Completion.model_validate(cassette["response"])
+            response = (
+                cassette.get("response")
+                if request.sample is None
+                else cassette.get("samples", {}).get(str(request.sample))
+            )
+            if response is None:
+                raise CassetteMiss(
+                    f"Cassette miss: {digest}, sample {request.sample}. "
+                    "Re-record with ZAGENT_LLM_MODE=record; replay never calls the provider."
+                )
+            if "gateway_error" in response:
+                raise GatewayError(response["gateway_error"])
+            return Completion.model_validate(response)
 
         if self.egress_check is not None:
             self.egress_check(normalized)
@@ -188,8 +276,13 @@ class LlmGateway:
         }
         if request.tools:
             body["tools"] = request.tools
+        if request.tool_choice is not None:
+            body["tool_choice"] = request.tool_choice
+        if request.reasoning == "disabled" and route.provider == "openrouter":
+            body["reasoning"] = {"enabled": False}
         try:
             async with httpx.AsyncClient(transport=self.transport, timeout=60) as client:
+                audit["provider_calls"] = 1
                 response = await client.post(
                     endpoint,
                     headers={"Authorization": f"Bearer {key}"},
@@ -218,14 +311,34 @@ class LlmGateway:
         if completion.finish_reason in {"length", "content_filter"}:
             raise GatewayError(f"Model completion interrupted: {completion.finish_reason}")
         if self.mode == "record":
-            cassette = {
-                "version": 1,
-                "request_hash": digest,
-                "request": normalized,
-                "response": completion.model_dump(),
-            }
-            await asyncio.to_thread(self._write_cassette, path, cassette)
+            await self._record_response(request, completion.model_dump())
         return completion
+
+    async def _record_response(self, request: CompletionRequest, response: dict) -> None:
+        route = self.routes[request.route]
+        normalized = normalized_request(request, route)
+        digest = request_hash(request, route)
+        path = self.cassette_dir / f"{digest}.json"
+        cassette = {
+            "version": 1,
+            "request_hash": digest,
+            "request": normalized,
+            "response": response,
+        }
+        async with self.record_locks.setdefault(digest, asyncio.Lock()):
+            if path.exists():
+                previous = json.loads(await asyncio.to_thread(path.read_text))
+                if previous.get("request") != normalized:
+                    raise GatewayError(f"Invalid cassette: {digest}; cannot merge samples")
+                cassette = previous
+            if request.sample is None:
+                cassette["response"] = response
+            else:
+                if not path.exists():
+                    cassette.pop("response")
+                cassette["version"] = 2
+                cassette.setdefault("samples", {})[str(request.sample)] = response
+            await asyncio.to_thread(self._write_cassette, path, cassette)
 
     @staticmethod
     def _write_cassette(path: Path, cassette: dict) -> None:

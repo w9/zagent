@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sqlite3
 from functools import partial
 
 import httpx
@@ -87,6 +88,70 @@ async def test_concurrent_recordings_are_atomic(tmp_path, monkeypatch):
     assert await LlmGateway(tmp_path).complete(request()) == completions[0]
 
 
+async def test_recorded_trials_are_independent_and_replay_separately(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    calls = []
+
+    def provider(incoming):
+        calls.append(incoming)
+        assert "sample" not in json.loads(incoming.content)
+        assert "metadata" not in json.loads(incoming.content)
+        assert json.loads(incoming.content)["reasoning"] == {"enabled": False}
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": f"Independent response {len(calls)}",
+                        }
+                    }
+                ]
+            },
+        )
+
+    gateway = LlmGateway(
+        tmp_path / "cassettes",
+        mode="record",
+        transport=httpx.MockTransport(provider),
+        audit_path=tmp_path / "audit.db",
+    )
+    requests = [
+        request(
+            sample=index,
+            reasoning="disabled",
+            metadata={
+                "purpose": "scope_guard",
+                "conversation_turn_id": "one-turn",
+                "ignored_secret": "must-not-be-audited",
+            },
+        )
+        for index in range(3)
+    ]
+    recorded = await asyncio.gather(*(gateway.complete(item) for item in requests))
+    assert len(calls) == 3
+    assert len(list((tmp_path / "cassettes").glob("*.json"))) == 1
+    gateway.mode = "replay"
+    assert await asyncio.gather(*(gateway.complete(item) for item in requests)) == recorded
+    with pytest.raises(CassetteMiss, match="sample 3"):
+        await gateway.complete(request(sample=3, reasoning="disabled"))
+    audits = gateway.audit_for_turn("one-turn")
+    assert len(audits) == 6
+    assert sum(item["provider_calls"] for item in audits) == 3
+    assert all(item["purpose"] == "scope_guard" for item in audits)
+    assert "test-private-credential" not in json.dumps(audits)
+    assert "must-not-be-audited" not in json.dumps(audits)
+    assert "Independent response" not in json.dumps(audits)
+    assert len(calls) == 3
+    with sqlite3.connect(tmp_path / "audit.db") as connection:
+        plan = connection.execute(
+            "EXPLAIN QUERY PLAN SELECT entry FROM gateway_audit WHERE conversation_turn_id = ?",
+            ("one-turn",),
+        ).fetchall()
+    assert "gateway_audit_turn" in str(plan)
+
+
 def test_hash_normalizes_transport_metadata_but_preserves_meaning():
     first = request(" Hello\r\n", metadata={"request_id": "first", "timestamp": "yesterday"})
     second = request(metadata={"request_id": "second", "timestamp": "today"})
@@ -149,6 +214,55 @@ async def test_egress_hook_blocks_before_provider_access(tmp_path):
         await LlmGateway(tmp_path, mode="live", egress_check=blocked).complete(request())
 
 
+async def test_provider_failure_is_recorded_and_replayed_without_retry(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    calls = []
+
+    def unavailable(incoming):
+        calls.append(incoming)
+        raise httpx.ConnectError("private provider detail", request=incoming)
+
+    gateway = LlmGateway(tmp_path, mode="record", transport=httpx.MockTransport(unavailable))
+    for mode in ("record", "replay"):
+        gateway.mode = mode
+        with pytest.raises(GatewayError, match="check gateway connectivity"):
+            await gateway.complete(request(sample=4))
+    assert len(calls) == 1
+    cassette = next(tmp_path.glob("*.json")).read_text()
+    assert "private provider detail" not in cassette
+    assert "test-private-credential" not in cassette
+    assert "gateway_error" in cassette
+
+
+async def test_default_recording_does_not_replace_independent_samples(tmp_path, monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    gateway = LlmGateway(
+        tmp_path,
+        mode="record",
+        transport=httpx.MockTransport(
+            lambda _incoming: httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": "Allowed",
+                            }
+                        }
+                    ]
+                },
+            )
+        ),
+    )
+    await gateway.complete(request(sample=0))
+    await gateway.complete(request())
+    await gateway.complete(request(sample=1))
+    gateway.mode = "replay"
+    for sample in (None, 0, 1):
+        assert (await gateway.complete(request(sample=sample))).message.content == "Allowed"
+
+
 async def test_corrupt_cassette_and_unknown_route_fail_closed(tmp_path):
     gateway = LlmGateway(tmp_path)
     with pytest.raises(GatewayError, match="Unknown model route"):
@@ -189,10 +303,12 @@ async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(st
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
     completer = SequenceCompleter(
         [
+            tool_completion("allow_request", {}),
             tool_completion("find_patients", {"site_id": "lakeside"}, "bad"),
             tool_completion("find_patients", {"mrn": "NGC-0041872"}, "patients"),
             tool_completion("find_specimens", {"patient_handle": "query-0001"}, "specimens"),
             Completion(message=AssistantMessage(content="Found 3 specimens.")),
+            tool_completion("allow_request", {}),
             tool_completion("find_libraries", {"specimen_handle": "query-0002"}, "libraries"),
             Completion(message=AssistantMessage(content="Those specimens have 3 libraries.")),
         ]
@@ -208,7 +324,7 @@ async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(st
     assert snapshot.conversation_turn.status == "finished"
     assert snapshot.steps[0].tools[0].result["error"]["code"] == "invalid_arguments"
     assert snapshot.steps[1].tools[0].name == "find_patients"
-    followup_context = completer.requests[4].messages
+    followup_context = completer.requests[6].messages
     assert any(message.get("content") == "Found 3 specimens." for message in followup_context)
     assert any("query-0002" in message.get("content", "") for message in followup_context)
     history = conversation_messages(await store.snapshot_events(session.id))
@@ -223,7 +339,8 @@ async def test_iteration_cap_produces_clean_terminal_failure(store):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
     completer = SequenceCompleter(
-        [tool_completion("not_allowed", {}, f"call-{index}") for index in range(2)]
+        [tool_completion("allow_request", {})]
+        + [tool_completion("not_allowed", {}, f"call-{index}") for index in range(2)]
     )
     runtime = Runtime(store, LlmAgent(store, completer, tools, max_iterations=2))
     session = await store.create_session()
@@ -232,7 +349,7 @@ async def test_iteration_cap_produces_clean_terminal_failure(store):
     snapshot = await store.snapshot(session.id)
     assert snapshot.conversation_turn.status == "failed"
     assert "iteration cap reached (2)" in snapshot.conversation_turn.error
-    assert len(completer.requests) == 2
+    assert len(completer.requests) == 3
     assert all(step.status != "running" for step in snapshot.steps)
     assert (await store.snapshot_events(session.id))[-1].type == "conversation_turn_failed"
 
@@ -248,7 +365,7 @@ async def test_gateway_miss_is_visible_as_turn_failure(store, tmp_path):
     snapshot = await store.snapshot(session.id)
     assert snapshot.conversation_turn.status == "failed"
     assert "Cassette miss:" in snapshot.conversation_turn.error
-    assert snapshot.steps[0].status == "failed"
+    assert snapshot.steps == []
 
 
 def test_provider_key_file_must_be_private(tmp_path, monkeypatch):

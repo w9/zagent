@@ -22,16 +22,6 @@
     },
     {
       "payload": {
-        "text": "I'll query specimens received in the last 24 hours."
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
         "arguments": "{\"received_within\": \"P1D\"}",
         "name": "find_specimens"
       },
@@ -114,38 +104,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\"}, {\"key\": \"kind\", \"label\": \"Type\"}, {\"key\": \"purity\", \"label\": \"Purity\"}, {\"key\": \"received_at\", \"label\": \"Received\"}], \"handle\": \"query-0001\", \"row_count\": 29, \"title\": \"Specimens received in the last 24 hours\"}, \"version\": 1}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec: Value error, View schema error at props.columns.0: 'type' is a required property"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 4"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"handle\": \"query-0001\", \"row_count\": 29, \"title\": \"Specimens received in the last 24 hours\"}, \"version\": 1}}",
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 29}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -204,13 +163,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 5"
+        "title": "Agent step 4"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "**29 specimens** arrived in the last 24 hours. The table is displayed above."
+        "text": "29 specimens arrived in the last 24 hours."
       },
       "type": "text_delta"
     },
@@ -238,12 +197,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "I'll query specimens received in the last 24 hours."
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "**29 specimens** arrived in the last 24 hours. The table is displayed above."
+      "text": "29 specimens arrived in the last 24 hours."
     }
   ],
   "steps": [
@@ -307,24 +261,7 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\"}, {\"key\": \"kind\", \"label\": \"Type\"}, {\"key\": \"purity\", \"label\": \"Purity\"}, {\"key\": \"received_at\", \"label\": \"Received\"}], \"handle\": \"query-0001\", \"row_count\": 29, \"title\": \"Specimens received in the last 24 hours\"}, \"version\": 1}}",
-          "name": "push_view",
-          "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec: Value error, View schema error at props.columns.0: 'type' is a required property"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 4",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"handle\": \"query-0001\", \"row_count\": 29, \"title\": \"Specimens received in the last 24 hours\"}, \"version\": 1}}",
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 29}}}",
           "name": "push_view",
           "result": {
             "handle": "query-0001",
@@ -336,7 +273,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 5"
+      "title": "Agent step 4"
     }
   ],
   "views": [

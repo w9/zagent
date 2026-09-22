@@ -11,6 +11,7 @@ from pydantic import Field, TypeAdapter, ValidationError
 
 from zagent.evals.schema import Case, StrictModel, fixture_path
 from zagent.events import Event, EventType, Projection, normalize_transcript, reduce_event
+from zagent.scope import Refusal, RefuseArguments
 from zagent.tools import RESPONSE_SCHEMAS
 from zagent.views import ViewPushed
 
@@ -28,7 +29,7 @@ def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
         if step.tools:
             normalized["tools"] = [tool.model_dump(exclude={"call_id"}) for tool in step.tools]
         steps.append(normalized)
-    return {
+    normalized = {
         "events": normalize_transcript(evidence.events),
         "messages": [
             message.model_dump(exclude={"id", "seq"}) for message in evidence.projection.messages
@@ -41,6 +42,11 @@ def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
             else None
         ),
     }
+    if evidence.projection.refusals:
+        normalized["refusals"] = [
+            item.model_dump(exclude={"id", "seq"}) for item in evidence.projection.refusals
+        ]
+    return normalized
 
 
 def render_transcript(evidence: Evidence) -> str:
@@ -206,6 +212,54 @@ def references_resolve(evidence: Evidence, expected: Any, root: Path, case_id: s
     return None if resolved else f"{case_id}: REQ-CTX-01 no library follow-up was exercised"
 
 
+@assertion("refusal")
+def refusal_expected(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    refused = [event for event in evidence.events if event.type == "refused"]
+    if expected == "none":
+        return f"{case_id}: in-scope request was refused" if refused else None
+    code = RefuseArguments.model_validate(expected).code
+    if not refused or refused[-1].payload["code"] != code:
+        return f"{case_id}: expected refusal {code}, received " + (
+            refused[-1].payload["code"] if refused else "none"
+        )
+    return None
+
+
+@assertion("tools_called")
+def tools_called(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    called = {event.payload["name"] for event in evidence.events if event.type == "tool_call"}
+    missing = set(expected) - called
+    return f"{case_id}: expected tools were not exercised: {sorted(missing)}" if missing else None
+
+
+def refusal_invariants(evidence: Evidence, case_id: str) -> list[str]:
+    refused_turns = set()
+    messages: dict[tuple, str] = {}
+    for event in evidence.events:
+        if event.type == "refused":
+            try:
+                Refusal.model_validate(event.payload)
+            except ValidationError:
+                return [f"{case_id}: REQ-SCOPE-03 malformed refusal event"]
+            refused_turns.add(event.conversation_turn_id)
+        elif event.type == "text_delta":
+            identity = (event.conversation_turn_id, event.payload["message_id"])
+            messages[identity] = messages.get(identity, "") + event.payload["text"]
+        elif event.type == "message_dropped":
+            messages.pop((event.conversation_turn_id, event.payload["message_id"]), None)
+    pattern = re.compile(
+        r"\b(?:cannot|can't|won't|unable to)\s+(?:help|assist|comply)\b|"
+        r"\b(?:outside|out of)\s+(?:my |the |this )?(?:domain|scope)\b",
+        re.IGNORECASE,
+    )
+    for (turn, _message), text in messages.items():
+        if pattern.search(text) and turn not in refused_turns:
+            return [f"{case_id}: REQ-SCOPE-03 refusal prose without a refused event"]
+        if turn in refused_turns:
+            return [f"{case_id}: REQ-SCOPE-03 refused turn contains improvised assistant prose"]
+    return []
+
+
 def view_invariants(evidence: Evidence, case_id: str) -> list[str]:
     replayed = Projection(session_id=evidence.projection.session_id)
     expected = []
@@ -233,9 +287,20 @@ def validate_expectations(case: Case, root: Path) -> None:
     unknown = case.expect.keys() - ASSERTIONS.keys()
     if unknown:
         raise ValueError(f"{case.id}: unknown assertions {sorted(unknown)}")
-    if "golden" not in case.expect or not isinstance(case.expect["golden"], str):
+    if case.agent.startswith("guard:"):
+        if "refusal" not in case.expect:
+            raise ValueError(f"{case.id}: a guard case requires a refusal label")
+    elif "golden" not in case.expect or not isinstance(case.expect["golden"], str):
         raise ValueError(f"{case.id}: a golden transcript path is required")
-    fixture_path(root, case.expect["golden"])
+    if "golden" in case.expect:
+        fixture_path(root, case.expect["golden"])
+    if "refusal" in case.expect and case.expect["refusal"] != "none":
+        RefuseArguments.model_validate(case.expect["refusal"])
+    if "tools_called" in case.expect and (
+        not isinstance(case.expect["tools_called"], list)
+        or any(tool not in RESPONSE_SCHEMAS for tool in case.expect["tools_called"])
+    ):
+        raise ValueError(f"{case.id}: tools_called must name registered clinical tools")
     for name in ("events_include", "events_exclude"):
         if name in case.expect and (
             not isinstance(case.expect[name], list)
@@ -268,7 +333,7 @@ def check_case(
     case: Case, evidence: Evidence, root: Path, *, skip_golden: bool = False
 ) -> list[str]:
     validate_expectations(case, root)
-    failures = view_invariants(evidence, case.id)
+    failures = view_invariants(evidence, case.id) + refusal_invariants(evidence, case.id)
     for name, expected in case.expect.items():
         if name == "golden" and skip_golden:
             continue

@@ -141,7 +141,7 @@ describe('event projection', () => {
     expect(nextTurn.conversation_turn?.id).toBe('next-turn')
   })
 
-  it.each(['tool_call', 'tool_result', 'refused', 'draft_updated'] as const)(
+  it.each(['tool_call', 'tool_result', 'draft_updated'] as const)(
     'advances the cursor for the reserved %s vocabulary',
     (type) => {
       expect(reduceEvent(empty, event(1, type, {}))).toEqual({
@@ -150,6 +150,23 @@ describe('event projection', () => {
       })
     },
   )
+
+  it('projects structured refusals once and preserves them through refresh and the next turn', () => {
+    const refused = event(1, 'refused', {
+      code: 'out_of_domain', message: 'I can help with specimen and library queries.',
+    })
+    const state = reduceEvent(empty, refused)
+    expect(state.messages).toEqual([])
+    expect(state.refusals).toEqual([{
+      id: 'turn', seq: 1, ...refused.payload,
+    }])
+    expect(reduceEvent(state, refused)).toBe(state)
+    const restored = JSON.parse(JSON.stringify(state)) as Projection
+    const continued = reduceEvent(restored, event(2, 'conversation_turn_finished', {}))
+    expect(continued.refusals).toEqual(state.refusals)
+    expect(continued.conversation_turn?.status).toBe('finished')
+    expect(empty.refusals).toBeUndefined()
+  })
 })
 
 describe('view and step replay', () => {

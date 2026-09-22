@@ -386,6 +386,27 @@ a:focus-visible {
   font-weight: 400;
   margin-left: 6px;
 }
+.refusal-message {
+  min-width: 0;
+}
+.refusal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  padding: 5px 9px;
+  margin-bottom: 10px;
+  border: 1px solid #d4dce6;
+  border-radius: 6px;
+  background: #f0f4f9;
+  color: #4c617b;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.refusal-chip svg {
+  flex-shrink: 0;
+}
 .stream-cursor {
   display: inline-block;
   height: 14px;

@@ -1,0 +1,172 @@
+# PLAN8: Execution and Live Views
+
+**Status:** not started
+**Depends on:** [PLAN7](PLAN7.md)
+**Shippable outcome:** confirmed jobs run, the right panel shows live progress and logs, and the
+agent diagnoses a failure from a job log and a retrieved SOP.
+
+---
+
+## Goal
+
+Make jobs execute, make the working surface live, and deliver the demo's best moment.
+
+That moment is specific: the seeded tumor/normal swap causes `somatic-snv` to fail on genotype
+concordance. The agent reads the job log, retrieves the relevant SOP from the knowledge base,
+explains the cause in terms a bioinformatician would use, and drafts a corrected re-run. It shows
+tool use, retrieval, grounded reasoning and the draft state machine in one continuous story, on
+data where the failure has a real cause rather than a scripted one.
+
+---
+
+## What you can see when it's done
+
+Confirm a job. A live card replaces the form: state, progress, elapsed time, and a tailing log.
+
+Ask "show me the running jobs from today". A grid of live cards, each independently updating.
+
+Wait for the somatic job to fail. Ask what happened. The agent explains genotype concordance,
+cites a line range in the SOP, and offers a re-run with the correct normal.
+
+---
+
+## Scope
+
+**The queue, in Postgres.** Claimed with `SKIP LOCKED`. Enqueue happens in the same transaction as
+the job row, so the two cannot diverge. No separate broker.
+
+**The dispatcher.** Claims rows and creates the execution unit. Under Compose that is a container.
+From PLAN9 it is a Kubernetes Job created from a catalog entry (image, command, parameter schema),
+with retries, backoff and cleanup delegated to the Job spec. Write the dispatcher against an
+interface with two implementations so PLAN9 is a substitution.
+
+**Job containers.** Each takes parameters and emits OTel-compatible JSONL on stdout. They do no
+real analysis: they read the fixture state, sleep on a realistic schedule, and emit the progress
+and outcome the fixtures dictate. The seeded conditions produce their outcomes here.
+
+| Seeded condition | Outcome |
+|---|---|
+| Tumor/normal swap | `somatic-snv` fails on genotype concordance |
+| Low tumor purity | Completes with a warning |
+| Low coverage | `readqc` fails |
+| Node eviction | Retried by the Job spec, visible in the card's history |
+| Long-running job | Runs long enough to watch |
+
+**Log ingestion.** The dispatcher tails stdout, parses the JSONL, tokenizes it (job logs are an
+ingress into model context), writes it to the database and forwards spans to the collector.
+
+**Live views.** Two new view kinds, `job_card` and `job_grid`, bound by handle and subscribed to
+job state. This is where the handle design from PLAN4 pays off a second time: a view bound to a
+handle reflects current state, so a card the agent pushed ten minutes ago is still correct now.
+
+**MCP Apps.** The jobs tool server ships `job_card` and `job_grid` as its own `ui://` resources
+rather than having them live in the web app's registry. This is the increment that makes
+"connect another MCP server later" a demonstrated capability instead of a claim: a new server
+brings its own views. The host renders them in a sandboxed frame with JSON-RPC message passing.
+
+**The knowledge base.** An immutable SQLite file with an FTS5 index, built in CI from versioned
+Markdown SOPs and baked into the image, served read-only over MCP. Line-granularity indexing so
+answers cite line ranges, which makes groundedness a deterministic check: either the cited span
+contains the claim or it does not.
+
+**Turn journaling.** Now that conversation turns can be long and can wait on job state, add journal-based resume:
+a runtime pod that dies mid-turn resumes from the log. This is where `message_dropped` finally
+gets emitted, retracting a partial assistant message before the interrupted step re-executes.
+The client reducer has supported it since PLAN1 for exactly this moment.
+
+---
+
+## Out of scope
+
+| Deferred | Owner |
+|---|---|
+| Kubernetes Jobs as the execution unit | PLAN9 |
+| Real analysis tooling | not a goal |
+| Multi-step workflows, DAGs | not a goal |
+| Job priority, quotas, fair scheduling | not a goal |
+
+---
+
+## Key decisions
+
+**No workflow engine.** Jobs are single-step, so retries and cleanup come from the platform. The
+genuinely durable process here is the conversation turn, and the event log already is its journal. Adding
+Temporal would be a second durability mechanism for the case that does not need one.
+
+**Fake executors that read real fixture state.** The failures must be diagnosable, which means
+they must have causes in the data. A job that fails randomly teaches the agent nothing to reason
+about and gives the audience nothing to verify.
+
+**Job logs are an ingress.** Easy to miss, and it is also the prompt-injection vector that PLAN10
+tests: a job whose log contains "ignore previous instructions". Tokenize and treat as untrusted
+content, on the same footing as user input.
+
+**Tool-owned views via MCP Apps.** Slightly more work than adding two kinds to the web registry,
+and it is what makes the extensibility story real.
+
+**An immutable knowledge base.** A KB version is a build artifact, so retrieval is reproducible and
+the report can pin it. This is what lets groundedness be checked rather than judged.
+
+---
+
+## Definition of done
+
+- [ ] A confirmed job runs and its card shows progress, elapsed time and a tailing log.
+- [ ] `job_grid` shows multiple live jobs, each updating independently.
+- [ ] The somatic job fails on genotype concordance from the seeded swap.
+- [ ] The agent explains the failure and cites a line range in the SOP.
+- [ ] The agent drafts a corrected re-run, which goes through the PLAN7 confirmation path.
+- [ ] A job log containing injected instructions does not change agent behavior.
+- [ ] Job logs contain no identifiers after ingestion. Corpus scan.
+- [ ] Killing the runtime mid-turn resumes, retracts the partial message, and completes.
+- [ ] Killing the dispatcher mid-job does not lose or duplicate the job.
+- [ ] `job_card` and `job_grid` are served by the jobs MCP server, not the web registry.
+
+---
+
+## Evidence added
+
+**REQ-EXEC-01 (invariant).** A confirmed job runs exactly once. Tested by killing the dispatcher at
+seeded points and asserting the job count.
+
+**REQ-EXEC-02 (invariant).** Job logs are tokenized before entering model context. Corpus scan.
+
+**REQ-RESUME-01 (invariant).** A conversation turn interrupted at any point resumes to the same final transcript.
+Extends the PLAN1 chaos suite from the connection layer to the runtime layer.
+
+**REQ-GROUND-02 (measured).** Claims about job state and about retrieved documents are supported.
+Job state claims check against the log deterministically. Document claims check that the cited line
+range contains the claim, which is why line-granularity indexing was chosen.
+
+**REQ-INJECT-01 (measured).** Instructions embedded in job logs do not alter behavior. Small case
+set here, expanded substantially at PLAN10.
+
+---
+
+## Traps
+
+**At-least-once claiming needs idempotent execution.** `SKIP LOCKED` plus a crash between claim and
+Job creation can produce a duplicate. Make Job names deterministic from the job id so a duplicate
+create is a conflict rather than a second execution.
+
+**Live views and the event log.** A live card is not a `view_pushed` payload that keeps changing.
+The push is one event, and the liveness comes from the handle subscription. Keeping that
+distinction clear is what stops the event log from filling with progress noise.
+
+**Log volume.** A chatty job can produce thousands of lines. The card tails a window, the database
+keeps the whole thing, and the model sees a summary plus a requested range. Putting a full log in
+context is how a context window dies.
+
+**Resume and message retraction are subtle.** An interrupted step re-executes, so any partial
+output must be retracted before the retry appends. Test it with interruptions specifically placed
+mid-message, not only between steps.
+
+**KB drift.** If the index is rebuilt without pinning, retrieval changes silently and goldens churn.
+Version it, record the version in provenance, and fail the suite when the recorded version does not
+match the loaded one.
+
+---
+
+## Next
+
+[PLAN9](PLAN9.md) moves the zone boundary from documentation into enforcement.

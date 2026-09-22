@@ -3,7 +3,8 @@
 **Status:** not started
 **Depends on:** [PLAN6](PLAN6.md)
 **Shippable outcome:** chat and a form in the right panel edit one object, and nothing is submitted
-without a human confirming the exact version they were shown.
+without a human confirming the exact version they were shown. Titled references in chat open the
+corresponding working-surface views.
 
 ---
 
@@ -31,6 +32,10 @@ Change a field in the form by hand. The chat acknowledges it on the next turn, b
 reading the same object.
 
 Press Confirm. A job card replaces the form.
+
+Click a table, chart, or draft reference in chat to return to that exact view, even after newer
+views have arrived. On mobile, the same action opens the working-surface tab. Opening a draft
+does not edit or confirm it.
 
 ---
 
@@ -68,6 +73,23 @@ renders from the event stream, so a model-side change appears without a refresh.
 **The form view kind.** A new registry entry, generated from the app's parameter JSON Schema plus
 a layout hint. Generated rather than hand-built, so adding an app to the catalog does not mean
 writing a form.
+
+**Chat-to-surface references.** The host renders titled links alongside the originating assistant
+turn from successful published-view receipts (`view_id`, kind, title). It resolves each reference
+against the session's persisted view history, rather than parsing prose or asking the model to
+invent a URL. The mechanism works for existing tables and charts as well as draft forms, and
+PLAN8 reuses it for live job views.
+
+Activation selects the exact view using the existing `view` URL parameter and opens
+`panel=surface` on mobile. Preserve that explicit selection across refresh, replay, browser
+back/forward, and subsequent view pushes; it must not silently switch to the latest view.
+References are keyboard-accessible, have meaningful titles, and move focus to the selected
+surface when appropriate. Missing or inaccessible targets show an explicit unavailable state;
+an expired data handle keeps its existing expiry error rather than silently rerunning the query.
+
+Reference activation is navigation only. Reading an existing view or its data is permitted; it
+must not create another view, start a model turn, rerun a query, edit a draft, or submit a job.
+View identity identifies a destination, not the draft version authorized for confirmation.
 
 **Deterministic validation.** A validator, not the model, enforces app constraints:
 
@@ -119,6 +141,10 @@ explanation and proposal.
 
 **Forms are generated from schemas.** Adding an app to the catalog should be a data change.
 
+**References are host-owned navigation.** Published-view identity and session scope determine
+the target. Labels and routes come from validated receipt/history metadata, not model-written
+URLs. One mechanism serves every view kind without constraining the agent's explanatory prose.
+
 ---
 
 ## Definition of done
@@ -126,6 +152,15 @@ explanation and proposal.
 - [ ] A natural-language request produces a pre-filled form with correct field values.
 - [ ] A chat correction updates the form live, without a refresh.
 - [ ] A form edit is visible to the agent on the next turn.
+- [ ] Chat renders titled references for successfully published tables, charts, and draft forms.
+- [ ] Clicking or keyboard-activating a reference selects its exact view and opens the surface
+  on mobile, with accessible focus handling.
+- [ ] Reference targets remain stable after refresh, replay, back/forward navigation, and newer
+  view pushes; failed publications do not create links.
+- [ ] Missing, expired, or cross-session targets fail visibly without falling back to another
+  view or leaking another session's data.
+- [ ] Activating a reference never reruns a query, starts a model turn, changes a draft version,
+  or submits a job. Browser tests cover these no-side-effect guarantees.
 - [ ] A missing matched normal is flagged by the validator and explained by the agent.
 - [ ] Confirm submits and renders a job card.
 - [ ] Confirm with a stale version hash is rejected, and the user sees what changed.
@@ -137,6 +172,11 @@ explanation and proposal.
 ---
 
 ## Evidence added
+
+**REQ-VIEW-03 (invariant).** A chat reference resolves only to its published view in the current
+session, and activation performs navigation without workflow mutations. Replay/projection tests
+verify receipt-to-view identity; desktop/mobile browser tests cover keyboard access, history,
+refresh, unavailable targets, and unchanged query, draft, and job state after activation.
 
 **REQ-JOB-01 (invariant).** No job transitions out of `draft` without a confirmation carrying a
 matching version hash. Asserted at the state machine level, over every path.
@@ -168,6 +208,10 @@ expect:
 ---
 
 ## Traps
+
+**A reference that means "latest" instead of "this view".** Even a reference to the current head
+must retain its explicit identity when later views arrive. Do not reuse an auto-follow shortcut
+that discards the selected ID. A missing target is unavailable, not permission to show another view.
 
 **Version hash churn.** If the hash covers fields that change for cosmetic reasons, users get
 spurious rejections and learn to ignore the warning. Hash the semantic content of the draft:

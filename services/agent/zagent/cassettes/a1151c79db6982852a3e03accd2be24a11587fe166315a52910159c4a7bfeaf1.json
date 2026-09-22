@@ -72,14 +72,14 @@
             "arguments": "{}",
             "name": "allow_request"
           },
-          "id": "chatcmpl-tool-9560dbc2c3537a13",
+          "id": "chatcmpl-tool-9028315ec7f0a54d",
           "type": "function"
         }
       ]
     },
     "usage": {
       "completion_tokens": 22,
-      "cost": 3.40256e-05,
+      "cost": 0.00013832,
       "prompt_tokens": 922,
       "total_tokens": 944
     }

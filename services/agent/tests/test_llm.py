@@ -20,7 +20,7 @@ from zagent.llm import (
     request_hash,
 )
 from zagent.runtime import Runtime
-from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
+from zagent.tools import COLUMNS, McpToolClient, ToolsGateway, create_mcp_server
 
 
 def request(text="Hello", **kwargs):
@@ -352,6 +352,65 @@ async def test_iteration_cap_produces_clean_terminal_failure(store):
     assert len(completer.requests) == 3
     assert all(step.status != "running" for step in snapshot.steps)
     assert (await store.snapshot_events(session.id))[-1].type == "conversation_turn_failed"
+
+
+@pytest.mark.integration
+async def test_model_receives_persisted_view_receipt_and_chat_remains_free_form(store):
+    clinical = ClinicalStore(store, lambda: FROZEN_NOW)
+    await clinical.seed()
+    tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
+    explanation = (
+        'See "Recent specimens" in the working surface. '
+        "Which receipt window should we use next?\n\n"
+        "| Window | Meaning |\n|---|---|\n| P1D | Last 24 hours |"
+    )
+    spec = {
+        "kind": "table",
+        "version": 1,
+        "props": {
+            "title": "Recent specimens",
+            "handle": "query-0001",
+            "columns": COLUMNS["specimens"],
+            "row_count": 29,
+        },
+    }
+    completer = SequenceCompleter(
+        [
+            tool_completion("allow_request", {}),
+            tool_completion("find_specimens", {}, "specimens"),
+            tool_completion("push_view", {"spec": spec}, "view"),
+            Completion(message=AssistantMessage(content=explanation)),
+        ]
+    )
+    runtime = Runtime(store, LlmAgent(store, completer, tools))
+    session = await store.create_session()
+    turn = await store.begin_conversation_turn(session.id, "Show recent specimens")
+    await runtime._run_turn(turn)
+    events = await store.snapshot_events(session.id)
+    view_event = next(event for event in events if event.type == "view_pushed")
+    result_event = next(
+        event
+        for event in events
+        if event.type == "tool_result" and event.payload["name"] == "push_view"
+    )
+    receipt = result_event.payload["result"]
+    assert receipt == {
+        "ok": True,
+        "view_id": view_event.payload["view_id"],
+        "kind": "table",
+        "title": "Recent specimens",
+    }
+    assert view_event.seq < result_event.seq
+    assert json.loads(completer.requests[-1].messages[-1]["content"]) == receipt
+    snapshot = await store.snapshot(session.id)
+    assert snapshot.conversation_turn.status == "finished"
+    assert len(snapshot.views) == 1
+    assert snapshot.messages[-1].text == explanation
+    audit = await store.pool.fetchval(
+        "SELECT result FROM tool_audit WHERE conversation_turn_id = $1 AND tool = 'push_view'",
+        turn.conversation_turn_id,
+    )
+    assert audit == receipt
 
 
 @pytest.mark.integration

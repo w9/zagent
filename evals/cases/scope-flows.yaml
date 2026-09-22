@@ -82,6 +82,7 @@ cases:
       tools_called: [find_patients, find_specimens, find_libraries, push_view]
       tools_only_handles: true
       numeric_claims_grounded: true
+      view_narration: true
       views:
         - kind: table
           props_match: {row_count: 3}

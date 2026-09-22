@@ -1,5 +1,4 @@
 import asyncio
-import json
 import re
 from collections.abc import Awaitable, Callable
 from importlib.resources import files
@@ -38,12 +37,20 @@ Use find_patients with an exact MRN, then find_specimens with that patient_handl
 Use received_within P1D for yesterday/the last 24 hours, P7D for the last week, or P30D.
 Use find_libraries with a specimen_handle for library follow-ups such as "those".
 Always display requested records by calling push_view with a handle-bound table or chart.
+The working surface presents query results; chat explains, summarizes supported counts, asks
+questions, and refers to published views. A successful push_view returns the published view's
+"""
+    "identity, kind and title. Refer to that title or kind in the working surface, "
+    'not "above" or "below".\n'
+    """Do not duplicate query results in chat as Markdown/ASCII tables, empty rows, or placeholders,
+and do not expose internal query handles or view IDs in prose. Useful conceptual tables are fine.
+Only describe a view as published after a successful receipt; an error is not a published view.
 For tables, copy columns from schema and row_count from count. Never supply rows.
 For charts, choose fields only from the returned schema; rendering resolves the data privately.
 Treat a tool error as feedback: correct your arguments if possible. Do not repeat invalid calls.
 Make numeric claims about cohort data only when supported by tool counts in this conversation.
-Do not claim to have inspected individual values. Explain that row-level analysis would require
-an explicit aggregate tool if the available counts and schemas cannot answer a question.
+Do not claim to have inspected individual values. Explain the need for an explicit aggregate tool
+when a question requires row-level analysis, not as a routine disclaimer after displaying a view.
 Keep answers concise. Do not claim that an analysis or job was run.
 If a refusal is needed, call refuse(code) without any accompanying prose or other tool calls.
 """
@@ -213,17 +220,6 @@ class LlmAgent:
                         "content": canonical_json(result),
                     }
                 )
-                if call.function.name == "push_view" and result.get("ok"):
-                    spec = json.loads(call.function.arguments)["spec"]
-                    await emit(
-                        EventDraft(
-                            type="view_pushed",
-                            payload={
-                                "view_id": f"{step_id}:{call.id}",
-                                "spec": spec,
-                            },
-                        )
-                    )
             await emit(
                 EventDraft(
                     type="step_finished",

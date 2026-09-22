@@ -20,6 +20,7 @@ cases:
       tools_only_handles: true
       numeric_claims_grounded: true
       references_resolve: true
+      view_narration: true
       refusal: none
       tools_called: [find_patients, find_specimens, find_libraries, push_view]
 
@@ -39,4 +40,5 @@ cases:
       tools_only_handles: true
       numeric_claims_grounded: true
       refusal: none
+      view_narration: true
       tools_called: [find_specimens, push_view]

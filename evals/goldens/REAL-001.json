@@ -22,16 +22,6 @@
     },
     {
       "payload": {
-        "text": "I'll look up that patient by MRN."
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
         "arguments": "{\"mrn\": \"NGC-0041872\"}",
         "name": "find_patients"
       },
@@ -124,82 +114,10 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\", \"handle\": \"query-0002\", \"columns\": [\"id\", \"kind\", \"purity\", \"received_at\"], \"row_count\": 3}}}",
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec: Value error, View schema error at props.columns.0: 'id' is not of type 'object'"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 4"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\"}, {\"key\": \"kind\", \"label\": \"Type\"}, {\"key\": \"purity\", \"label\": \"Purity\"}, {\"key\": \"received_at\", \"label\": \"Received\"}], \"handle\": \"query-0002\", \"row_count\": 3, \"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\"}, \"version\": 1}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec: Value error, View schema error at props.columns.0: 'type' is a required property"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 5"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"handle\": \"query-0002\", \"row_count\": 3, \"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\"}, \"version\": 1}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "handle": "query-0002",
-          "ok": true
-        }
-      },
-      "type": "tool_result"
     },
     {
       "payload": {
@@ -239,19 +157,30 @@
     },
     {
       "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Specimens received in the last 24 hours \u2014 NGC-0041872"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
         "detail": "push_view"
       },
       "type": "step_finished"
     },
     {
       "payload": {
-        "title": "Agent step 6"
+        "title": "Agent step 4"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "Patient **NGC-0041872** has **3 specimens** received in the last 24 hours (P1D). The table is displayed above, with columns: Specimen ID, Type, Purity, and Received time.\n\nI can't see the individual row values \u2014 only the count and schema \u2014 so if you want a breakdown (e.g., counts by specimen type or purity ranges), that would need an explicit aggregate. I can also pull the libraries for any of these specimens if you'd like a QC follow-up."
+        "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours. I've published them as the table \"Specimens received in the last 24 hours \u2014 NGC-0041872\", showing specimen ID, type, purity, and received time."
       },
       "type": "text_delta"
     },
@@ -343,51 +272,10 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24 hours \u2014 NGC-0041872\", \"version\": 1}}}",
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for NGC-0041872 specimens (last 24 hours)\"}, \"version\": 1}}",
         "name": "push_view"
       },
       "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec.version: Field required"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 3"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24 hours \u2014 NGC-0041872\"}}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "handle": "query-0003",
-          "ok": true
-        }
-      },
-      "type": "tool_result"
     },
     {
       "payload": {
@@ -423,12 +311,23 @@
             ],
             "handle": "query-0003",
             "row_count": 3,
-            "title": "Libraries for specimens received in the last 24 hours \u2014 NGC-0041872"
+            "title": "Libraries for NGC-0041872 specimens (last 24 hours)"
           },
           "version": 1
         }
       },
       "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Libraries for NGC-0041872 specimens (last 24 hours)"
+        }
+      },
+      "type": "tool_result"
     },
     {
       "payload": {
@@ -438,13 +337,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 4"
+        "title": "Agent step 3"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "There are **3 libraries** associated with those specimens. The table is displayed above with: Library ID, Specimen, Preparation, Coverage, and QC status.\n\nI can't read individual row values, only the count and schema. If you'd like, I can narrow this down \u2014 for example, filter to a specific QC status (passed / review / failed) \u2014 or show a coverage or QC-status chart over this handle."
+        "text": "Those 3 specimens have 3 libraries total. I've published the table \"Libraries for NGC-0041872 specimens (last 24 hours)\", listing each library's ID, linked specimen, preparation, coverage, and QC status."
       },
       "type": "text_delta"
     },
@@ -480,20 +379,10 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"chart\", \"props\": {\"encoding\": {\"x\": {\"field\": \"id\", \"type\": \"nominal\"}, \"y\": {\"field\": \"coverage\", \"type\": \"quantitative\"}}, \"handle\": \"query-0003\", \"mark\": \"bar\", \"title\": \"Library coverage \u2014 NGC-0041872 specimens (last 24h)\"}, \"version\": 1}}",
+        "arguments": "{\"spec\": {\"kind\": \"chart\", \"props\": {\"encoding\": {\"x\": {\"field\": \"id\", \"type\": \"nominal\"}, \"y\": {\"field\": \"coverage\", \"type\": \"quantitative\"}}, \"handle\": \"query-0003\", \"mark\": \"bar\", \"title\": \"Coverage by library \u2014 NGC-0041872 (last 24 hours)\"}, \"version\": 1}}",
         "name": "push_view"
       },
       "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "handle": "query-0003",
-          "ok": true
-        }
-      },
-      "type": "tool_result"
     },
     {
       "payload": {
@@ -512,12 +401,23 @@
             },
             "handle": "query-0003",
             "mark": "bar",
-            "title": "Library coverage \u2014 NGC-0041872 specimens (last 24h)"
+            "title": "Coverage by library \u2014 NGC-0041872 (last 24 hours)"
           },
           "version": 1
         }
       },
       "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "chart",
+          "ok": true,
+          "title": "Coverage by library \u2014 NGC-0041872 (last 24 hours)"
+        }
+      },
+      "type": "tool_result"
     },
     {
       "payload": {
@@ -533,7 +433,7 @@
     },
     {
       "payload": {
-        "text": "Coverage chart is displayed above \u2014 one bar per library (x = Library ID, y = Coverage), over the 3 libraries from the last 24 hours for NGC-0041872.\n\nI can't see the plotted values myself, only the schema and count. If it would help, I can switch to a point/line mark, or add QC status as a color channel to compare coverage by pass/review/fail."
+        "text": "I've published the bar chart \"Coverage by library \u2014 NGC-0041872 (last 24 hours)\", plotting coverage per library for those 3 libraries."
       },
       "type": "text_delta"
     },
@@ -561,12 +461,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "I'll look up that patient by MRN."
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "Patient **NGC-0041872** has **3 specimens** received in the last 24 hours (P1D). The table is displayed above, with columns: Specimen ID, Type, Purity, and Received time.\n\nI can't see the individual row values \u2014 only the count and schema \u2014 so if you want a breakdown (e.g., counts by specimen type or purity ranges), that would need an explicit aggregate. I can also pull the libraries for any of these specimens if you'd like a QC follow-up."
+      "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours. I've published them as the table \"Specimens received in the last 24 hours \u2014 NGC-0041872\", showing specimen ID, type, purity, and received time."
     },
     {
       "role": "user",
@@ -576,7 +471,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "There are **3 libraries** associated with those specimens. The table is displayed above with: Library ID, Specimen, Preparation, Coverage, and QC status.\n\nI can't read individual row values, only the count and schema. If you'd like, I can narrow this down \u2014 for example, filter to a specific QC status (passed / review / failed) \u2014 or show a coverage or QC-status chart over this handle."
+      "text": "Those 3 specimens have 3 libraries total. I've published the table \"Libraries for NGC-0041872 specimens (last 24 hours)\", listing each library's ID, linked specimen, preparation, coverage, and QC status."
     },
     {
       "role": "user",
@@ -586,7 +481,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Coverage chart is displayed above \u2014 one bar per library (x = Library ID, y = Coverage), over the 3 libraries from the last 24 hours for NGC-0041872.\n\nI can't see the plotted values myself, only the schema and count. If it would help, I can switch to a point/line mark, or add QC status as a color channel to compare coverage by pass/review/fail."
+      "text": "I've published the bar chart \"Coverage by library \u2014 NGC-0041872 (last 24 hours)\", plotting coverage per library for those 3 libraries."
     }
   ],
   "steps": [
@@ -660,45 +555,13 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\", \"handle\": \"query-0002\", \"columns\": [\"id\", \"kind\", \"purity\", \"received_at\"], \"row_count\": 3}}}",
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
           "name": "push_view",
           "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec: Value error, View schema error at props.columns.0: 'id' is not of type 'object'"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 4",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\"}, {\"key\": \"kind\", \"label\": \"Type\"}, {\"key\": \"purity\", \"label\": \"Purity\"}, {\"key\": \"received_at\", \"label\": \"Received\"}], \"handle\": \"query-0002\", \"row_count\": 3, \"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\"}, \"version\": 1}}",
-          "name": "push_view",
-          "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec: Value error, View schema error at props.columns.0: 'type' is a required property"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 5",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"handle\": \"query-0002\", \"row_count\": 3, \"title\": \"Specimens received in the last 24 hours \u2014 NGC-0041872\"}, \"version\": 1}}",
-          "name": "push_view",
-          "result": {
-            "handle": "query-0002",
-            "ok": true
+            "kind": "table",
+            "ok": true,
+            "title": "Specimens received in the last 24 hours \u2014 NGC-0041872",
+            "view_id": "view-0001"
           }
         }
       ]
@@ -706,7 +569,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 6"
+      "title": "Agent step 4"
     },
     {
       "detail": "find_libraries",
@@ -756,28 +619,13 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24 hours \u2014 NGC-0041872\", \"version\": 1}}}",
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for NGC-0041872 specimens (last 24 hours)\"}, \"version\": 1}}",
           "name": "push_view",
           "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec.version: Field required"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 3",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24 hours \u2014 NGC-0041872\"}}}",
-          "name": "push_view",
-          "result": {
-            "handle": "query-0003",
-            "ok": true
+            "kind": "table",
+            "ok": true,
+            "title": "Libraries for NGC-0041872 specimens (last 24 hours)",
+            "view_id": "view-0002"
           }
         }
       ]
@@ -785,7 +633,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 4"
+      "title": "Agent step 3"
     },
     {
       "detail": "push_view",
@@ -793,11 +641,13 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"chart\", \"props\": {\"encoding\": {\"x\": {\"field\": \"id\", \"type\": \"nominal\"}, \"y\": {\"field\": \"coverage\", \"type\": \"quantitative\"}}, \"handle\": \"query-0003\", \"mark\": \"bar\", \"title\": \"Library coverage \u2014 NGC-0041872 specimens (last 24h)\"}, \"version\": 1}}",
+          "arguments": "{\"spec\": {\"kind\": \"chart\", \"props\": {\"encoding\": {\"x\": {\"field\": \"id\", \"type\": \"nominal\"}, \"y\": {\"field\": \"coverage\", \"type\": \"quantitative\"}}, \"handle\": \"query-0003\", \"mark\": \"bar\", \"title\": \"Coverage by library \u2014 NGC-0041872 (last 24 hours)\"}, \"version\": 1}}",
           "name": "push_view",
           "result": {
-            "handle": "query-0003",
-            "ok": true
+            "kind": "chart",
+            "ok": true,
+            "title": "Coverage by library \u2014 NGC-0041872 (last 24 hours)",
+            "view_id": "view-0003"
           }
         }
       ]
@@ -872,7 +722,7 @@
         ],
         "handle": "query-0003",
         "row_count": 3,
-        "title": "Libraries for specimens received in the last 24 hours \u2014 NGC-0041872"
+        "title": "Libraries for NGC-0041872 specimens (last 24 hours)"
       },
       "version": 1
     },
@@ -891,7 +741,7 @@
         },
         "handle": "query-0003",
         "mark": "bar",
-        "title": "Library coverage \u2014 NGC-0041872 specimens (last 24h)"
+        "title": "Coverage by library \u2014 NGC-0041872 (last 24 hours)"
       },
       "version": 1
     }

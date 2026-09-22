@@ -26,6 +26,11 @@ legacy regressions, real-agent multi-turn cases, and 300 labeled scope cases wit
 recorded guard calls each. Scope recall and in-scope acceptance have separate lower-bound gates;
 the report also shows refusal precision, per-reason results, and disagreeing cases.
 
+`push_view` publishes a validated view before returning `{ok, view_id, kind, title}`. Chat can
+refer to that title in the working surface without receiving row data. The prompt separates
+result presentation from explanations and clarification; narration quality is measured in evals,
+not enforced by filtering prose or substituting canned responses.
+
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
 
@@ -268,7 +273,7 @@ low library coverage, and a missing matched normal. Evals use a frozen clock and
 
 ## Running the evidence suite
 
-The suite covers eleven requirements with 318 cases. Eighteen HTTP cases cover streams, views,
+The suite covers twelve requirements with 318 cases. Eighteen HTTP cases cover streams, views,
 tools, RLS, real conversations, refusals, and contextual continuation. The 300 labeled guard
 cases span obvious requests, short continuations, near-boundary questions, and scope wrappers.
 The same evaluator serves pytest and `zagent evals`.
@@ -292,11 +297,12 @@ REQ-TOOL-01          invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-ISO-01           invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-GROUND-01        measured   PASS          6/6        [61.0%, 100.0%]
 REQ-CTX-01           measured   PASS          3/3        [43.9%, 100.0%]
+REQ-PRESENT-01       measured   PASS          9/9        [70.1%, 100.0%]
 REQ-SCOPE-01         measured   PASS          1000/1000  [99.6%, 100.0%]
 REQ-SCOPE-02         measured   PASS          1933/2000  [95.8%, 97.4%]
-REQ-SCOPE-03         invariant  PASS          3007/3007  [99.9%, 100.0%]
+REQ-SCOPE-03         invariant  PASS          3009/3009  [99.9%, 100.0%]
 
-11 requirements, 3202 trials, 67 failed trials; 220 HTTP case executions.
+12 requirements, 3204 trials, 67 failed trials; 222 HTTP case executions.
 Report: docs/evals/index.html
 ```
 

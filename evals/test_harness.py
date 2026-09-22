@@ -6,9 +6,16 @@ from uuid import uuid4
 import pytest
 import yaml
 from pydantic import ValidationError
-from zagent.evals.assertions import Evidence, check_case, render_transcript, transcript_diff
+from zagent.evals.assertions import (
+    Evidence,
+    check_case,
+    render_transcript,
+    transcript_diff,
+    view_narration,
+)
 from zagent.evals.schema import Case, Requirement, Suite, fixture_path
 from zagent.events import Event, project
+from zagent.tools import COLUMNS
 
 
 def sample_case(**overrides):
@@ -122,13 +129,142 @@ def test_numeric_grounding_requires_a_preceding_entity_count(tmp_path):
     )
 
 
+def test_numeric_grounding_does_not_treat_a_view_title_identifier_as_a_count(tmp_path):
+    case = sample_case(expect={"golden": "test.json", "numeric_claims_grounded": True})
+    evidence = sample_evidence(
+        'See "Libraries for NGC-0041872 specimens (last 24 hours)" in the working surface.'
+    )
+    assert check_case(case, evidence, tmp_path, skip_golden=True) == []
+
+
 def test_real_agent_assertions_reject_bad_configuration_and_inline_rows(tmp_path):
     evidence = sample_evidence()
-    for name in ("tools_only_handles", "numeric_claims_grounded", "references_resolve"):
+    for name in (
+        "tools_only_handles",
+        "numeric_claims_grounded",
+        "references_resolve",
+        "view_narration",
+    ):
         with pytest.raises(ValueError, match="must be a boolean"):
             check_case(sample_case(expect={"golden": "test.json", name: "yes"}), evidence, tmp_path)
     case = sample_case(expect={"golden": "test.json", "tools_only_handles": True})
     assert "no tool results" in check_case(case, evidence, tmp_path, skip_golden=True)[0]
+
+
+def narration_evidence(text: str, *, published: bool = True) -> Evidence:
+    source = sample_evidence(text)
+    query = source.events[0].model_copy(
+        update={
+            "type": "tool_result",
+            "payload": {
+                "step_id": "query",
+                "call_id": "libraries",
+                "name": "find_libraries",
+                "result": {"handle": "query-0003", "count": 1, "schema": COLUMNS["libraries"]},
+            },
+        }
+    )
+    receipt = query.model_copy(
+        update={
+            "payload": {
+                "step_id": "publish",
+                "call_id": "view",
+                "name": "push_view",
+                "result": {
+                    "ok": True,
+                    "view_id": "view-0001",
+                    "kind": "table",
+                    "title": "Libraries",
+                }
+                if published
+                else {"error": {"code": "invalid_view", "message": "Invalid columns"}},
+            }
+        }
+    )
+    pushed = query.model_copy(
+        update={
+            "type": "view_pushed",
+            "payload": {
+                "view_id": "view-0001",
+                "spec": {
+                    "kind": "table",
+                    "version": 1,
+                    "props": {
+                        "title": "Libraries",
+                        "handle": "query-0003",
+                        "columns": COLUMNS["libraries"],
+                        "row_count": 1,
+                    },
+                },
+            },
+        }
+    )
+    events = (
+        source.events[:2]
+        + [query]
+        + ([pushed] if published else [])
+        + [receipt]
+        + source.events[2:]
+    )
+    events = [event.model_copy(update={"seq": index}) for index, event in enumerate(events, 1)]
+    return Evidence(events, project(source.projection.session_id, events))
+
+
+def test_narration_measurement_detects_the_reported_placeholder_without_changing_it(tmp_path):
+    text = (
+        "Here's the result - the patient NGC-0041872 had 1 specimen received in the last "
+        "24 hours, with 1 associated library:\n\n"
+        "| Library | Specimen | Preparation | Coverage | QC status |\n"
+        "|---|---|---|---|---|\n| (1 record) | | | | |\n\n"
+        "The table is displayed above (handle query-0003, 1 row)."
+    )
+    evidence = narration_evidence(text)
+    original = render_transcript(evidence)
+    failure = view_narration(evidence, True, tmp_path, "PRESENT-TEST")
+    assert "chat duplicates a query-result table" in failure
+    assert render_transcript(evidence) == original
+    assert evidence.projection.messages[-1].text == text
+    assert len(evidence.projection.views) == 1
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        'Found 1 library. See "Libraries" in the working surface.',
+        "Coverage is a sequencing-depth metric. Would you like to filter libraries by QC status?",
+        "| Concept | Meaning |\n|---|---|\n| Coverage | Sequencing depth |",
+    ],
+)
+def test_narration_measurement_preserves_explanations_and_non_result_tables(tmp_path, text):
+    assert view_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST") is None
+    assert view_narration(sample_evidence(text), True, tmp_path, "PRESENT-TEST") is None
+
+
+@pytest.mark.parametrize(
+    "text,issue",
+    [
+        ("The table is displayed above.", "misleading view location"),
+        ("See query-0003 for the result.", "internal result identifier"),
+        ("The table is available in the working surface.", "publication claimed"),
+    ],
+)
+def test_narration_measurement_detects_misleading_view_claims(tmp_path, text, issue):
+    failure = view_narration(
+        narration_evidence(text, published=False), True, tmp_path, "PRESENT-TEST"
+    )
+    assert issue in failure
+    assert (
+        view_narration(
+            narration_evidence(
+                "The view could not be published. Which columns would you like?",
+                published=False,
+            ),
+            True,
+            tmp_path,
+            "PRESENT-TEST",
+        )
+        is None
+    )
 
 
 def view_evidence():

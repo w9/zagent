@@ -14,7 +14,7 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
-from zagent.store import AgentSession, NotFound, Store
+from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
 
 MAX_TOOL_RESULT_BYTES = 8192
@@ -55,9 +55,11 @@ class QueryResult(StrictModel):
     columns: list[Column] = Field(alias="schema", min_length=1, max_length=30)
 
 
-class Acknowledgement(StrictModel):
+class ViewReceipt(StrictModel):
     ok: Literal[True]
-    handle: Handle
+    view_id: str = Field(pattern=r"^view-[0-9]{4,}$", max_length=100)
+    kind: str = Field(min_length=1, max_length=100)
+    title: str = Field(min_length=1, max_length=200)
 
 
 class ErrorDetail(StrictModel):
@@ -92,8 +94,11 @@ DESCRIPTIONS = {
     ),
     "find_libraries": "Find libraries for a specimen handle, optionally filtered by QC status.",
     "push_view": (
-        "Display a table or chart bound to a query handle. No inline data. "
-        "Table v1 props: title, handle, columns (from schema), row_count (from count). "
+        "Publish a table or chart in the working surface, with data bound to a query handle. "
+        "Success returns a receipt identifying the published view: view_id, kind and title. "
+        "Use the title and kind to refer to it in chat; let the view present the query results. "
+        "No inline data. Table v1 props: title, handle, columns (copy the schema's complete "
+        "key/label/type objects), row_count (from count). "
         "Chart v1 props: title, handle, mark (bar/line/point), encoding with x/y "
         "and optional color; "
         "each channel has field, type (nominal/ordinal/quantitative/temporal), optional aggregate "
@@ -102,7 +107,7 @@ DESCRIPTIONS = {
 }
 RESPONSE_SCHEMAS = {
     name: TypeAdapter(
-        (Acknowledgement | ToolFailure) if name == "push_view" else (QueryResult | ToolFailure)
+        (ViewReceipt | ToolFailure) if name == "push_view" else (QueryResult | ToolFailure)
     ).json_schema()
     for name in INPUTS
 }
@@ -146,14 +151,23 @@ class ClinicalTools:
     def __init__(self, clinical: ClinicalStore):
         self.clinical = clinical
 
-    async def dispatch(self, session_id: UUID, name: str, arguments: dict) -> dict:
+    async def dispatch(
+        self,
+        session_id: UUID,
+        name: str,
+        arguments: dict,
+        *,
+        conversation_turn_id: UUID | None = None,
+    ) -> dict:
         if name not in INPUTS:
             return failure("unknown_tool", "Tool is not allowlisted")
         try:
             params = INPUTS[name].model_validate(arguments)
             session = await self.clinical.store.get_session(session_id)
             if name == "push_view":
-                return await self.push_view(session_id, params.spec)
+                if conversation_turn_id is None:
+                    return failure("invalid_view", "Publishing a view requires a conversation turn")
+                return await self.push_view(session_id, conversation_turn_id, params.spec)
             identifiers = None
             if name == "find_specimens" and params.patient_handle:
                 identifiers = (
@@ -199,8 +213,10 @@ class ClinicalTools:
             return failure("invalid_arguments", "Arguments do not match the tool schema")
         except (NotFound, HandleError) as error:
             return failure("invalid_handle", str(error))
+        except ConversationTurnConflict as error:
+            return failure("invalid_view", str(error))
 
-    async def push_view(self, session_id: UUID, spec: ViewSpec) -> dict:
+    async def push_view(self, session_id: UUID, conversation_turn_id: UUID, spec: ViewSpec) -> dict:
         handle = spec.props.get("handle")
         if not handle or "rows" in spec.props:
             return failure("invalid_view", "Views must bind data by handle, never inline rows")
@@ -226,7 +242,13 @@ class ClinicalTools:
                     and column["type"] != "number"
                 ):
                     return failure("invalid_view", "Quantitative channels require numeric fields")
-        return {"ok": True, "handle": handle}
+        event = await self.clinical.store.publish_view(session_id, conversation_turn_id, spec)
+        return ViewReceipt(
+            ok=True,
+            view_id=event.payload["view_id"],
+            kind=spec.kind,
+            title=spec.props["title"],
+        ).model_dump()
 
 
 def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
@@ -234,8 +256,12 @@ def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
     server = FastMCP("zagent-clinical", host="0.0.0.0", stateless_http=True, json_response=True)
 
     def register(name: str) -> None:
-        async def invoke(session_id: str, arguments: dict[str, Any]) -> dict[str, Any]:
-            return await backend.dispatch(UUID(session_id), name, arguments)
+        async def invoke(
+            session_id: str, conversation_turn_id: str, arguments: dict[str, Any]
+        ) -> dict[str, Any]:
+            return await backend.dispatch(
+                UUID(session_id), name, arguments, conversation_turn_id=UUID(conversation_turn_id)
+            )
 
         server.add_tool(invoke, name=name, description=DESCRIPTIONS[name])
 
@@ -245,7 +271,7 @@ def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
 
 
 class ToolCaller(Protocol):
-    async def call(self, session_id: UUID, name: str, arguments: dict) -> dict: ...
+    async def call(self, session: AgentSession, name: str, arguments: dict) -> dict: ...
 
 
 class McpToolClient:
@@ -271,10 +297,15 @@ class McpToolClient:
                         await client.initialize()
                         yield client
 
-    async def call(self, session_id: UUID, name: str, arguments: dict) -> dict:
+    async def call(self, session: AgentSession, name: str, arguments: dict) -> dict:
         async with self.connection() as client:
             result = await client.call_tool(
-                name, {"session_id": str(session_id), "arguments": arguments}
+                name,
+                {
+                    "session_id": str(session.id),
+                    "conversation_turn_id": str(session.conversation_turn_id),
+                    "arguments": arguments,
+                },
             )
         if result.isError or result.structuredContent is None:
             return failure("unavailable", "MCP tool execution failed")
@@ -298,7 +329,7 @@ class ToolsGateway:
             else:
                 params = model.model_validate(arguments)
                 result = await self.client.call(
-                    session.id, name, params.model_dump(mode="json", exclude_none=True)
+                    session, name, params.model_dump(mode="json", exclude_none=True)
                 )
                 if len(
                     json.dumps(result).encode()

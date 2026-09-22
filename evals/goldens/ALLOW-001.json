@@ -22,7 +22,7 @@
     },
     {
       "payload": {
-        "text": "Would you like the libraries for specimens received in the last 24 hours (P1D) for patient MRN NGC-0041872?"
+        "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for patient NGC-0041872?"
       },
       "type": "text_delta"
     },
@@ -206,82 +206,10 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for specimens received in the last 24h \u2014 NGC-0041872\", \"handle\": \"query-0003\", \"columns\": [\"id\", \"specimen_id\", \"prep\", \"coverage\", \"qc_status\"], \"row_count\": 3}}}",
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for NGC-0041872 specimens received in the last 24 hours\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec: Value error, View schema error at props.columns.0: 'id' is not of type 'object'"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 5"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\"}, {\"key\": \"prep\", \"label\": \"Preparation\"}, {\"key\": \"coverage\", \"label\": \"Coverage\"}, {\"key\": \"qc_status\", \"label\": \"QC status\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24h \u2014 NGC-0041872\"}, \"version\": 1}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec: Value error, View schema error at props.columns.0: 'type' is a required property"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 6"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24h \u2014 NGC-0041872\"}, \"version\": 1}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "handle": "query-0003",
-          "ok": true
-        }
-      },
-      "type": "tool_result"
     },
     {
       "payload": {
@@ -317,12 +245,23 @@
             ],
             "handle": "query-0003",
             "row_count": 3,
-            "title": "Libraries for specimens received in the last 24h \u2014 NGC-0041872"
+            "title": "Libraries for NGC-0041872 specimens received in the last 24 hours"
           },
           "version": 1
         }
       },
       "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Libraries for NGC-0041872 specimens received in the last 24 hours"
+        }
+      },
+      "type": "tool_result"
     },
     {
       "payload": {
@@ -332,13 +271,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 7"
+        "title": "Agent step 5"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours, and those specimens have 3 libraries:\n\n| Library | Specimen | Preparation | Coverage | QC status |\n|---|---|---|---|---|\n| (handle-bound table above) | | | | |\n\nThe table is displayed bound to query-0003 (3 rows). Let me know if you'd like to filter these by QC status (e.g., only \"review\" or \"failed\") or see coverage plotted."
+        "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for NGC-0041872 specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
       },
       "type": "text_delta"
     },
@@ -366,7 +305,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Would you like the libraries for specimens received in the last 24 hours (P1D) for patient MRN NGC-0041872?"
+      "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for patient NGC-0041872?"
     },
     {
       "role": "user",
@@ -376,7 +315,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours, and those specimens have 3 libraries:\n\n| Library | Specimen | Preparation | Coverage | QC status |\n|---|---|---|---|---|\n| (handle-bound table above) | | | | |\n\nThe table is displayed bound to query-0003 (3 rows). Let me know if you'd like to filter these by QC status (e.g., only \"review\" or \"failed\") or see coverage plotted."
+      "text": "Patient NGC-0041872 had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for NGC-0041872 specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
     }
   ],
   "steps": [
@@ -497,45 +436,13 @@
       "title": "Agent step 4",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for specimens received in the last 24h \u2014 NGC-0041872\", \"handle\": \"query-0003\", \"columns\": [\"id\", \"specimen_id\", \"prep\", \"coverage\", \"qc_status\"], \"row_count\": 3}}}",
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries for NGC-0041872 specimens received in the last 24 hours\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
           "name": "push_view",
           "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec: Value error, View schema error at props.columns.0: 'id' is not of type 'object'"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 5",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\"}, {\"key\": \"prep\", \"label\": \"Preparation\"}, {\"key\": \"coverage\", \"label\": \"Coverage\"}, {\"key\": \"qc_status\", \"label\": \"QC status\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24h \u2014 NGC-0041872\"}, \"version\": 1}}",
-          "name": "push_view",
-          "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec: Value error, View schema error at props.columns.0: 'type' is a required property"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 6",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"props\": {\"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"handle\": \"query-0003\", \"row_count\": 3, \"title\": \"Libraries for specimens received in the last 24h \u2014 NGC-0041872\"}, \"version\": 1}}",
-          "name": "push_view",
-          "result": {
-            "handle": "query-0003",
-            "ok": true
+            "kind": "table",
+            "ok": true,
+            "title": "Libraries for NGC-0041872 specimens received in the last 24 hours",
+            "view_id": "view-0001"
           }
         }
       ]
@@ -543,7 +450,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 7"
+      "title": "Agent step 5"
     }
   ],
   "views": [
@@ -579,7 +486,7 @@
         ],
         "handle": "query-0003",
         "row_count": 3,
-        "title": "Libraries for specimens received in the last 24h \u2014 NGC-0041872"
+        "title": "Libraries for NGC-0041872 specimens received in the last 24 hours"
       },
       "version": 1
     }

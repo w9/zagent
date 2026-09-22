@@ -7,6 +7,7 @@ import asyncpg
 from pydantic import BaseModel
 
 from zagent.events import Event, EventDraft, Projection, project
+from zagent.views import ViewSpec
 
 DEFAULT_DATABASE_URL = "postgresql://zagent:zagent@localhost:5432/zagent"
 SEED_SESSION_ID = UUID("01950000-0000-7000-8000-000000000001")
@@ -176,6 +177,40 @@ class Store:
     ) -> Event:
         async with self.pool.acquire() as connection, connection.transaction():
             return await self._append(connection, session_id, conversation_turn_id, event)
+
+    async def publish_view(
+        self, session_id: UUID, conversation_turn_id: UUID, spec: ViewSpec
+    ) -> Event:
+        async with self.pool.acquire() as connection, connection.transaction():
+            exists = await connection.fetchval(
+                "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
+            )
+            if exists is None:
+                raise NotFound("Session not found")
+            turn_id = await connection.fetchval(
+                """SELECT id FROM conversation_turns
+                   WHERE session_id = $1 AND id = $2 AND status = 'running'""",
+                session_id,
+                conversation_turn_id,
+            )
+            if turn_id is None:
+                raise ConversationTurnConflict("Publishing a view requires an active turn")
+            number = await connection.fetchval(
+                "SELECT count(*) + 1 FROM events WHERE session_id = $1 AND type = 'view_pushed'",
+                session_id,
+            )
+            return await self._append(
+                connection,
+                session_id,
+                turn_id,
+                EventDraft(
+                    type="view_pushed",
+                    payload={
+                        "view_id": f"view-{number:04d}",
+                        "spec": spec.model_dump(),
+                    },
+                ),
+            )
 
     async def finish_conversation_turn(
         self, session_id: UUID, conversation_turn_id: UUID, error: str | None = None

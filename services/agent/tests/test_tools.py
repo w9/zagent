@@ -23,7 +23,7 @@ from zagent.tools import (
 def test_no_tool_response_schema_permits_row_data(name, rows, field):
     validator = Draft202012Validator(RESPONSE_SCHEMAS[name])
     valid = (
-        {"ok": True, "handle": "query-0001"}
+        {"ok": True, "view_id": "view-0001", "kind": "table", "title": "Specimens"}
         if name == "push_view"
         else {"handle": "query-0001", "count": 1, "schema": COLUMNS["patients"]}
     )
@@ -67,7 +67,21 @@ async def test_mcp_tools_return_only_handles_and_support_followup_queries(store)
             "row_count": specimens["count"],
         },
     }
-    assert (await gateway.execute(turn, "push_view", json.dumps({"spec": spec})))["ok"]
+    receipt = await gateway.execute(turn, "push_view", json.dumps({"spec": spec}))
+    assert receipt == {
+        "ok": True,
+        "view_id": "view-0001",
+        "kind": "table",
+        "title": "Specimens",
+    }
+    view = (await store.snapshot(session.id)).views[-1]
+    assert (view.id, view.spec.kind, view.spec.props["title"]) == (
+        receipt["view_id"],
+        receipt["kind"],
+        receipt["title"],
+    )
+    assert view.spec.props["handle"] == specimens["handle"]
+    assert "rows" not in json.dumps(receipt)
     assert (
         await store.pool.fetchval(
             "SELECT count(*) FROM tool_audit WHERE session_id = $1", session.id
@@ -116,6 +130,7 @@ async def test_views_validate_handle_fields_and_reject_inline_data(store):
     await clinical.seed()
     backend = ClinicalTools(clinical)
     session = await store.create_session()
+    turn = await store.begin_conversation_turn(session.id, "Chart specimen purity")
     specimens = await backend.dispatch(session.id, "find_specimens", {})
     result = await backend.dispatch(
         session.id,
@@ -135,8 +150,10 @@ async def test_views_validate_handle_fields_and_reject_inline_data(store):
                 },
             }
         },
+        conversation_turn_id=turn.conversation_turn_id,
     )
-    assert result["ok"]
+    assert result == {"ok": True, "view_id": "view-0001", "kind": "chart", "title": "Purity"}
+    assert (await store.snapshot(session.id)).views[-1].id == result["view_id"]
     inline = {
         "kind": "table",
         "version": 1,
@@ -147,6 +164,74 @@ async def test_views_validate_handle_fields_and_reject_inline_data(store):
             "row_count": 0,
         },
     }
-    assert (await backend.dispatch(session.id, "push_view", {"spec": inline}))["error"][
-        "code"
-    ] == "invalid_view"
+    assert (
+        await backend.dispatch(
+            session.id,
+            "push_view",
+            {"spec": inline},
+            conversation_turn_id=turn.conversation_turn_id,
+        )
+    )["error"]["code"] == "invalid_view"
+    assert len((await store.snapshot(session.id)).views) == 1
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
+
+
+@pytest.mark.integration
+async def test_view_receipts_require_a_valid_view_and_an_active_turn(store):
+    clinical = ClinicalStore(store, lambda: FROZEN_NOW)
+    await clinical.seed()
+    backend = ClinicalTools(clinical)
+    session = await store.create_session()
+    specimens = await backend.dispatch(session.id, "find_specimens", {})
+    spec = {
+        "kind": "table",
+        "version": 1,
+        "props": {
+            "title": "Recent specimens",
+            "handle": specimens["handle"],
+            "columns": specimens["schema"],
+            "row_count": specimens["count"],
+        },
+    }
+    no_turn = await backend.dispatch(session.id, "push_view", {"spec": spec})
+    assert no_turn["error"]["code"] == "invalid_view"
+    assert "view_id" not in no_turn
+    turn = await store.begin_conversation_turn(session.id, "Show recent specimens")
+    invalid = {**spec, "props": {**spec["props"], "row_count": 0}}
+    rejected = await backend.dispatch(
+        session.id,
+        "push_view",
+        {"spec": invalid},
+        conversation_turn_id=turn.conversation_turn_id,
+    )
+    assert rejected["error"]["code"] == "invalid_view"
+    assert (await store.snapshot(session.id)).views == []
+    first = await backend.dispatch(
+        session.id,
+        "push_view",
+        {"spec": spec},
+        conversation_turn_id=turn.conversation_turn_id,
+    )
+    second = await backend.dispatch(
+        session.id,
+        "push_view",
+        {"spec": spec},
+        conversation_turn_id=turn.conversation_turn_id,
+    )
+    assert first["view_id"] == "view-0001"
+    assert second["view_id"] == "view-0002"
+    assert [view.id for view in (await store.snapshot(session.id)).views] == [
+        first["view_id"],
+        second["view_id"],
+    ]
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
+    next_turn = await store.begin_conversation_turn(session.id, "A later request")
+    stale = await backend.dispatch(
+        session.id,
+        "push_view",
+        {"spec": spec},
+        conversation_turn_id=turn.conversation_turn_id,
+    )
+    assert stale["error"]["code"] == "invalid_view"
+    assert len((await store.snapshot(session.id)).views) == 2
+    await store.finish_conversation_turn(session.id, next_turn.conversation_turn_id)

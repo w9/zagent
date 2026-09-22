@@ -73,51 +73,10 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [\"id\", \"kind\", \"purity\", \"received_at\"], \"row_count\": 29}}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "error": {
-            "code": "invalid_arguments",
-            "message": "spec: Value error, View schema error at props.columns.0: 'id' is not of type 'object'"
-          }
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 3"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
         "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 29}}}",
         "name": "push_view"
       },
       "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "handle": "query-0001",
-          "ok": true
-        }
-      },
-      "type": "tool_result"
     },
     {
       "payload": {
@@ -157,19 +116,30 @@
     },
     {
       "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Specimens received in the last 24 hours"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
         "detail": "push_view"
       },
       "type": "step_finished"
     },
     {
       "payload": {
-        "title": "Agent step 4"
+        "title": "Agent step 3"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "29 specimens arrived in the last 24 hours."
+        "text": "29 specimens arrived in the last 24 hours. The table \"Specimens received in the last 24 hours\" is published in the working surface."
       },
       "type": "text_delta"
     },
@@ -197,7 +167,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "29 specimens arrived in the last 24 hours."
+      "text": "29 specimens arrived in the last 24 hours. The table \"Specimens received in the last 24 hours\" is published in the working surface."
     }
   ],
   "steps": [
@@ -244,28 +214,13 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [\"id\", \"kind\", \"purity\", \"received_at\"], \"row_count\": 29}}}",
-          "name": "push_view",
-          "result": {
-            "error": {
-              "code": "invalid_arguments",
-              "message": "spec: Value error, View schema error at props.columns.0: 'id' is not of type 'object'"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 3",
-      "tools": [
-        {
           "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 29}}}",
           "name": "push_view",
           "result": {
-            "handle": "query-0001",
-            "ok": true
+            "kind": "table",
+            "ok": true,
+            "title": "Specimens received in the last 24 hours",
+            "view_id": "view-0001"
           }
         }
       ]
@@ -273,7 +228,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 4"
+      "title": "Agent step 3"
     }
   ],
   "views": [

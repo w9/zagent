@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 from jsonschema import Draft202012Validator
+from markdown_it import MarkdownIt
 from pydantic import Field, TypeAdapter, ValidationError
 
 from zagent.evals.schema import Case, StrictModel, fixture_path
@@ -69,6 +70,7 @@ def transcript_diff(case_id: str, expected: str, actual: str, label: str = "gold
 
 Assertion = Callable[[Evidence, Any, Path, str], str | None]
 ASSERTIONS: dict[str, Assertion] = {}
+MARKDOWN = MarkdownIt("commonmark").enable("table")
 
 
 def assertion(name: str):
@@ -175,7 +177,7 @@ def numeric_claims_grounded(
     texts: dict[str, str] = {}
     names = {"find_patients": "patient", "find_specimens": "specimen", "find_libraries": "librar"}
     pattern = re.compile(
-        r"\b(\d+)\**\s+(patients?|specimens?|librar(?:y|ies)|records?)\b", re.IGNORECASE
+        r"(?<![\w/-])(\d+)\**\s+(patients?|specimens?|librar(?:y|ies)|records?)\b", re.IGNORECASE
     )
     for event in evidence.events:
         payload = event.payload
@@ -230,6 +232,76 @@ def tools_called(evidence: Evidence, expected: Any, root: Path, case_id: str) ->
     called = {event.payload["name"] for event in evidence.events if event.type == "tool_call"}
     missing = set(expected) - called
     return f"{case_id}: expected tools were not exercised: {sorted(missing)}" if missing else None
+
+
+def table_headers(text: str) -> list[set[str]]:
+    tables: list[set[str]] = []
+    in_header = False
+    for token in MARKDOWN.parse(text):
+        if token.type == "thead_open":
+            tables.append(set())
+            in_header = True
+        elif token.type == "thead_close":
+            in_header = False
+        elif token.type == "inline" and in_header:
+            value = "".join(
+                child.content
+                for child in token.children or []
+                if child.type in {"text", "code_inline"}
+            )
+            tables[-1].add(value.strip().casefold().replace("_", " "))
+    return tables
+
+
+@assertion("view_narration")
+def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    if not expected:
+        return None
+    columns: set[str] = set()
+    texts: dict[str, str] = {}
+    published: bool | None = None
+    location = re.compile(
+        r"\b(?:table|chart|view|results?)\s+(?:(?:is|are)\s+)?"
+        r"(?:(?:displayed|shown|available)\s+)?(?:above|below)\b|"
+        r"\b(?:above|below)\s+(?:table|chart|view)\b",
+        re.IGNORECASE,
+    )
+    display_claim = re.compile(
+        r"\b(?:table|chart|view|results?)\s+(?:(?:is|are|has been|have been)\s+)?"
+        r"(?:now\s+)?(?:displayed|shown|published|available|ready)\b|"
+        r"\bI(?:'ve| have)?\s+(?:displayed|shown|published|created)\b",
+        re.IGNORECASE,
+    )
+    for event in evidence.events:
+        payload = event.payload
+        if event.type == "user_message":
+            published = None
+        elif event.type == "tool_result":
+            result = payload["result"]
+            if payload["name"] == "push_view":
+                published = result.get("ok") is True
+            else:
+                for column in result.get("schema", []):
+                    columns.update(
+                        str(column[key]).strip().casefold().replace("_", " ")
+                        for key in ("key", "label")
+                        if key in column
+                    )
+        elif event.type == "text_delta":
+            message_id = payload["message_id"]
+            texts[message_id] = texts.get(message_id, "") + payload["text"]
+        elif event.type == "message_done" and published is not None:
+            text = texts.get(payload["message_id"], "")
+            for headers in table_headers(text):
+                if headers and len(headers & columns) >= min(2, len(headers)):
+                    return f"{case_id}: REQ-PRESENT-01 chat duplicates a query-result table"
+            if location.search(text):
+                return f"{case_id}: REQ-PRESENT-01 misleading view location in chat"
+            if re.search(r"\b(?:query|view)-\d{4,}\b", text):
+                return f"{case_id}: REQ-PRESENT-01 internal result identifier in chat"
+            if not published and display_claim.search(text):
+                return f"{case_id}: REQ-PRESENT-01 publication claimed after a failed push_view"
+    return None
 
 
 def refusal_invariants(evidence: Evidence, case_id: str) -> list[str]:
@@ -324,7 +396,12 @@ def validate_expectations(case: Case, root: Path) -> None:
         depth = case.expect["view_stack_depth"]
         if type(depth) is not int or depth < 0:
             raise ValueError(f"{case.id}: view_stack_depth must be a nonnegative integer")
-    for name in ("tools_only_handles", "numeric_claims_grounded", "references_resolve"):
+    for name in (
+        "tools_only_handles",
+        "numeric_claims_grounded",
+        "references_resolve",
+        "view_narration",
+    ):
         if name in case.expect and type(case.expect[name]) is not bool:
             raise ValueError(f"{case.id}: {name} must be a boolean")
 

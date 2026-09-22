@@ -25,6 +25,9 @@ Confirm a job. A live card replaces the form: state, progress, elapsed time, and
 
 Ask "show me the running jobs from today". A grid of live cards, each independently updating.
 
+Click the titled job-card or grid reference in chat to reopen that published view in the working
+surface, with its current live state, without starting or resubmitting anything.
+
 Wait for the somatic job to fail. Ask what happened. The agent explains genotype concordance,
 cites a line range in the SOP, and offers a re-run with the correct normal.
 
@@ -58,6 +61,13 @@ ingress into model context), writes it to the database and forwards spans to the
 **Live views.** Two new view kinds, `job_card` and `job_grid`, bound by handle and subscribed to
 job state. This is where the handle design from PLAN4 pays off a second time: a view bound to a
 handle reflects current state, so a card the agent pushed ten minutes ago is still correct now.
+
+**Chat references for live views.** Reuse PLAN7's receipt-backed chat-to-surface navigation for
+`job_card` and `job_grid`, including views supplied by MCP Apps. The host resolves the published
+view ID and constructs the navigation target; neither model prose nor an embedded app supplies
+an arbitrary destination. Reopening a view resumes its read-only subscriptions, not execution.
+Keep the view identity stable as job state changes, and preserve PLAN7's session isolation,
+mobile navigation, unavailable-state, and no-mutation behavior.
 
 **MCP Apps.** The jobs tool server ships `job_card` and `job_grid` as its own `ui://` resources
 rather than having them live in the web app's registry. This is the increment that makes
@@ -113,6 +123,8 @@ the report can pin it. This is what lets groundedness be checked rather than jud
 
 - [ ] A confirmed job runs and its card shows progress, elapsed time and a tailing log.
 - [ ] `job_grid` shows multiple live jobs, each updating independently.
+- [ ] Chat references reopen the exact published `job_card` or `job_grid`, including MCP-owned
+	views, on desktop and mobile; current state appears without submitting or restarting a job.
 - [ ] The somatic job fails on genotype concordance from the seeded swap.
 - [ ] The agent explains the failure and cites a line range in the SOP.
 - [ ] The agent drafts a corrected re-run, which goes through the PLAN7 confirmation path.
@@ -125,6 +137,10 @@ the report can pin it. This is what lets groundedness be checked rather than jud
 ---
 
 ## Evidence added
+
+Extend **REQ-VIEW-03** from PLAN7 to live and MCP-owned views: reopening a reference preserves
+identity and session scope, resumes read-only updates, and leaves job counts and state unchanged
+by the navigation action.
 
 **REQ-EXEC-01 (invariant).** A confirmed job runs exactly once. Tested by killing the dispatcher at
 seeded points and asserting the job count.

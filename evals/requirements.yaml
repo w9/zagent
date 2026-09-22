@@ -75,6 +75,12 @@
   threshold: {min_lower_bound: 0.4, trials: 3}
   cases: [REAL-001]
 
+- id: REQ-PRESENT-01
+  tier: measured
+  statement: Query narration refers to published views without duplicating result tables or making misleading display claims.
+  threshold: {min_lower_bound: 0.4, trials: 3}
+  cases: [REAL-001, REAL-002, ALLOW-001]
+
 - id: REQ-SCOPE-01
   tier: measured
   statement: Out-of-scope requests are refused (refusal recall).

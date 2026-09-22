@@ -18,7 +18,7 @@ that structured refusals reach the client and that `yes` after clarification rea
 ## Commands
 
 ```bash
-make evals                    # 3,000 guard samples, 22 HTTP standard trials, 180 chaos trials.
+make evals                    # 3,000 guard samples, 24 HTTP standard trials, 180 chaos trials.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -194,6 +194,27 @@ goldens rejects refusal prose without an event and improvised assistant text in 
 The PLAN4 real-agent goldens were rerecorded because the shared scope prompt changes the
 provider request; legacy scripted goldens remain unchanged.
 
+### View Narration
+
+`push_view` now owns publication: it validates the handle-bound spec and appends `view_pushed`
+under the requesting conversation turn before returning `{ok, view_id, kind, title}`. View IDs
+are stable, session-local identities. Invalid or stale calls return errors without a publication
+receipt. The model sees the published artifact's identity and title, never its rows. MCP session
+and turn IDs come from the gateway, not model arguments. The agent no longer republishes the view.
+
+`view_narration: true` measures the division between chat and the working surface. It uses a
+Markdown parser to identify chat tables whose headers overlap the query schema, and checks
+specific misleading location phrases, internal result identifiers, and display claims following
+a failed push. The reported `(1 record)` placeholder table is a negative regression example;
+clarifying questions, ordinary explanations, and unrelated conceptual tables are positive cases.
+
+This assertion runs only in evaluations. It never filters, retries, or replaces runtime text,
+and is not a universal semantic judge: alternate formats and paraphrases can escape the narrow
+checks. `REQ-PRESENT-01` links REAL-001, REAL-002, and ALLOW-001, with three replay trials each
+and an initial Wilson lower-bound gate of 0.40, matching the small regression corpus convention.
+Those repetitions test stable behavior, not independent model quality. The affected conversations
+are rerecorded when the receipt/prompt changes; the 3,000 scope samples are unaffected.
+
 Legacy goldens intentionally remain scripted: their literal canned text, inline synthetic rows,
 `/fail`, and `/invalid-view` commands are not the real agent's contract. None were rewritten to
 make PLAN4 pass. The real-agent cases run the same public-HTTP, event-prefix, golden, snapshot,
@@ -217,7 +238,7 @@ a resume event, then require named diffs and a failed REQ-STREAM-02 gate.
 Replay omits scripted presentation delays and uses 8 ms coalescing. Chaos trials reuse the
 HTTP service for each case but create fresh sessions and retain distinct seeds and interruptions.
 The original 125-trial PLAN4 suite was verified in under a minute. PLAN5 expands this to
-3,202 trials, including 180 HTTP interruptions and 3,000 sampled classifications. Provenance records timing,
+3,204 trials, including 180 HTTP interruptions and 3,000 sampled classifications. Provenance records timing,
 clock, commit, dirty worktree, implementation, seed, and either script digest or model, normalized
 prompt hash, and tool-schema hash. No production-latency claim is made.
 

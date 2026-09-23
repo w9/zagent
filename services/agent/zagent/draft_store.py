@@ -14,6 +14,7 @@ from zagent.drafts import (
     validate_draft,
 )
 from zagent.events import EventDraft
+from zagent.jobs import JobStore
 from zagent.privacy import Raw
 from zagent.store import ConversationTurnConflict, NotFound
 
@@ -61,6 +62,10 @@ class DraftStore:
                             selection["row_ids"],
                         )
                     ]
+                    for record in records:
+                        record["kind"] = selection["selection_roles"].get(
+                            record["id"], record["kind"]
+                        )
             except (HandleError, NotFound):
                 return [
                     DraftIssue(
@@ -119,7 +124,7 @@ class DraftStore:
         ).value
         async with self.store.pool.acquire() as connection, connection.transaction():
             session = await connection.fetchrow(
-                "SELECT * FROM sessions WHERE id = $1 FOR UPDATE", session_id
+                "SELECT * FROM sessions WHERE id = $1 FOR NO KEY UPDATE", session_id
             )
             if session is None:
                 raise NotFound("Session not found")
@@ -281,7 +286,9 @@ class DraftStore:
 
     async def confirm(self, session_id: UUID, draft_id: str, expected_hash: str) -> JobState:
         async with self.store.pool.acquire() as connection, connection.transaction():
-            await connection.fetchval("SELECT id FROM sessions WHERE id=$1 FOR UPDATE", session_id)
+            await connection.fetchval(
+                "SELECT id FROM sessions WHERE id=$1 FOR NO KEY UPDATE", session_id
+            )
             row = await connection.fetchrow(
                 "SELECT * FROM drafts WHERE session_id=$1 AND id=$2 FOR UPDATE",
                 session_id,
@@ -324,6 +331,20 @@ class DraftStore:
                 expected_hash,
                 content.model_dump(),
             )
+            snapshot = await JobStore(self.clinical).freeze_input(session_id, job_id, content)
+            await connection.execute(
+                "INSERT INTO privacy.job_inputs VALUES ($1, $2, $3, $4)",
+                session_id,
+                job_id,
+                expected_hash,
+                snapshot,
+            )
+            await connection.execute(
+                "INSERT INTO job_queue (session_id, job_id) VALUES ($1, $2)",
+                session_id,
+                job_id,
+            )
+            await connection.execute("SELECT pg_notify('zagent_jobs', 'queued')")
             await connection.execute(
                 "UPDATE drafts SET status='submitted' WHERE session_id=$1 AND id=$2",
                 session_id,
@@ -356,6 +377,9 @@ class DraftStore:
                 "SELECT count(*) + 1 FROM events WHERE session_id=$1 AND type='view_pushed'",
                 session_id,
             )
+            handle = await JobStore(self.clinical).create_handle(
+                connection, session_id, job_id=job_id
+            )
             await self.store._append(
                 connection,
                 session_id,
@@ -366,8 +390,13 @@ class DraftStore:
                         "view_id": f"view-{view_number:04d}",
                         "spec": {
                             "kind": "job_card",
-                            "version": 1,
-                            "props": {"title": CATALOG[content.app_id].title, "job_id": job_id},
+                            "version": 2,
+                            "props": {
+                                "title": CATALOG[content.app_id].title,
+                                "handle": handle,
+                                "server": "jobs",
+                                "resource_uri": "ui://jobs/card",
+                            },
                         },
                     },
                 ),

@@ -22,6 +22,16 @@
     },
     {
       "payload": {
+        "text": "I'll look up specimens received in the last 24 hours."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
         "arguments": "{\"received_within\": \"P1D\"}",
         "name": "find_specimens"
       },
@@ -163,6 +173,11 @@
       "role": "user",
       "status": "complete",
       "text": "How many specimens arrived in the last 24 hours? Show a table and report only the count."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "I'll look up specimens received in the last 24 hours."
     },
     {
       "role": "assistant",

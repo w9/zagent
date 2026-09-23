@@ -19,6 +19,12 @@ services:
   privacy:
     environment:
       ZAGENT_LLM_MODE: live
+  jobs:
+    environment:
+      ZAGENT_LLM_MODE: live
+  dispatcher:
+    environment:
+      ZAGENT_LLM_MODE: live
 
 secrets:
   openrouter_api_key:

@@ -4,12 +4,12 @@ This document records the decisions that are expensive to reverse and the reason
 them. It deliberately stops short of implementation detail: where a choice is local to one
 module and cheap to change later, it is the implementer's call, not this document's.
 
-**Implementation status:** PLAN1 through PLAN7 are implemented. The local stack tokenizes at
+**Implementation status:** PLAN1 through PLAN8 are implemented. The local stack tokenizes at
 ingress, resolves only at clinical tool/display edges, restricts runtime database credentials,
 and checks outbound requests with a keyed-hash tripwire. X-ray shows actual recorded model
-requests. Draft editing, exact-hash human confirmation, pending job cards, view references,
-and persisted session titles are available. Job execution, knowledge retrieval, and
-Kubernetes NetworkPolicy remain later plans; this local
+requests. Draft editing, exact-hash confirmation, synthetic Docker execution, MCP-owned live
+views, SOP retrieval, turn recovery, and persisted session titles are available. Kubernetes Jobs
+and NetworkPolicy remain PLAN9; this local
 development deployment is not a production security certification.
 
 **Contents**
@@ -329,6 +329,14 @@ they never parse model-written URLs. Explicit `view` selections remain pinned ev
 and missing targets do not select another view. Step markers are collapsed disclosures over
 started/finished step events.
 
+PLAN8 moves job rendering to the jobs MCP server's `ui://jobs/card` and `ui://jobs/grid` resources.
+The host uses the official MCP Apps AppBridge/PostMessageTransport in an opaque-origin
+`allow-scripts` iframe, with a restrictive CSP and no network or arbitrary navigation capability.
+It permits only a read of the bound published view, not arbitrary tool arguments. The BFF fetches
+the resource and job data over MCP and relays read-only job notifications. Handles identify live
+queries; immutable publication events do not accumulate progress noise. Legacy v1 job-card
+events use the same server-owned renderer, while new cards use v2 handle bindings.
+
 ---
 
 ## 9. Drafts and confirmation
@@ -359,7 +367,7 @@ forms accept a checked scalar JSON Schema subset and a catalog layout hint.
 Confirmation is exposed only at the display API, never as a model tool, and draft/job tables
 are denied to the runtime role. The local stack has no production authentication, so this
 capability boundary is not a claim that arbitrary HTTP clients are authorized humans.
-Pending is the only implemented job status. Human workflow events can append after the
+New confirmations also freeze private execution inputs and enqueue work atomically. Human workflow events can append after the
 originating conversation turn ends without reopening or changing that turn's lifecycle.
 
 Sessions sort by descending creation time and ID. Stable fallback names are persisted before
@@ -372,22 +380,42 @@ Naming does not delay completion, block the next turn, or reorder sessions.
 
 ## 10. Job execution
 
-This section describes PLAN8 and later; PLAN7 creates pending records only.
-
 The queue lives in Postgres. Rows are claimed with `SKIP LOCKED`, and enqueueing happens in the
 same transaction as the job row so the two cannot diverge. A dedicated queue broker would add
 an operational component and a consistency boundary for no benefit at this scale.
 
-A dispatcher claims queue rows and creates Kubernetes Jobs from a catalog entry: image,
-command, and a JSON Schema for parameters. Retries, backoff and cleanup come from the Job spec
-rather than from application code. Jobs emit progress as OTel-compatible JSONL on stdout, which
-the dispatcher tails into the database and the observability pipeline.
+The dispatcher targets an `Executor` protocol, with Docker execution under Compose and a native
+process implementation for tests. The catalog supplies image/command and parameter schema.
+Lease revisions fence stale monitors; deterministic container names and input fingerprints make
+reconciliation idempotent. Attempt/log sequence uniqueness prevents duplicate ingestion after
+a crash. Synthetic eviction retries once with a distinct attempt name; ordinary failures do not.
+Kubernetes Jobs, Job-spec retry policy, and platform cleanup replace this local adapter in PLAN9.
+
+The worker reads confirmed fixture facts, not mutable query results. Role disagreement causes
+somatic failure; verified-role selection fixes the input without editing clinical records.
+Coverage, purity, eviction, and long-running outcomes also derive from fixture data. Workers emit
+OTel-compatible JSONL. The dispatcher tokenizes before saving logs or exporting spans through the
+OTLP HTTP collector. The model reads at most ten summarized log lines per request; the live card
+tails forty and the database retains all ingested lines. Raw Docker stdout/input belongs to the
+clinical zone. Completed containers are retained locally for audit and reconciliation.
+
+The Docker socket makes the local dispatcher privileged. Workers have no network or credentials
+and run non-root with filesystem and resource restrictions, but this is not production sandbox
+certification. External deletion of an execution container is outside restart recovery's contract.
 
 Job runs are single-step and have no sub-workflow, so they need no workflow engine. Durable
 execution also matters within a *conversation turn*, which can contain multiple model and tool
 steps. That is served by journaling the conversation turn into the same event log rather than
 by adding Temporal. Workflows that wait on a human span conversation turns; the wait between
 turns lives in persisted session and draft state.
+
+The LLM runtime checkpoints its scope decision and each tokenized model completion before
+emission. Tool operations have stable IDs and commit their mutation plus receipt in one database
+transaction. Recovery uses saved responses/results, finishes incomplete steps, and emits
+`message_dropped` before replacing partial text. The visible final projection agrees; the audit
+log additionally preserves the interruption/retraction. One database advisory lock owns the
+runtime. Token allocation has its own per-session advisory lock, while tool session writes use
+non-key row locks so remote privacy inserts do not deadlock against mutation receipts.
 
 ---
 
@@ -414,10 +442,14 @@ user input. They are tokenized, and they are never interpreted as instructions.
 An immutable SQLite file with an FTS5 index, built in CI from versioned Markdown sources and
 baked into the image. It is served read-only over MCP.
 
+`make install` and the backend image build create the index. A digest of ordered source names
+and contents is its version. `search_knowledge` returns matching line numbers; `read_document`
+requires that version and at most thirty lines. Execution cases pin the digest and fail on drift.
+
 Immutability buys determinism: a KB version is a build artifact, so a retrieval result is
 reproducible and the eval report can pin it. Indexing at line granularity lets answers cite
-line ranges, which turns groundedness from a judgment call into a deterministic check: either
-the cited span contains the claim or it does not.
+line ranges. The current deterministic check validates retrieved ranges and supporting verbatim
+quotations; it does not prove that every paraphrased claim is semantically entailed.
 
 ---
 

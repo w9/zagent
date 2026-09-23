@@ -357,12 +357,12 @@ async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(st
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
     completer = SequenceCompleter(
         [
-            tool_completion("allow_request", {}),
+            tool_completion("scope_decision", {"decision": "allow"}),
             tool_completion("find_patients", {"site_id": "lakeside"}, "bad"),
             tool_completion("find_patients", {"mrn": "NGC-0041872"}, "patients"),
             tool_completion("find_specimens", {"patient_handle": "query-0001"}, "specimens"),
             Completion(message=AssistantMessage(content="Found 3 specimens.")),
-            tool_completion("allow_request", {}),
+            tool_completion("scope_decision", {"decision": "allow"}),
             tool_completion("find_libraries", {"specimen_handle": "query-0002"}, "libraries"),
             Completion(message=AssistantMessage(content="Those specimens have 3 libraries.")),
         ]
@@ -393,7 +393,7 @@ async def test_iteration_cap_produces_clean_terminal_failure(store):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
     completer = SequenceCompleter(
-        [tool_completion("allow_request", {})]
+        [tool_completion("scope_decision", {"decision": "allow"})]
         + [tool_completion("not_allowed", {}, f"call-{index}") for index in range(2)]
     )
     runtime = Runtime(store, LlmAgent(store, completer, tools, max_iterations=2))
@@ -430,7 +430,7 @@ async def test_model_receives_persisted_view_receipt_and_chat_remains_free_form(
     }
     completer = SequenceCompleter(
         [
-            tool_completion("allow_request", {}),
+            tool_completion("scope_decision", {"decision": "allow"}),
             tool_completion("find_specimens", {}, "specimens"),
             tool_completion("push_view", {"spec": spec}, "view"),
             Completion(message=AssistantMessage(content=explanation)),

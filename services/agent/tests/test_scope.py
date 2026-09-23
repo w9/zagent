@@ -37,9 +37,9 @@ def history(*drafts):
 
 
 class GuardCompleter:
-    def __init__(self, name="allow_request", arguments=None):
+    def __init__(self, name="scope_decision", arguments=None):
         self.name = name
-        self.arguments = arguments or {}
+        self.arguments = {"decision": "allow"} if arguments is None else arguments
         self.requests = []
 
     async def complete(self, request):
@@ -58,7 +58,7 @@ class GuardCompleter:
 
 @pytest.mark.parametrize("code", list(REFUSAL_MESSAGES))
 async def test_guard_refuses_with_one_call_and_fixed_message(code):
-    gateway = GuardCompleter("refuse", {"code": code})
+    gateway = GuardCompleter("scope_decision", {"decision": code})
     events = history(("user_message", {"message_id": "user", "text": "What's 2+2?"}))
     assert await ScopeGuard(gateway).classify(events) == refusal(code)
     assert len(gateway.requests) == 1
@@ -86,9 +86,11 @@ async def test_guard_sees_clarification_and_current_draft_for_yes():
 @pytest.mark.parametrize(
     "name,arguments",
     [
-        ("refuse", {"code": "invented_code"}),
-        ("refuse", {"code": "out_of_domain", "message": "Invented prose"}),
-        ("allow_request", {"anything": True}),
+        ("scope_decision", {"decision": "invented_code"}),
+        ("scope_decision", {"decision": "out_of_domain", "message": "Invented prose"}),
+        ("scope_decision", {"decision": "allow", "reason": "In scope"}),
+        ("scope_decision", {"arguments": {"decision": "allow"}}),
+        ("scope_decision", {}),
         ("unknown", {}),
     ],
 )
@@ -199,8 +201,8 @@ async def test_refusal_short_circuits_main_agent_and_has_one_audited_call(
                                         "id": "guard",
                                         "type": "function",
                                         "function": {
-                                            "name": "refuse",
-                                            "arguments": '{"code":"out_of_domain"}',
+                                            "name": "scope_decision",
+                                            "arguments": '{"decision":"out_of_domain"}',
                                         },
                                     }
                                 ],

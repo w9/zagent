@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare a readqc draft for all specimens from [PT_1] received in the last week. Keep default parameters and do not submit.",
+        "role": "user"
+      },
+      {
+        "content": "I'll I'll look up the patient and their specimens from the last week.\n\nDone \u2014 the draft is prepared but **not submitted**.\n\n**Specimens found:** 3 specimens for [PT_1] received within P7D, shown in the published table view \"Specimens from [PT_1] received in the last 7 days\".\n\n**Draft:** `draft-0001` (app: readqc, version 1, status: editing)\n- Specimen scope: all 3 specimens from that query\n- Parameters: defaults retained \u2014 `min_coverage=30`, `check_identity=true`\n- Validation: no issues reported\n- The draft form is published as \"Read quality control\" in the working surface.\n\nNothing has been run or submitted. Only the human **Confirm** control can submit this exact reviewed content (hash `3c4e10f4\u2026`); a chat confirmation is not authorization. Let me know if you'd like any parameter changed before you confirm.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "1f9be4cbcf442a77272d6a0daeb7da40ec4426df005e6a9691257da5d7016a18",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "# Readqc draft for recent specimens\n\nReadqc draft for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 15,
+        "cost": 4.676e-05,
+        "prompt_tokens": 289,
+        "total_tokens": 304
+      }
+    }
+  },
+  "version": 2
+}

@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I've prepared the draft.\\n\\n**Specimens** \\u2014 the query for [PT_1] over the last 7 days returned 3 specimens; the published table **\\\"Specimens from [PT_1], last 7 days\\\"** lists them (specimen, type, purity, received). Because somatic calling needs both tumor and normal from the same patient, I queried all specimen kinds rather than filtering, so both roles are included in that selection.\\n\\n**Draft** \\u2014 the published form **\\\"Somatic variant calling\\\"** (draft-0001, version 1) is bound to that specimen selection with the app defaults:\\n- min_vaf = 0.05\\n- min_depth = 20\\n\\nValidation returned no issues, so nothing is missing at this point. Status is *editing* \\u2014 it has not been submitted and no job has been started. Only the human **Confirm** control can submit the reviewed content hash.\\n\\nSend me your preferred parameters (e.g. min_vaf, min_depth) and I'll patch this same draft; the form will republish with the new version and hash for you to review.\",\"role\":\"assistant\"},{\"content\":\"min_vaf = 0.03\",\"role\":\"user\"},{\"content\":\"Updated.\\n\\nThe published form **\\\"Somatic variant calling\\\"** (draft-0001) is now at version 2 with a new content hash:\\n- min_vaf = 0.03\\n- min_depth = 20 (unchanged)\\n\\nValidation is still clean \\u2014 no missing or invalid fields. Status remains *editing*; it has not been submitted and no job has run. Review the republished form and use the human **Confirm** control if you want to submit this exact content. Any further parameter changes can be patched into the same draft.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"somatic-snv\",\"content_hash\":\"84aa3b80a66e5af16d49b5d082ca8ccefd14b3acba7d78672da615f9633fc275\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_depth\":20,\"min_vaf\":0.03},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0002\"}],\"target\":{\"app_id\":\"somatic-snv\",\"max_turns\":5,\"parameters\":{\"min_depth\":35,\"min_vaf\":0.03}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "456058d3d9e91c8c61ec149f7987d71c2dc6289f995e904a3825c6d08023feff",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "min_depth = 35",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 6,
+        "cost": 0.0002265,
+        "prompt_tokens": 731,
+        "total_tokens": 737
+      }
+    }
+  },
+  "version": 2
+}

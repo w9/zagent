@@ -47,6 +47,36 @@ def test_no_tool_response_schema_permits_row_data(name, rows, field):
         if name == "push_view"
         else {"handle": "query-0001", "count": 1, "schema": COLUMNS["patients"]}
     )
+    valid = {
+        "show_jobs": {
+            "ok": True,
+            "view_id": "view-0001",
+            "kind": "job_grid",
+            "title": "Analysis jobs",
+            "handle": "jobs-0001",
+            "count": 1,
+        },
+        "get_job": {
+            "job_id": "job-0001",
+            "app_id": "readqc",
+            "status": "running",
+            "progress": 0.5,
+            "attempt": 1,
+            "parameters": {},
+            "specimen_handle": "query-0001",
+            "total_log_lines": 0,
+            "logs": [],
+            "history": [],
+        },
+        "search_knowledge": {"version": "a" * 64, "matches": []},
+        "read_document": {
+            "version": "a" * 64,
+            "document": "specimen-identity",
+            "start_line": 1,
+            "end_line": 1,
+            "text": "Specimen identity",
+        },
+    }.get(name, valid)
     assert validator.is_valid(valid)
     assert not validator.is_valid({**valid, field: rows})
     assert not validator.is_valid(

@@ -149,6 +149,52 @@ def test_simulated_user_cases_have_separate_model_targets_and_never_confirm():
     assert SIMULATOR_MODEL and SampleGateway
 
 
+@pytest.mark.parametrize("prefix", ["", "document:"])
+def test_job_citations_must_be_retrieved_and_quote_the_cited_range(tmp_path, prefix):
+    from zagent.evals.assertions import sop_citations
+
+    evidence = sample_evidence(
+        f'"Verified identity determines specimen roles." [{prefix}specimen-identity:L12-L12]'
+    )
+    assert "was not retrieved" in sop_citations(evidence, True, tmp_path, "EXEC-TEST")
+    reference = evidence.events[0].model_copy(
+        update={
+            "type": "tool_result",
+            "seq": 2,
+            "payload": {
+                "name": "read_document",
+                "result": {
+                    "document": "specimen-identity",
+                    "start_line": 12,
+                    "end_line": 12,
+                    "text": "Verified identity determines specimen roles.",
+                },
+            },
+        }
+    )
+    evidence.events.insert(2, reference)
+    evidence.projection.messages[-1].seq = 3
+    assert sop_citations(evidence, True, tmp_path, "EXEC-TEST") is None
+    reference.payload["result"]["text"] = "A different unrelated supporting sentence."
+    assert "missing cited supporting quotation" in sop_citations(
+        evidence, True, tmp_path, "EXEC-TEST"
+    )
+
+
+def test_execution_cases_pin_knowledge_and_cover_each_new_tool():
+    from zagent.evals.schema import load_suite
+    from zagent.knowledge import KnowledgeBase
+
+    knowledge = KnowledgeBase()
+    try:
+        cases = [case for case in load_suite(Path(__file__).parent).cases if case.execution]
+        assert all(case.execution.kb_version == knowledge.version for case in cases)
+        assert {case.execution.interrupt for case in cases} >= {"text_delta", "tool_result"}
+        assert any(case.expect.get("log_injection_resisted") for case in cases)
+    finally:
+        knowledge.close()
+
+
 async def test_simulated_user_gateway_preserves_each_independent_sample():
     from zagent.evals.simulator import SampleGateway
     from zagent.llm import AssistantMessage, Completion, CompletionRequest

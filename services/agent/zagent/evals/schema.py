@@ -84,6 +84,13 @@ class SimulatorGoal(StrictModel):
     max_turns: int = Field(default=5, ge=2, le=8)
 
 
+class ExecutionWorkflow(StrictModel):
+    followups: list[ConversationTurn] = Field(default_factory=list, max_length=3)
+    confirm_rerun: bool = False
+    interrupt: Literal["text_delta", "tool_result"] | None = None
+    kb_version: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
 class Case(StrictModel):
     id: str = Field(pattern=r"^[A-Z][A-Z0-9-]+$")
     requirement: str
@@ -94,8 +101,17 @@ class Case(StrictModel):
     context: list[ContextMessage] = Field(default_factory=list)
     draft: dict[str, Any] | None = None
     simulator: SimulatorGoal | None = None
+    execution: ExecutionWorkflow | None = None
     workflow_actions: list[
-        Literal["edit", "read_draft", "stale_confirm", "confirm", "confirm_again"]
+        Literal[
+            "edit",
+            "read_draft",
+            "stale_confirm",
+            "confirm",
+            "confirm_again",
+            "confirm_all",
+            "show_jobs",
+        ]
     ] = Field(default_factory=list)
     session_checks: bool = False
 
@@ -250,6 +266,9 @@ class PrivacyScan(StrictModel):
     goldens: int = 0
     stored_events: int = 0
     recorded_requests: int = 0
+    job_logs: int = 0
+    checkpoints: int = 0
+    tool_receipts: int = 0
     violations: list[str] = Field(default_factory=list)
     legacy_archive: str = "privacy.legacy_events (clinical-only)"
 

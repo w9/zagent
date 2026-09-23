@@ -16,6 +16,10 @@ class CatalogApp(BaseModel):
     parameters: dict[str, Any]
     layout: list[str]
     required_prep: str | None = None
+    execution_image: str = "zagent-job:plan8"
+    execution_command: list[str] = Field(
+        default_factory=lambda: ["python", "-m", "zagent.job_worker"]
+    )
 
 
 def load_catalog() -> dict[str, CatalogApp]:

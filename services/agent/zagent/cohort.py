@@ -94,6 +94,11 @@ def generate_cohort(now: datetime, seed: int = 41872) -> dict[str, list[dict[str
                         "patient_id": patient_id,
                         "kind": kind,
                         "assayed_kind": assayed_kind,
+                        "simulation": {
+                            4: "node_eviction",
+                            5: "long_running",
+                            6: "injected_log",
+                        }.get(patient_index, "standard"),
                         "purity": purity if kind == "tumor" else None,
                         "collected_at": received - timedelta(hours=4),
                         "received_at": received,
@@ -145,9 +150,14 @@ class ClinicalStore:
         role = SITE_ROLES.get(site_id)
         if role is None:
             raise ValueError("Unknown clinical site")
-        async with self.store.pool.acquire() as connection, connection.transaction():
-            await connection.execute(f"SET LOCAL ROLE {role}")
-            yield connection
+        async with self.store.pool.acquire() as connection:
+            previous_role = await connection.fetchval("SELECT current_user")
+            try:
+                async with connection.transaction():
+                    await connection.execute(f"SET LOCAL ROLE {role}")
+                    yield connection
+            finally:
+                await connection.execute("SELECT set_config('role', $1, true)", previous_role)
 
     async def save_handle(
         self,
@@ -168,7 +178,7 @@ class ClinicalStore:
         ]
         async with self.store.pool.acquire() as connection, connection.transaction():
             await connection.fetchval(
-                "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
+                "SELECT id FROM sessions WHERE id = $1 FOR NO KEY UPDATE", session_id
             )
             number = await connection.fetchval(
                 "SELECT count(*) + 1 FROM query_handles WHERE session_id = $1", session_id
@@ -177,8 +187,8 @@ class ClinicalStore:
             await connection.execute(
                 """INSERT INTO query_handles
                    (session_id, handle, site_id, entity, columns, rows,
-                    row_ids, row_count, expires_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
+                    row_ids, row_count, expires_at, selection_roles)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)""",
                 session_id,
                 handle,
                 session.site_id,
@@ -188,6 +198,9 @@ class ClinicalStore:
                 [record["id"] for record in records],
                 len(records),
                 self.clock() + HANDLE_TTL,
+                {record["id"]: record["kind"] for record in records}
+                if entity == "specimens"
+                else {},
             )
         return {"handle": handle, "count": len(records), "schema": columns}
 

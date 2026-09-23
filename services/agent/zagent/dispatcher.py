@@ -1,0 +1,113 @@
+import asyncio
+import logging
+import os
+from uuid import UUID, uuid4
+
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+from zagent.cohort import ClinicalStore, configured_clock
+from zagent.executors import DockerExecutor, Executor
+from zagent.job_worker import JobRecord
+from zagent.jobs import JobLease, JobStore, LeaseLost
+from zagent.store import DEFAULT_DATABASE_URL, Store
+
+logger = logging.getLogger(__name__)
+
+
+class Dispatcher:
+    def __init__(
+        self, jobs: JobStore, executor: Executor, *, interval: float = 0.5, concurrency: int = 4
+    ):
+        self.jobs, self.executor = jobs, executor
+        self.interval, self.concurrency = interval, concurrency
+        self.owner = uuid4()
+        self.tracer = trace.get_tracer("zagent.dispatcher")
+
+    async def execute(self, lease: JobLease) -> None:
+        await self.executor.ensure(lease)
+        cursor = 0
+        while True:
+            await self.jobs.renew(lease)
+            lines, exit_code = await self.executor.poll(lease.execution_name, cursor)
+            for line in lines:
+                if len(line) > 16384:
+                    raise ValueError("Execution log line exceeds the ingestion limit")
+                record = await self.jobs.ingest(lease, JobRecord.model_validate_json(line))
+                cursor += 1
+                if record is not None:
+                    with self.tracer.start_as_current_span(
+                        "job.log", attributes=record.attributes
+                    ) as span:
+                        span.add_event(record.body)
+            if exit_code is not None:
+                await self.jobs.finish(lease, exit_code)
+                return
+            await asyncio.sleep(self.interval)
+
+    async def once(self, session_id: UUID | None = None) -> bool:
+        lease = await self.jobs.claim(self.owner, session_id=session_id)
+        if lease is None:
+            return False
+        try:
+            await self.execute(lease)
+        except LeaseLost:
+            logger.info("Execution lease was taken over")
+        return True
+
+    async def run(self) -> None:
+        active: set[asyncio.Task] = set()
+        try:
+            while True:
+                while len(active) < self.concurrency:
+                    lease = await self.jobs.claim(self.owner)
+                    if lease is None:
+                        break
+                    active.add(asyncio.create_task(self.execute(lease)))
+                if not active:
+                    await asyncio.sleep(self.interval)
+                    continue
+                done, active = await asyncio.wait(
+                    active, timeout=self.interval, return_when=asyncio.FIRST_COMPLETED
+                )
+                for task in done:
+                    try:
+                        task.result()
+                    except Exception as error:
+                        logger.warning("Execution monitor interrupted: %s", type(error).__name__)
+        finally:
+            for task in active:
+                task.cancel()
+            await asyncio.gather(*active, return_exceptions=True)
+
+
+async def serve() -> None:
+    store = await Store.open(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
+    executor = DockerExecutor(
+        project=os.environ.get("COMPOSE_PROJECT_NAME", "zagent-plan4"),
+        step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
+    )
+    try:
+        await Dispatcher(JobStore(ClinicalStore(store, configured_clock())), executor).run()
+    finally:
+        executor.close()
+        await store.close()
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO)
+    provider = TracerProvider(resource=Resource.create({"service.name": "zagent-dispatcher"}))
+    if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
+        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+    try:
+        asyncio.run(serve())
+    finally:
+        provider.shutdown()
+
+
+if __name__ == "__main__":
+    main()

@@ -139,6 +139,7 @@ export function WorkingSurface({
             <ViewBoundary>
               <ViewRenderer
                 spec={active.spec}
+                viewId={active.id}
                 sessionId={sessionId} drafts={drafts} jobs={jobs}
                 onConfirmed={() => onSelect(undefined)}
                 resolveHandle={sessionId ? (handle, signal) => request<TableData>(

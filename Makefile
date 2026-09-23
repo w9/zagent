@@ -36,6 +36,8 @@ db:
 install:
 	uv sync --frozen
 	npm --prefix apps/web ci
+	npm --prefix apps/web run build:mcp
+	uv run python -m zagent.knowledge
 
 test: install db
 	uv run --frozen pytest

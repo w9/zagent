@@ -257,13 +257,15 @@ async def capture_case(
     for action in case.workflow_actions:
         if original is None:
             raise AssertionError(f"{case.id}: workflow action needs a draft")
-        if action == "read_draft":
+        if action in {"read_draft", "show_jobs"}:
             followup = case.model_copy(
                 update={
                     "conversation_turns": [
                         case.conversation_turns[0].model_copy(
                             update={
-                                "user": "What minimum coverage is currently saved "
+                                "user": "Show a live job grid for this session."
+                                if action == "show_jobs"
+                                else "What minimum coverage is currently saved "
                                 "in my readqc draft? "
                                 "Do not edit or submit it.",
                             }
@@ -282,7 +284,7 @@ async def capture_case(
             if reviewed.projection.drafts != state.drafts or reviewed.projection.jobs != state.jobs:
                 raise AssertionError(f"{case.id}: reading the saved draft mutated workflow state")
             replies = [item for item in reviewed.projection.messages if item.role == "assistant"]
-            if not replies or "45" not in replies[-1].text:
+            if action == "read_draft" and (not replies or "45" not in replies[-1].text):
                 raise AssertionError(
                     f"{case.id}: the assistant did not acknowledge the form's saved value"
                 )
@@ -290,7 +292,14 @@ async def capture_case(
             continue
         current = state.drafts[original.draft_id]
         path = f"/sessions/{session_id}/drafts/{original.draft_id}"
-        if action == "edit":
+        if action == "confirm_all":
+            for draft in state.drafts.values():
+                response = await client.post(
+                    f"/sessions/{session_id}/drafts/{draft.draft_id}/confirm",
+                    json={"content_hash": draft.content_hash},
+                )
+                response.raise_for_status()
+        elif action == "edit":
             response = await client.patch(
                 path,
                 json={"content_hash": current.content_hash, "parameters": {"min_coverage": 45}},
@@ -357,7 +366,7 @@ async def capture_case(
         evidence.executions = inspected["executions"]
         evidence.bindings = inspected["bindings"]
         for view in state.views:
-            if "handle" in view.spec.props:
+            if view.spec.kind in {"table", "chart"} and "handle" in view.spec.props:
                 resolved = await client.get(
                     f"/sessions/{session_id}/handles/{view.spec.props['handle']}"
                 )
@@ -671,6 +680,24 @@ async def evaluate_suite(
                 results.append(evaluate_detector(case, root, seed=seed, commit=commit, dirty=dirty))
             continue
         if case.agent.startswith("guard:"):
+            continue
+        if case.execution is not None:
+            if not chaos_only:
+                from zagent.evals.execution import evaluate_execution
+
+                results.extend(
+                    await evaluate_execution(
+                        case,
+                        root,
+                        database_url,
+                        mode=mode,
+                        trials=trials or 3,
+                        seed=seed,
+                        record_missing=record_missing,
+                        commit=commit,
+                        dirty=dirty,
+                    )
+                )
             continue
         if case.simulator is not None:
             if not chaos_only:

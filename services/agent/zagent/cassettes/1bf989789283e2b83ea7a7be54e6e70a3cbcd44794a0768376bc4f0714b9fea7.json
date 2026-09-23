@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare readqc for recent specimens from [PT_1]. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I've published the recent specimen records and prepared the readqc draft.\n\n**Working surface**\n- **Table \u2014 \"Recent specimens for [PT_1] (last 24 hours)\"**: 3 specimens received in the last 24 hours, with type, purity and received time.\n- **Draft form \u2014 \"Read quality control\"**: bound to those specimens.\n\n**Draft status (draft-0001, version 1, status: editing)**\n- Defaults in place: `min_coverage=30`, `check_identity=true`.\n- Validation returned no issues.\n- Nothing has been submitted \u2014 a draft is only a prepared form. Only the human **Confirm** control can submit the exact reviewed content.\n\nIf the specimens you want aren't in the last 24 hours, tell me and I'll widen the intake window (P7D or P30D) before we finalize. Otherwise, send your preferred parameters and I'll patch them into this same draft.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "1bf989789283e2b83ea7a7be54e6e70a3cbcd44794a0768376bc4f0714b9fea7",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Prepare readqc draft for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 4.0675e-05,
+        "prompt_tokens": 287,
+        "total_tokens": 295
+      }
+    }
+  },
+  "version": 2
+}

@@ -70,13 +70,27 @@ class Runtime:
         self.coalesce_seconds = coalesce_seconds
         self.tasks: dict = {}
         self.titles = titles
+        self.resumable = bool(getattr(agent, "resumable", False))
 
     def start(self, session: AgentSession) -> None:
+        if session.conversation_turn_id in self.tasks:
+            return
         task = asyncio.create_task(
             self._run_turn(session), name=f"conversation_turn:{session.conversation_turn_id}"
         )
         self.tasks[session.conversation_turn_id] = task
         task.add_done_callback(lambda finished: self._finished(session, finished))
+
+    async def recover(self) -> None:
+        rows = await self.store.pool.fetch(
+            """SELECT turns.session_id AS id, turns.id AS conversation_turn_id,
+               events.payload->>'text' AS message, sessions.site_id
+               FROM conversation_turns AS turns JOIN sessions ON sessions.id=turns.session_id
+               JOIN events ON events.conversation_turn_id=turns.id AND events.type='user_message'
+               WHERE turns.status='running' ORDER BY events.created_at"""
+        )
+        for row in rows:
+            self.start(AgentSession.model_validate(dict(row)))
 
     def _finished(self, session: AgentSession, task: asyncio.Task) -> None:
         self.tasks.pop(session.conversation_turn_id, None)
@@ -94,16 +108,23 @@ class Runtime:
         coalescer = DeltaCoalescer(append, self.coalesce_seconds)
         try:
             try:
-                await append(EventDraft(type="conversation_turn_started"))
+                history = await self.store.snapshot_events(session.id)
+                if not any(
+                    event.type == "conversation_turn_started"
+                    and event.conversation_turn_id == session.conversation_turn_id
+                    for event in history
+                ):
+                    await append(EventDraft(type="conversation_turn_started"))
                 await self.agent.run_turn(session, coalescer.emit)
             finally:
                 await coalescer.close()
         except asyncio.CancelledError:
-            await self.store.finish_conversation_turn(
-                session.id,
-                session.conversation_turn_id,
-                "Agent service stopped before the conversation turn completed.",
-            )
+            if not self.resumable:
+                await self.store.finish_conversation_turn(
+                    session.id,
+                    session.conversation_turn_id,
+                    "Agent service stopped before the conversation turn completed.",
+                )
             raise
         except Exception as error:
             detail = str(error) or type(error).__name__

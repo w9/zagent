@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare rna-fusion for RNA specimens from [PT_1] in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their recent RNA specimens.\n\nDone \u2014 here's where things stand:\n\n**Specimens**: One RNA specimen for [PT_1] received in the last 7 days, published as the table **\"RNA specimens for [PT_1] (last 7 days)\"**.\n\n**Draft**: An **RNA fusion analysis** draft form is published (draft-0001, version 1, status: editing) bound to that specimen query. It currently carries the default parameters:\n- `min_support` = 5\n- `filter_artifacts` = true\n\nValidation returned no issues. Nothing has been submitted \u2014 the draft is pending and only the human **Confirm** control can submit the exact reviewed content hash.\n\nTell me your preferred parameters and I'll patch this same draft, then you can review and confirm.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "dee20bc910ce09c3dff0a46c6665441e0128f6800d5c6b02e3306e7067343a98",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "\n",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 2,
+        "cost": 3.766e-05,
+        "prompt_tokens": 263,
+        "total_tokens": 265
+      }
+    }
+  },
+  "version": 2
+}

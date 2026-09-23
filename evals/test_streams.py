@@ -22,7 +22,9 @@ async def stream_report(database_url):
     [
         case.id
         for case in CASES
-        if not case.agent.startswith(("guard:", "detector:")) and case.simulator is None
+        if not case.agent.startswith(("guard:", "detector:"))
+        and case.simulator is None
+        and case.execution is None
     ],
 )
 async def test_case_golden_transcript(stream_report, case_id):
@@ -40,7 +42,9 @@ async def test_case_golden_transcript(stream_report, case_id):
     [
         pytest.param(case.id, seed, id=f"{case.id}-seed-{seed:02d}")
         for case in CASES
-        if not case.agent.startswith(("guard:", "detector:")) and case.simulator is None
+        if not case.agent.startswith(("guard:", "detector:"))
+        and case.simulator is None
+        and case.execution is None
         for seed in range(10)
     ],
 )

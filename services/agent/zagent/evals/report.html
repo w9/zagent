@@ -118,10 +118,13 @@
       <div class="table-scroll"><table>
         <thead><tr><th>Corpus</th><th>Scanned</th><th>Result</th></tr></thead>
         <tbody>
-          <tr><td>Provider cassettes</td><td>{{ report.privacy_scan.cassettes }}</td><td rowspan="4" class="status {{ 'fail' if report.privacy_scan.violations else 'pass' }}">{{ report.privacy_scan.violations|length }} identifier violations</td></tr>
+          <tr><td>Provider cassettes</td><td>{{ report.privacy_scan.cassettes }}</td><td rowspan="7" class="status {{ 'fail' if report.privacy_scan.violations else 'pass' }}">{{ report.privacy_scan.violations|length }} identifier violations</td></tr>
           <tr><td>Token-only goldens</td><td>{{ report.privacy_scan.goldens }}</td></tr>
           <tr><td>Active stored events</td><td>{{ report.privacy_scan.stored_events }}</td></tr>
           <tr><td>Gateway request records</td><td>{{ report.privacy_scan.recorded_requests }}</td></tr>
+          <tr><td>Ingested job log records</td><td>{{ report.privacy_scan.job_logs }}</td></tr>
+          <tr><td>Model checkpoints</td><td>{{ report.privacy_scan.checkpoints }}</td></tr>
+          <tr><td>Transactional tool receipts</td><td>{{ report.privacy_scan.tool_receipts }}</td></tr>
         </tbody>
       </table></div>
       <p>Tripwire: {{ privacy_hits }} hits across {{ privacy_requests }} captured model requests.

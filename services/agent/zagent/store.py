@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 from datetime import datetime
@@ -12,6 +13,7 @@ from zagent.events import Event, EventDraft, Projection, project
 from zagent.privacy import Raw
 from zagent.privacy_client import PrivacyClient, Tokenizer
 from zagent.privacy_store import PrivacyStore
+from zagent.transactions import AtomicPool
 from zagent.views import ViewSpec
 
 DEFAULT_DATABASE_URL = "postgresql://zagent:zagent@localhost:5432/zagent"
@@ -74,11 +76,11 @@ async def configure_connection(connection: asyncpg.Connection) -> None:
 
 class Store:
     def __init__(self, pool: asyncpg.Pool, privacy: Tokenizer | None = None):
-        self.pool = pool
+        self.pool = pool if isinstance(pool, AtomicPool) else AtomicPool(pool)
         self.privacy = privacy or (
             PrivacyClient.configured()
             if os.environ.get("ZAGENT_PRIVACY_URL")
-            else PrivacyStore(pool)
+            else PrivacyStore(self.pool)
         )
 
     @classmethod
@@ -90,6 +92,71 @@ class Store:
 
     async def close(self) -> None:
         await self.pool.close()
+
+    async def tool_operation(self, session_id, turn_id, operation_id, name, arguments, action):
+        digest = hashlib.sha256(json.dumps([name, arguments], sort_keys=True).encode()).hexdigest()
+        async with self.pool.atomic() as connection:
+            await connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", f"{turn_id}:{operation_id}"
+            )
+            previous = await connection.fetchrow(
+                "SELECT * FROM tool_receipts WHERE conversation_turn_id=$1 AND operation_id=$2",
+                turn_id,
+                operation_id,
+            )
+            if previous is not None:
+                if previous["arguments_hash"] != digest or previous["session_id"] != session_id:
+                    raise ValueError("Recovery operation does not match its original arguments")
+                return previous["result"]
+            active = await connection.fetchval(
+                "SELECT status FROM conversation_turns WHERE session_id=$1 AND id=$2",
+                session_id,
+                turn_id,
+            )
+            if active != "running":
+                raise ConversationTurnConflict("Tool operation requires an active turn")
+            result = (
+                await self.privacy.tokenize(
+                    session_id,
+                    Raw(value=await action()),
+                    path="tool_result",
+                )
+            ).value
+            await connection.execute(
+                "INSERT INTO tool_receipts VALUES ($1,$2,$3,$4,$5)",
+                session_id,
+                turn_id,
+                operation_id,
+                digest,
+                result,
+            )
+            return result
+
+    async def checkpoints(self, session_id: UUID, turn_id: UUID) -> dict[int, dict]:
+        rows = await self.pool.fetch(
+            "SELECT step, response FROM turn_checkpoints "
+            "WHERE session_id=$1 AND conversation_turn_id=$2",
+            session_id,
+            turn_id,
+        )
+        return {row["step"]: row["response"] for row in rows}
+
+    async def checkpoint(self, session_id: UUID, turn_id: UUID, step: int, response: dict) -> dict:
+        response = (
+            await self.privacy.tokenize(
+                session_id,
+                Raw(value=response),
+                path="assistant_output",
+            )
+        ).value
+        await self.pool.execute(
+            "INSERT INTO turn_checkpoints VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING",
+            session_id,
+            turn_id,
+            step,
+            response,
+        )
+        return (await self.checkpoints(session_id, turn_id))[step]
 
     async def migrate(self, *, seed: bool = True) -> None:
         migrations = sorted(
@@ -302,7 +369,7 @@ class Store:
         )
         async with self.pool.acquire() as connection, connection.transaction():
             exists = await connection.fetchval(
-                "SELECT id FROM sessions WHERE id = $1 FOR UPDATE", session_id
+                "SELECT id FROM sessions WHERE id = $1 FOR NO KEY UPDATE", session_id
             )
             if exists is None:
                 raise NotFound("Session not found")

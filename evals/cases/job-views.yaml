@@ -1,0 +1,17 @@
+cases:
+  - id: JOBS-VIEWS
+    requirement: REQ-VIEW-03
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare two separate readqc drafts for all specimens received in the last week for NGC-0041877. Use default parameters for both and do not submit either.
+    workflow_actions: [confirm_all, show_jobs]
+    expect:
+      golden: goldens/JOBS-VIEWS.json
+      refusal: none
+      submitted: true
+      view_references: true
+      views: [{kind: draft_form}, {kind: draft_form}, {kind: job_card}, {kind: job_card}, {kind: job_grid}]
+      tools_called: [find_patients, find_specimens, update_draft, show_jobs]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      events_exclude: [conversation_turn_failed]

@@ -77,8 +77,11 @@ class PrivacyStore:
     ) -> Tokenized[Any]:
         await self.load_detector()
         async with self.pool.acquire() as connection, connection.transaction():
+            await connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended($1, 710006))", str(session_id)
+            )
             exists = await connection.fetchval(
-                "SELECT id FROM sessions WHERE id = $1 FOR UPDATE",
+                "SELECT id FROM sessions WHERE id = $1",
                 session_id,
             )
             if exists is None:

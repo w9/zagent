@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare a readqc draft for all specimens from [PT_1] received in the last week. Keep minimum coverage 30 and do not submit.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their recent specimens first.\n\nDone \u2014 both the record view and the draft are prepared.\n\n**Published view:** a table, \"Specimens from [PT_1] received in the last 7 days\" (3 specimens, from a P7D intake window).\n\n**Draft:** `draft-0001` \u2014 Read quality control, status *editing*, version 1.\n- Specimen set: all 3 of those specimens\n- `min_coverage` = 30 (as requested)\n- `check_identity` = true (app default)\n- Validation: no issues reported\n\nThe draft form is published in the working surface. It is **not submitted** \u2014 nothing will run until a human uses the Confirm control on the exact reviewed content hash (3c4e\u20269d39). If you'd like to change the specimen set or parameters, tell me and I'll patch this same draft.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "72280d481088dce9e398a245f28026a3b4dd64c117ec8f015a9c52281da91c58",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "\n",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 2,
+        "cost": 4.004e-05,
+        "prompt_tokens": 280,
+        "total_tokens": 282
+      }
+    }
+  },
+  "version": 2
+}

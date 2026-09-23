@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
 from zagent.draft_store import DraftConflict, DraftStore
 from zagent.drafts import AppId, DraftState
+from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
 from zagent.privacy import PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
@@ -41,6 +42,7 @@ class FindSpecimens(StrictModel):
     patient_handle: Handle | None = None
     received_within: Literal["P1D", "P7D", "P30D"] = "P1D"
     kind: Literal["tumor", "normal", "RNA"] | None = None
+    identity: Literal["reported", "verified"] = "reported"
 
 
 class FindLibraries(StrictModel):
@@ -110,14 +112,18 @@ INPUTS = {
     "find_libraries": FindLibraries,
     "push_view": PushView,
     "update_draft": UpdateDraft,
+    **JOB_INPUTS,
 }
 DESCRIPTIONS = {
+    **JOB_DESCRIPTIONS,
     "find_patients": (
         "Find patients by exact MRN, or all patients at this site. Returns a handle only."
     ),
     "find_specimens": (
         "Find specimens for a patient handle, optionally all patients, within P1D, P7D or P30D. "
         "P1D means the last 24 hours. Optional kind selects tumor, normal, or RNA specimens. "
+        "identity=verified selects assay-verified specimen roles for a corrected identity draft; "
+        "the default reported roles preserve the original manifest. "
         "Returns a handle, count and columns, never rows."
     ),
     "find_libraries": "Find libraries for a specimen handle, optionally filtered by QC status.",
@@ -150,7 +156,9 @@ DESCRIPTIONS = {
 }
 RESPONSE_SCHEMAS = {
     name: TypeAdapter(
-        (DraftResult | ToolFailure)
+        (JOB_OUTPUTS[name] | ToolFailure)
+        if name in JOB_OUTPUTS
+        else (DraftResult | ToolFailure)
         if name == "update_draft"
         else (ViewReceipt | ToolFailure)
         if name == "push_view"
@@ -206,7 +214,18 @@ class ClinicalTools:
         arguments: dict,
         *,
         conversation_turn_id: UUID | None = None,
+        operation_id: str | None = None,
     ) -> dict:
+        if operation_id is not None:
+
+            async def execute_once():
+                return await self.dispatch(
+                    session_id, name, arguments, conversation_turn_id=conversation_turn_id
+                )
+
+            return await self.clinical.store.tool_operation(
+                session_id, conversation_turn_id, operation_id, name, arguments, execute_once
+            )
         try:
             resolved = await self.clinical.store.privacy.resolve(
                 session_id,
@@ -253,6 +272,10 @@ class ClinicalTools:
         try:
             params = INPUTS[name].model_validate(arguments)
             session = await self.clinical.store.get_session(session_id)
+            if name in JOB_INPUTS:
+                return await JobsTools(self.clinical).dispatch(
+                    session_id, conversation_turn_id, name, arguments
+                )
             if name == "update_draft":
                 if conversation_turn_id is None:
                     return failure("invalid_arguments", "Draft updates require an active turn")
@@ -295,12 +318,14 @@ class ClinicalTools:
                         """SELECT * FROM specimens
                            WHERE ($1::text[] IS NULL OR patient_id = ANY($1))
                            AND received_at >= $2 AND received_at <= $3
-                           AND ($4::text IS NULL OR kind = $4)
+                          AND ($4::text IS NULL OR
+                              CASE WHEN $5='verified' THEN assayed_kind ELSE kind END = $4)
                            ORDER BY received_at DESC, id LIMIT 201""",
                         identifiers,
                         now - timedelta(days=days),
                         now,
                         params.kind,
+                        params.identity,
                     )
                 else:
                     entity = "libraries"
@@ -310,9 +335,10 @@ class ClinicalTools:
                         identifiers,
                         params.qc_status,
                     )
-            return await self.clinical.save_handle(
-                session_id, entity, COLUMNS[entity], [dict(record) for record in records]
-            )
+            records = [dict(record) for record in records]
+            if name == "find_specimens" and params.identity == "verified":
+                records = [{**record, "kind": record["assayed_kind"]} for record in records]
+            return await self.clinical.save_handle(session_id, entity, COLUMNS[entity], records)
         except ValidationError:
             return failure("invalid_arguments", "Arguments do not match the tool schema")
         except (NotFound, HandleError) as error:
@@ -368,10 +394,17 @@ def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
 
     def register(name: str) -> None:
         async def invoke(
-            session_id: str, conversation_turn_id: str, arguments: dict[str, Any]
+            session_id: str,
+            conversation_turn_id: str,
+            arguments: dict[str, Any],
+            operation_id: str | None = None,
         ) -> dict[str, Any]:
             return await backend.dispatch(
-                UUID(session_id), name, arguments, conversation_turn_id=UUID(conversation_turn_id)
+                UUID(session_id),
+                name,
+                arguments,
+                conversation_turn_id=UUID(conversation_turn_id),
+                operation_id=operation_id,
             )
 
         server.add_tool(invoke, name=name, description=DESCRIPTIONS[name])
@@ -382,15 +415,20 @@ def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
 
 
 class ToolCaller(Protocol):
-    async def call(self, session: AgentSession, name: str, arguments: dict) -> dict: ...
+    async def call(
+        self, session: AgentSession, name: str, arguments: dict, *, operation_id: str | None = None
+    ) -> dict: ...
 
 
 class McpToolClient:
-    def __init__(self, *, url: str | None = None, server: FastMCP | None = None):
+    def __init__(
+        self, *, url: str | None = None, server: FastMCP | None = None, jobs_url: str | None = None
+    ):
         if (url is None) == (server is None):
             raise ValueError("Provide either an MCP URL or an in-process MCP server")
         self.url = url
         self.server = server
+        self.jobs_url = jobs_url
 
     @asynccontextmanager
     async def connection(self) -> AsyncIterator[ClientSession]:
@@ -408,7 +446,13 @@ class McpToolClient:
                         await client.initialize()
                         yield client
 
-    async def call(self, session: AgentSession, name: str, arguments: dict) -> dict:
+    async def call(
+        self, session: AgentSession, name: str, arguments: dict, *, operation_id: str | None = None
+    ) -> dict:
+        if name in JOB_INPUTS and self.jobs_url:
+            return await McpToolClient(url=self.jobs_url).call(
+                session, name, arguments, operation_id=operation_id
+            )
         async with self.connection() as client:
             result = await client.call_tool(
                 name,
@@ -416,10 +460,29 @@ class McpToolClient:
                     "session_id": str(session.id),
                     "conversation_turn_id": str(session.conversation_turn_id),
                     "arguments": arguments,
+                    "operation_id": operation_id,
                 },
             )
         if result.isError or result.structuredContent is None:
             return failure("unavailable", "MCP tool execution failed")
+        return result.structuredContent
+
+    async def resource(self, uri: str) -> str:
+        async with self.connection() as client:
+            result = await client.read_resource(uri)
+        if len(result.contents) != 1 or result.contents[0].mimeType != "text/html;profile=mcp-app":
+            raise ValueError("Unsupported MCP app resource")
+        return result.contents[0].text
+
+    async def app_data(
+        self, session_id: UUID, *, handle: str | None = None, job_id: str | None = None
+    ) -> dict:
+        arguments = {"session_id": str(session_id)}
+        arguments.update({"handle": handle} if handle else {"job_id": job_id})
+        async with self.connection() as client:
+            result = await client.call_tool("read_jobs", arguments)
+        if result.isError or result.structuredContent is None:
+            raise ValueError("Published job data is unavailable or expired")
         return result.structuredContent
 
 
@@ -428,7 +491,14 @@ class ToolsGateway:
         self.store = store
         self.client = client
 
-    async def execute(self, session: AgentSession, name: str, raw_arguments: str) -> dict:
+    async def execute(
+        self,
+        session: AgentSession,
+        name: str,
+        raw_arguments: str,
+        *,
+        operation_id: str | None = None,
+    ) -> dict:
         arguments: Any = {}
         try:
             if len(raw_arguments) > 16384:
@@ -448,7 +518,10 @@ class ToolsGateway:
                 ).value
                 params = model.model_validate(arguments)
                 result = await self.client.call(
-                    session, name, params.model_dump(mode="json", exclude_none=True)
+                    session,
+                    name,
+                    params.model_dump(mode="json", exclude_none=True),
+                    **({"operation_id": operation_id} if operation_id else {}),
                 )
                 if len(
                     json.dumps(result).encode()

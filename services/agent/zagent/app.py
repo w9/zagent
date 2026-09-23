@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 from uuid import UUID
 
+import asyncpg
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -17,6 +18,8 @@ from zagent.display import SessionDisplay
 from zagent.draft_store import DraftConflict, DraftStore, InvalidDraft
 from zagent.drafts import CATALOG
 from zagent.events import Projection
+from zagent.jobs import JobStore
+from zagent.jobs_server import UI_RESOURCES, create_jobs_server
 from zagent.llm import GatewayClient
 from zagent.privacy import PrivacyError, Raw, Tokenized
 from zagent.runtime import Runtime
@@ -41,6 +44,7 @@ class Settings(BaseModel):
     tools_url: str = Field(
         default_factory=lambda: os.environ.get("ZAGENT_TOOLS_URL", "http://127.0.0.1:8002/mcp")
     )
+    jobs_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_JOBS_URL"))
     site_id: str = "northgate"
     display_mode: bool = Field(
         default_factory=lambda: os.environ.get("ZAGENT_DISPLAY_MODE", "1") == "1"
@@ -100,8 +104,6 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             resources.push_async_callback(store.close)
             if settings.migrate_database:
                 await store.migrate()
-            if not settings.runtime_url:
-                await store.fail_interrupted_conversation_turns()
             notifications = await Notifications.open(settings.database_url)
             resources.push_async_callback(notifications.close)
             script = os.environ.get("ZAGENT_SCRIPT")
@@ -113,7 +115,9 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                     else LlmAgent(
                         store,
                         GatewayClient(settings.gateway_url),
-                        ToolsGateway(store, McpToolClient(url=settings.tools_url)),
+                        ToolsGateway(
+                            store, McpToolClient(url=settings.tools_url, jobs_url=settings.jobs_url)
+                        ),
                     )
                 )
             runtime = Runtime(
@@ -124,12 +128,27 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                 if isinstance(selected_agent, LlmAgent)
                 else None,
             )
+            if runtime.resumable and not settings.runtime_url:
+                ownership = await asyncpg.connect(settings.database_url)
+                resources.push_async_callback(ownership.close)
+                if not await ownership.fetchval("SELECT pg_try_advisory_lock(710008)"):
+                    raise RuntimeError("Another runtime already owns this database")
             resources.push_async_callback(runtime.close)
             app.state.store = store
             app.state.runtime = runtime
             app.state.notifications = notifications
             app.state.clinical = ClinicalStore(store, configured_clock())
             app.state.drafts = DraftStore(app.state.clinical)
+            app.state.jobs_client = (
+                McpToolClient(url=settings.jobs_url)
+                if settings.jobs_url
+                else McpToolClient(server=create_jobs_server(app.state.clinical))
+            )
+            if not settings.runtime_url:
+                if runtime.resumable:
+                    await runtime.recover()
+                else:
+                    await store.fail_interrupted_conversation_turns()
             yield
 
     app = FastAPI(title="Zagent", version="0.1.0", lifespan=lifespan)
@@ -183,6 +202,74 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     @app.get("/catalog")
     async def catalog():
         return [app.model_dump() for app in CATALOG.values()]
+
+    async def job_view(session_id: UUID, view_id: str):
+        display_only()
+        await scoped_session(session_id)
+        snapshot = await app.state.store.snapshot(session_id)
+        view = next((item for item in snapshot.views if item.id == view_id), None)
+        if view is None or view.spec.kind not in UI_RESOURCES:
+            raise NotFound("MCP view not found in this session")
+        return view
+
+    @app.get("/sessions/{session_id}/views/{view_id}/app")
+    async def app_resource(session_id: UUID, view_id: str):
+        view = await job_view(session_id, view_id)
+        uri = UI_RESOURCES[view.spec.kind]
+        return {"resource_uri": uri, "html": await app.state.jobs_client.resource(uri)}
+
+    @app.get("/sessions/{session_id}/views/{view_id}/data")
+    async def app_data(session_id: UUID, view_id: str):
+        view = await job_view(session_id, view_id)
+        data = await app.state.jobs_client.app_data(
+            session_id, handle=view.spec.props.get("handle"), job_id=view.spec.props.get("job_id")
+        )
+        return (await app.state.store.privacy.resolve(session_id, Tokenized(value=data))).value
+
+    @app.get("/sessions/{session_id}/jobs/{job_id}")
+    async def job_data(
+        session_id: UUID, job_id: str, representation: Literal["display", "model"] = "display"
+    ):
+        display_only()
+        await scoped_session(session_id)
+        data = await JobStore(app.state.clinical).read(session_id, job_id, limit=100)
+        return (
+            data
+            if representation == "model"
+            else (await app.state.store.privacy.resolve(session_id, Tokenized(value=data))).value
+        )
+
+    @app.get("/sessions/{session_id}/views/{view_id}/updates")
+    async def app_updates(request: Request, session_id: UUID, view_id: str):
+        await job_view(session_id, view_id)
+
+        async def updates():
+            yield "retry: 1000\n\n"
+            previous = None
+            async with app.state.notifications.subscribe(f"jobs:{session_id}") as signal:
+                while not await request.is_disconnected():
+                    signal.clear()
+                    try:
+                        current = json.dumps(await app_data(session_id, view_id))
+                    except (ValueError, HandleError, NotFound):
+                        yield (
+                            'event: jobs\ndata: {"jobs": [], '
+                            '"error": "Job view unavailable or expired"}\n\n'
+                        )
+                        return
+                    if current != previous:
+                        yield f"event: jobs\ndata: {current}\n\n"
+                        previous = current
+                    try:
+                        await asyncio.wait_for(signal.wait(), timeout=settings.poll_seconds)
+                    except TimeoutError:
+                        yield ": keep-alive\n\n"
+
+        return StreamingResponse(
+            updates(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache, no-transform"},
+        )
 
     @app.get("/sessions/{session_id}/drafts/{draft_id}")
     async def get_draft(session_id: UUID, draft_id: str):

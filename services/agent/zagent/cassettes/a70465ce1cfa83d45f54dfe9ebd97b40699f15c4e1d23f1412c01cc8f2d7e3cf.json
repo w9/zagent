@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their normal specimens from the last week.\",\"role\":\"assistant\"},{\"content\":\"Draft prepared \\u2014 no submission has occurred.\\n\\n**Published views**\\n- *Normal specimens for [PT_1] (last 7 days)* (table) \\u2014 1 normal specimen found in the last week, which is the specimen set bound to the draft.\\n- *Germline panel* (draft form) \\u2014 the pending draft awaiting your parameters.\\n\\n**Draft status**\\n- App: germline-panel, status: editing, version 1\\n- Defaults applied: `panel=predisposition`, `min_coverage=30`\\n- Validation: no issues flagged\\n\\nTell me your preferred parameters and I'll patch them into the same draft (for example `panel=extended` or a different `min_coverage`). The draft will still require the human Confirm control to submit the exact reviewed content.\",\"role\":\"assistant\"},{\"content\":\"Set panel=extended.\",\"role\":\"user\"},{\"content\":\"Updated \\u2014 the *Germline panel* draft form has been republished.\\n\\n- `panel=extended` (was predisposition)\\n- `min_coverage=30` (unchanged)\\n- Specimen set: the 1 normal specimen from [PT_1] in the last week\\n- Status: editing, version 2, validation clean\\n\\nNothing has been submitted. The draft requires the human Confirm control on the form to run with this exact reviewed content. Let me know if you want any further parameter changes.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"germline-panel\",\"content_hash\":\"a1459518e2fa2ae594ea4d27daa06be76487b5f6a19c4da2fa85376c6619942a\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_coverage\":30,\"panel\":\"extended\"},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"germline-panel\",\"max_turns\":5,\"parameters\":{\"min_coverage\":45,\"panel\":\"extended\"}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "a70465ce1cfa83d45f54dfe9ebd97b40699f15c4e1d23f1412c01cc8f2d7e3cf",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Set min_coverage=45.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 9.856e-05,
+        "prompt_tokens": 680,
+        "total_tokens": 688
+      }
+    }
+  },
+  "version": 2
+}

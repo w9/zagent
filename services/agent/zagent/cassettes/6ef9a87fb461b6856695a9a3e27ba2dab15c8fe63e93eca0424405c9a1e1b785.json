@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare a readqc draft for all specimens from [PT_1] received in the last week. Keep minimum coverage 30 and do not submit.",
+        "role": "user"
+      },
+      {
+        "content": "Draft prepared \u2014 nothing submitted.\n\n**Specimen scope (published view: \"Specimens for [PT_1] received in the last 7 days\" \u2014 table)** \u2014 3 specimens received in the last week were selected for the draft.\n\n**Draft form (published: \"Read quality control\")**\n- App: readqc\n- Scope: the specimen query for those 3 specimens\n- Parameters: `min_coverage=30`, `check_identity=true` (platform default)\n- Status: `editing`, version 1, no validation issues\n- No job has been created or run\n\nTo proceed, review the form in the working surface and use the human **Confirm** control to submit the exact reviewed content hash. A chat confirmation can't authorize submission. Tell me if you'd like the identity check turned off or any other parameter adjusted.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "6ef9a87fb461b6856695a9a3e27ba2dab15c8fe63e93eca0424405c9a1e1b785",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "# Drafting a readqc form for recent specimens\n\nDrafting a readqc form for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 22,
+        "cost": 4.592e-05,
+        "prompt_tokens": 262,
+        "total_tokens": 284
+      }
+    }
+  },
+  "version": 2
+}

@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare rna-fusion for RNA specimens from [PT_1] in the past week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their recent RNA specimens.\\n\\n\",\"role\":\"assistant\"},{\"content\":\"Done \\u2014 here's where things stand:\\n\\n**Specimens**: One RNA specimen for [PT_1] received in the last 7 days, published as the table **\\\"RNA specimens for [PT_1] (last 7 days)\\\"**.\\n\\n**Draft**: An **RNA fusion analysis** draft form is published (draft-0001, version 1, status: editing) bound to that specimen query. It currently carries the default parameters:\\n- `min_support` = 5\\n- `filter_artifacts` = true\\n\\nValidation returned no issues. Nothing has been submitted \\u2014 the draft is pending and only the human **Confirm** control can submit the exact reviewed content hash.\\n\\nTell me your preferred parameters and I'll patch this same draft, then you can review and confirm.\",\"role\":\"assistant\"},{\"content\":\"Set filter_artifacts to false in the existing draft.\",\"role\":\"user\"},{\"content\":\"Updated. The **RNA fusion analysis** draft form (draft-0001) is now at version 2 with:\\n\\n- `filter_artifacts` = **false**\\n- `min_support` = 5\\n\\nValidation is clean and the status remains *editing*. Nothing has been submitted \\u2014 review the form and use the human **Confirm** control to submit that exact content hash, or tell me if you'd like further changes.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"rna-fusion\",\"content_hash\":\"f9f7b7d69131f1f58aff7b0ae119e622ae7f0f8ec81ba734f51a8db9dc89c51d\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"filter_artifacts\":false,\"min_support\":5},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"rna-fusion\",\"max_turns\":5,\"parameters\":{\"filter_artifacts\":false,\"min_support\":9}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "70ffa23f238ad2c94ea45d496c8a483e1a4477bbe79c5d97c870b2b11afde313",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Set min_support to 9 in the existing draft.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 13,
+        "cost": 0.00014245,
+        "prompt_tokens": 670,
+        "total_tokens": 683
+      }
+    }
+  },
+  "version": 2
+}

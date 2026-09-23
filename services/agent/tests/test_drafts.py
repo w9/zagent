@@ -178,6 +178,10 @@ async def test_draft_edits_publish_state_and_stale_confirmation_returns_diff(sto
     assert (
         await store.pool.fetchval("SELECT count(*) FROM jobs WHERE session_id=$1", session.id) == 0
     )
+    assert (
+        await store.pool.fetchval("SELECT count(*) FROM job_queue WHERE session_id=$1", session.id)
+        == 0
+    )
     jobs = await asyncio.gather(
         *(drafts.confirm(session.id, second.draft_id, second.content_hash) for _index in range(3))
     )
@@ -185,6 +189,10 @@ async def test_draft_edits_publish_state_and_stale_confirmation_returns_diff(sto
     assert jobs[0].status == "pending"
     assert (
         await store.pool.fetchval("SELECT count(*) FROM jobs WHERE session_id=$1", session.id) == 1
+    )
+    assert (
+        await store.pool.fetchval("SELECT count(*) FROM job_queue WHERE session_id=$1", session.id)
+        == 1
     )
     state = await store.snapshot(session.id)
     assert state.drafts[first.draft_id].status == "submitted"
@@ -221,6 +229,10 @@ def test_model_tool_registry_has_draft_mutation_but_no_submission_capability():
         "find_libraries",
         "push_view",
         "update_draft",
+        "show_jobs",
+        "get_job",
+        "search_knowledge",
+        "read_document",
     }
     assert not any(
         "confirm" in tool["function"]["name"] or "submit" in tool["function"]["name"]

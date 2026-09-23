@@ -143,6 +143,17 @@ async def scan_privacy_corpus(root: Path, cassette_dir: Path, database_url: str)
                 result.stored_events += 1
                 if detector.contains(row["payload"]):
                     result.violations.append(f"event:{row['session_id']}:{row['seq']}")
+            for table, payload, counter in (
+                ("job_logs", "record", "job_logs"),
+                ("turn_checkpoints", "response", "checkpoints"),
+                ("tool_receipts", "result", "tool_receipts"),
+            ):
+                async for row in connection.cursor(
+                    f"SELECT session_id, {payload} AS payload FROM {table}"
+                ):
+                    setattr(result, counter, getattr(result, counter) + 1)
+                    if detector.contains(row["payload"]):
+                        result.violations.append(f"{table}:{row['session_id']}")
     finally:
         await store.close()
     return result

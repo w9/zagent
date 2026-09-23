@@ -193,7 +193,61 @@
     },
     {
       "payload": {
-        "detail": "update_draft"
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"RNA specimens received in the last 24h (PT_1)\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 1}}}",
+        "name": "push_view"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "kind",
+                "label": "Type",
+                "type": "string"
+              },
+              {
+                "key": "purity",
+                "label": "Purity",
+                "type": "number"
+              },
+              {
+                "key": "received_at",
+                "label": "Received",
+                "type": "string"
+              }
+            ],
+            "handle": "query-0002",
+            "row_count": 1,
+            "title": "RNA specimens received in the last 24h (PT_1)"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "RNA specimens received in the last 24h (PT_1)"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "update_draft, push_view"
       },
       "type": "step_finished"
     },
@@ -205,7 +259,7 @@
     },
     {
       "payload": {
-        "text": "Draft prepared \u2014 **RNA fusion analysis** (draft-0001, version 1, status: editing).\n\n- Scope: the 1 RNA specimen received in the last 24 hours for [PT_1]\n- Parameters: min_support = 8, filter_artifacts = true\n- Validation: no issues\n\nThe draft form is published in the working surface. It stays a draft until a human uses the Confirm control to submit the exact reviewed content hash \u2014 a chat confirmation can't submit it. Let me know if you'd like any parameter changed."
+        "text": "Draft prepared and the specimen list is published.\n\n- **Working surface:** table \"RNA specimens received in the last 24h (PT_1)\" \u2014 1 RNA specimen in the last 24 hours for this patient.\n- **Draft:** RNA fusion analysis form (draft-0001, version 1), scoped to that RNA specimen query, with `min_support=8` and the default `filter_artifacts=true`. Validation returned no issues.\n- **Status:** editing \u2014 nothing has been submitted. It will only run if you use the human Confirm control on the form in the working surface; a chat confirmation isn't sufficient. Tell me if you'd like any parameter changed before you confirm."
       },
       "type": "text_delta"
     },
@@ -233,7 +287,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Draft prepared \u2014 **RNA fusion analysis** (draft-0001, version 1, status: editing).\n\n- Scope: the 1 RNA specimen received in the last 24 hours for [PT_1]\n- Parameters: min_support = 8, filter_artifacts = true\n- Validation: no issues\n\nThe draft form is published in the working surface. It stays a draft until a human uses the Confirm control to submit the exact reviewed content hash \u2014 a chat confirmation can't submit it. Let me know if you'd like any parameter changed."
+      "text": "Draft prepared and the specimen list is published.\n\n- **Working surface:** table \"RNA specimens received in the last 24h (PT_1)\" \u2014 1 RNA specimen in the last 24 hours for this patient.\n- **Draft:** RNA fusion analysis form (draft-0001, version 1), scoped to that RNA specimen query, with `min_support=8` and the default `filter_artifacts=true`. Validation returned no issues.\n- **Status:** editing \u2014 nothing has been submitted. It will only run if you use the human Confirm control on the form in the working surface; a chat confirmation isn't sufficient. Tell me if you'd like any parameter changed before you confirm."
     }
   ],
   "steps": [
@@ -307,7 +361,7 @@
       ]
     },
     {
-      "detail": "update_draft",
+      "detail": "update_draft, push_view",
       "status": "complete",
       "title": "Agent step 3",
       "tools": [
@@ -335,6 +389,16 @@
             "title": "RNA fusion analysis",
             "view_id": "view-0001"
           }
+        },
+        {
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"RNA specimens received in the last 24h (PT_1)\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 1}}}",
+          "name": "push_view",
+          "result": {
+            "kind": "table",
+            "ok": true,
+            "title": "RNA specimens received in the last 24h (PT_1)",
+            "view_id": "view-0002"
+          }
         }
       ]
     },
@@ -350,6 +414,37 @@
       "props": {
         "draft_id": "draft-0001",
         "title": "RNA fusion analysis"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "kind",
+            "label": "Type",
+            "type": "string"
+          },
+          {
+            "key": "purity",
+            "label": "Purity",
+            "type": "number"
+          },
+          {
+            "key": "received_at",
+            "label": "Received",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0002",
+        "row_count": 1,
+        "title": "RNA specimens received in the last 24h (PT_1)"
       },
       "version": 1
     }

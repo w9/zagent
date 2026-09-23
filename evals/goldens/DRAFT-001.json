@@ -142,7 +142,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours \u2014 [PT_1]\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 2}}}",
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours (PT_1)\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 2}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -176,7 +176,7 @@
             ],
             "handle": "query-0002",
             "row_count": 2,
-            "title": "Specimens received in the last 24 hours \u2014 [PT_1]"
+            "title": "Specimens received in the last 24 hours (PT_1)"
           },
           "version": 1
         }
@@ -189,14 +189,26 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Specimens received in the last 24 hours \u2014 [PT_1]"
+          "title": "Specimens received in the last 24 hours (PT_1)"
         }
       },
       "type": "tool_result"
     },
     {
       "payload": {
-        "arguments": "{\"app_id\": \"somatic-snv\", \"specimen_handle\": \"query-0002\"}",
+        "detail": "push_view"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 4"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"app_id\": \"somatic-snv\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_vaf\": 0.05, \"min_depth\": 20}}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -265,13 +277,13 @@
     },
     {
       "payload": {
-        "detail": "push_view, update_draft"
+        "detail": "update_draft"
       },
       "type": "step_finished"
     },
     {
       "payload": {
-        "title": "Agent step 4"
+        "title": "Agent step 5"
       },
       "type": "step_started"
     },
@@ -322,13 +334,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 5"
+        "title": "Agent step 6"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "I've published the specimen list and prepared a draft.\n\n**Published views**\n- Table: *Specimens received in the last 24 hours \u2014 [PT_1]* \u2014 2 specimens (tumor/normal kinds shown in the view).\n- Form: *Somatic variant calling* (draft-0001, version 1, status: editing).\n\n**Draft contents**\n- App: somatic-snv\n- Specimen handle: the last-24-hours query for [PT_1] (both specimens included, so tumor and normal are selected together)\n- Parameters: min_vaf = 0.05, min_depth = 20\n\n**Validation issue \u2014 needs your input**\n- `missing_matched_normal` on `specimen_handle`: \"A matched normal specimen is missing.\"\n\nI checked for a normal specimen for [PT_1] over the last 30 days and found none, so I can't resolve this by widening the window. The draft stays in editing with the issue recorded; nothing has been submitted.\n\nHow would you like to proceed? For example, if the normal specimen was received under a different patient record or is expected later, tell me and I'll re-query. Only the human Confirm control can submit the reviewed content hash \u2014 a chat confirmation isn't sufficient."
+        "text": "I published the specimen records in the working surface as **\"Specimens received in the last 24 hours (PT_1)\"** (table, 2 specimens) and prepared a somatic-snv draft form (**\"Somatic variant calling\"**, draft-0001, version 1).\n\n**Draft status: editing \u2014 not submitted.** Validation is blocking it:\n\n- `missing_matched_normal` on `specimen_handle`: \"A matched normal specimen is missing.\"\n\nThe last-24-hours specimen query for this patient contains 2 specimens, and no normal specimen exists for this patient in the last 30 days either. Somatic calling needs tumor and normal together in one query, so I can't fix this by inventing a matched normal.\n\nTo proceed, please tell me one of the following:\n- whether a normal specimen for this patient was received outside the last 30 days (I can only query P1D/P7D/P30D windows, so you'd need to point me to the right intake window or record), or\n- whether you want the draft left as-is for review.\n\nParameters currently in the draft: `min_vaf=0.05`, `min_depth=20`. Only the human Confirm control can submit the exact reviewed content hash \u2014 a chat \"yes\" is not authorization."
       },
       "type": "text_delta"
     },
@@ -433,7 +445,7 @@
     },
     {
       "payload": {
-        "text": "Updated draft-0001 (now version 2).\n\n- min_vaf: 0.05 \u2192 **0.03**\n- min_depth: 20 (unchanged)\n- Specimen handle: last-24-hours query for [PT_1] (tumor + normal)\n- Status: editing; nothing submitted\n\nStill blocking: `missing_matched_normal` \u2014 no matched normal specimen found for [PT_1] within the last 30 days, so the draft can't pass validation yet. The updated form is published as *Somatic variant calling*. Tell me if the normal exists under another record or a later window and I'll re-query."
+        "text": "Updated the existing draft (draft-0001, now version 2) \u2014 the form was republished automatically as **\"Somatic variant calling\"**.\n\n- `min_vaf` = 0.03\n- `min_depth` = 20\n- specimen_handle = the last-24-hours specimen query for PT_1\n\n**Status: editing \u2014 still blocked.** The same validation issue remains: `missing_matched_normal` (\"A matched normal specimen is missing.\"). The last-24-hours query has no normal specimen, and no normal exists for this patient within the last 30 days either.\n\nI still need one of:\n- a pointer to a normal specimen for this patient (which intake window/record to include), or\n- confirmation to leave the draft as-is.\n\nOnly the human Confirm control can submit the exact reviewed content hash."
       },
       "type": "text_delta"
     },
@@ -461,7 +473,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "I've published the specimen list and prepared a draft.\n\n**Published views**\n- Table: *Specimens received in the last 24 hours \u2014 [PT_1]* \u2014 2 specimens (tumor/normal kinds shown in the view).\n- Form: *Somatic variant calling* (draft-0001, version 1, status: editing).\n\n**Draft contents**\n- App: somatic-snv\n- Specimen handle: the last-24-hours query for [PT_1] (both specimens included, so tumor and normal are selected together)\n- Parameters: min_vaf = 0.05, min_depth = 20\n\n**Validation issue \u2014 needs your input**\n- `missing_matched_normal` on `specimen_handle`: \"A matched normal specimen is missing.\"\n\nI checked for a normal specimen for [PT_1] over the last 30 days and found none, so I can't resolve this by widening the window. The draft stays in editing with the issue recorded; nothing has been submitted.\n\nHow would you like to proceed? For example, if the normal specimen was received under a different patient record or is expected later, tell me and I'll re-query. Only the human Confirm control can submit the reviewed content hash \u2014 a chat confirmation isn't sufficient."
+      "text": "I published the specimen records in the working surface as **\"Specimens received in the last 24 hours (PT_1)\"** (table, 2 specimens) and prepared a somatic-snv draft form (**\"Somatic variant calling\"**, draft-0001, version 1).\n\n**Draft status: editing \u2014 not submitted.** Validation is blocking it:\n\n- `missing_matched_normal` on `specimen_handle`: \"A matched normal specimen is missing.\"\n\nThe last-24-hours specimen query for this patient contains 2 specimens, and no normal specimen exists for this patient in the last 30 days either. Somatic calling needs tumor and normal together in one query, so I can't fix this by inventing a matched normal.\n\nTo proceed, please tell me one of the following:\n- whether a normal specimen for this patient was received outside the last 30 days (I can only query P1D/P7D/P30D windows, so you'd need to point me to the right intake window or record), or\n- whether you want the draft left as-is for review.\n\nParameters currently in the draft: `min_vaf=0.05`, `min_depth=20`. Only the human Confirm control can submit the exact reviewed content hash \u2014 a chat \"yes\" is not authorization."
     },
     {
       "role": "user",
@@ -471,7 +483,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Updated draft-0001 (now version 2).\n\n- min_vaf: 0.05 \u2192 **0.03**\n- min_depth: 20 (unchanged)\n- Specimen handle: last-24-hours query for [PT_1] (tumor + normal)\n- Status: editing; nothing submitted\n\nStill blocking: `missing_matched_normal` \u2014 no matched normal specimen found for [PT_1] within the last 30 days, so the draft can't pass validation yet. The updated form is published as *Somatic variant calling*. Tell me if the normal exists under another record or a later window and I'll re-query."
+      "text": "Updated the existing draft (draft-0001, now version 2) \u2014 the form was republished automatically as **\"Somatic variant calling\"**.\n\n- `min_vaf` = 0.03\n- `min_depth` = 20\n- specimen_handle = the last-24-hours specimen query for PT_1\n\n**Status: editing \u2014 still blocked.** The same validation issue remains: `missing_matched_normal` (\"A matched normal specimen is missing.\"). The last-24-hours query has no normal specimen, and no normal exists for this patient within the last 30 days either.\n\nI still need one of:\n- a pointer to a normal specimen for this patient (which intake window/record to include), or\n- confirmation to leave the draft as-is.\n\nOnly the human Confirm control can submit the exact reviewed content hash."
     }
   ],
   "steps": [
@@ -545,22 +557,29 @@
       ]
     },
     {
-      "detail": "push_view, update_draft",
+      "detail": "push_view",
       "status": "complete",
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours \u2014 [PT_1]\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 2}}}",
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours (PT_1)\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 2}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Specimens received in the last 24 hours \u2014 [PT_1]",
+            "title": "Specimens received in the last 24 hours (PT_1)",
             "view_id": "view-0001"
           }
-        },
+        }
+      ]
+    },
+    {
+      "detail": "update_draft",
+      "status": "complete",
+      "title": "Agent step 4",
+      "tools": [
         {
-          "arguments": "{\"app_id\": \"somatic-snv\", \"specimen_handle\": \"query-0002\"}",
+          "arguments": "{\"app_id\": \"somatic-snv\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_vaf\": 0.05, \"min_depth\": 20}}",
           "name": "update_draft",
           "result": {
             "draft": {
@@ -595,7 +614,7 @@
     {
       "detail": "find_specimens",
       "status": "complete",
-      "title": "Agent step 4",
+      "title": "Agent step 5",
       "tools": [
         {
           "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P30D\", \"kind\": \"normal\"}",
@@ -632,7 +651,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 5"
+      "title": "Agent step 6"
     },
     {
       "detail": "update_draft",
@@ -706,7 +725,7 @@
         ],
         "handle": "query-0002",
         "row_count": 2,
-        "title": "Specimens received in the last 24 hours \u2014 [PT_1]"
+        "title": "Specimens received in the last 24 hours (PT_1)"
       },
       "version": 1
     },

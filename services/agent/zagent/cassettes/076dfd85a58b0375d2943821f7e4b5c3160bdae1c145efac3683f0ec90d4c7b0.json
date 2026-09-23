@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare rna-fusion for RNA specimens from [PT_1] in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their recent RNA specimens.\n\nDraft prepared and the specimen records are published.\n\n- **View:** \"RNA specimens for [PT_1] (last 7 days)\" (table) \u2014 one RNA specimen matched in the past week.\n- **Draft:** `rna-fusion` form, version 1, status **editing**, no validation issues. Current defaults: `min_support=5`, `filter_artifacts=true`, bound to the RNA specimen query for [PT_1].\n\nNothing has been submitted \u2014 only the human Confirm control on the draft form can submit the exact reviewed content hash. Tell me your preferred parameters and I'll apply them to this same draft.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "076dfd85a58b0375d2943821f7e4b5c3160bdae1c145efac3683f0ec90d4c7b0",
+  "samples": {
+    "2": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "# Preparing rna-fusion for recent RNA specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 11,
+        "cost": 3.752e-05,
+        "prompt_tokens": 235,
+        "total_tokens": 246
+      }
+    }
+  },
+  "version": 2
+}

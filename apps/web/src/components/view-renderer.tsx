@@ -4,9 +4,11 @@ import { validateViewSpec } from '../lib/views'
 import type { ViewSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
 import type { DraftState, JobState } from '../lib/events'
+import { McpAppView } from './mcp-app-view'
 
 export type ViewRendererProps = {
   spec: ViewSpec
+  viewId?: string
   resolveHandle?: HandleResolver
   sessionId?: string
   drafts?: Record<string, DraftState>
@@ -31,6 +33,8 @@ const registry = new Map(
 export function ViewRenderer(props: ViewRendererProps) {
   const { spec } = props
   validateViewSpec(spec)
+  if (spec.props.resource_uri || (spec.kind === 'job_card' && spec.version === 1))
+    return <McpAppView {...props} />
   const Component = registry.get(`${spec.kind}:${spec.version}`)
   if (!Component)
     throw new Error(`No renderer for ${spec.kind} v${spec.version}`)

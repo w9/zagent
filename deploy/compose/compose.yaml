@@ -28,6 +28,7 @@ services:
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_GATEWAY_URL: http://gateway:8001
       ZAGENT_TOOLS_URL: http://tools:8002/mcp
+      ZAGENT_JOBS_URL: http://jobs:8005/mcp
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
       ZAGENT_DISPLAY_MODE: "0"
       ZAGENT_MIGRATE: "0"
@@ -42,6 +43,8 @@ services:
       gateway:
         condition: service_healthy
       tools:
+        condition: service_healthy
+      jobs:
         condition: service_healthy
       privacy:
         condition: service_healthy
@@ -106,6 +109,62 @@ services:
       timeout: 5s
       retries: 30
 
+  jobs:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.jobs_server:app", "--host", "0.0.0.0", "--port", "8005"]
+    environment:
+      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tools.key
+    volumes:
+      - privacy_tools:/run/privacy:ro
+    networks: [internal]
+    depends_on:
+      privacy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  dispatcher:
+    image: zagent-job:plan8
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["python", "-m", "zagent.dispatcher"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      COMPOSE_PROJECT_NAME: "${COMPOSE_PROJECT_NAME:-zagent}"
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+      ZAGENT_JOB_STEP_SECONDS: "${ZAGENT_JOB_STEP_SECONDS:-2}"
+      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tools.key
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://collector:4318
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - privacy_tools:/run/privacy:ro
+    networks: [internal]
+    depends_on:
+      privacy:
+        condition: service_healthy
+      collector:
+        condition: service_started
+
+  collector:
+    image: otel/opentelemetry-collector:0.120.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./deploy/compose/otel.yaml:/etc/otelcol/config.yaml:ro
+    networks: [internal]
+
   privacy-init:
     build:
       context: .
@@ -153,6 +212,7 @@ services:
       ZAGENT_MIGRATE: "0"
       ZAGENT_RUNTIME_URL: http://agent:8000
       ZAGENT_GATEWAY_URL: http://gateway:8001
+      ZAGENT_JOBS_URL: http://jobs:8005/mcp
       ZAGENT_PRIVACY_URL: http://privacy:8003
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/display.key
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"

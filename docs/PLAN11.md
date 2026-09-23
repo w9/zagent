@@ -2,6 +2,7 @@
 
 **Status:** not started
 **Depends on:** [PLAN10](PLAN10.md)
+**Prerequisite:** land shared assistant Markdown rendering before building the gallery stories.
 **Shippable outcome:** a guarantee gallery where each claim has a demo that cannot flake, a link to
 the code that enforces it, and the evidence behind it.
 
@@ -36,6 +37,23 @@ live failure in front of an audience.
 ---
 
 ## Scope
+
+**Pre-gallery usability: assistant Markdown.** Implement safe, streaming-compatible Markdown
+rendering in the product's shared transcript component before starting the gallery. Use an
+established parser/renderer for paragraphs, headings, emphasis, lists, blockquotes, inline and
+fenced code, links, and GFM tables. Keep user messages as plain text. Incomplete Markdown during
+streaming must remain legible; completion, refresh, and replay must produce the same rendering.
+Code and tables may scroll within their own bounds, never widen the mobile page.
+
+This is presentation only: preserve the original response text in the event log, model context,
+cassettes, and exports. Do not filter, rewrite, retry, or replace responses. Query result tables
+still belong in published views; rendering Markdown does not change that presentation contract.
+
+Disable raw HTML execution and remote images, allow only safe link schemes, and protect external
+links. Never resolve private identifiers into link destinations. Preserve privacy highlights in
+displayed text and keep X-ray's model-visible request representation unchanged. Existing titled
+view references remain host-owned navigation; model-authored links cannot invoke tools, mutate
+state, or substitute for validated working-surface references.
 
 **The gallery shell.** Routed views over the same components the application uses. No parallel
 implementation, because a showcase that drifts from the product is worse than no showcase.
@@ -115,6 +133,12 @@ doing so would have produced a showcase of things that did not work yet.
 
 ## Definition of done
 
+- [ ] Shared assistant Markdown rendering is implemented in the product before gallery stories,
+  with readable streaming, completed, refreshed, and replayed responses on desktop and mobile.
+- [ ] Renderer tests cover split delimiters/code fences, lists, code, links, tables, malicious
+  HTML and URL schemes, and bounded layout at 320 pixels.
+- [ ] Original response/event text is unchanged; privacy highlights and host-owned view references
+  still work, and rendering or activating a Markdown link cannot trigger workflow mutations.
 - [ ] Every requirement in the register has a story.
 - [ ] Every story has all four parts, with the mechanism linking to real code.
 - [ ] Every demo replays from cassettes and never flakes.
@@ -134,8 +158,10 @@ a conversation.
 
 ## Evidence added
 
-None. This increment reports evidence rather than producing it, which is the correct relationship
-between a showcase and the thing it shows.
+The gallery itself reports existing evidence rather than inventing new behavioral claims.
+The Markdown prerequisite adds component and browser regressions for streaming, replay, link/HTML
+safety, privacy highlighting, view navigation, and responsive layout. Keep these in the product's
+existing test suites; formatting must not require rewriting event or conversation goldens.
 
 One addition worth making: a story for the evidence architecture itself, whose claim is "the suite
 detects broken guarantees", whose mechanism is the mutation framework, and whose evidence is the

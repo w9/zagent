@@ -23,10 +23,14 @@ PLAN7 adds versioned drafts, human edit/stale-confirm/idempotent-confirm actions
 checks, and receipt-to-view assertions. Four simulated users have hidden parameter targets,
 three independent recorded conversations per application, and separately pinned model routes.
 
+PLAN8 adds real synthetic worker processes, leased dispatch, versioned SOP retrieval, MCP-owned
+job views, and journaled runtime recovery. Four execution cases have three independently recorded
+agent conversations each; ordinary job-view replay also drives desktop/mobile container tests.
+
 ## Commands
 
 ```bash
-make evals                    # 3,000 guard, 100 detector, 30 HTTP standard, 240 chaos, 12 simulator trials.
+make evals                    # 3,405 trials: 3,000 guard, 100 detector, 31 HTTP, 250 SSE, 12 slot, 12 execution.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -46,6 +50,10 @@ uv run zagent evals --filter 'DRAFT-*' --no-chaos
 uv run zagent evals --filter DRAFT-CONFIRM --chaos
 uv run zagent evals --filter 'SLOT-*' --no-chaos
 ZAGENT_SIMULATOR_MODEL=deepseek/deepseek-v4.1-flash uv run zagent evals --filter 'SLOT-*' --mode record --record-missing --no-chaos
+uv run zagent evals --filter 'EXEC-*' --no-chaos
+uv run zagent evals --filter JOBS-VIEWS --no-chaos
+ZAGENT_DOCKER_TESTS=1 uv run pytest services/agent/tests/test_jobs.py -q
+uv run pytest services/agent/tests/test_resume.py -q
 ```
 
 `make evals EVAL_ARGS='--filter REQ-STREAM-02 --trials 2'` passes options to the CLI.
@@ -55,7 +63,8 @@ trial and ten chaos trials per case, raised to the registered minimum for measur
 Each HTTP standard reference executes twice; those duplicate
 determinism checks are reported as HTTP executions, not inflated trial counts. `--chaos` selects
 only interrupted trials; `--no-chaos` selects only standard trials. Every newly registered case
-automatically participates in chaos mode unless it is a guard-only, detector-only, or simulated-user case.
+automatically participates in SSE chaos mode unless it is a guard-only, detector-only, simulated-user,
+or execution case. Execution cases specify their own runtime interruption boundary.
 
 The report is [docs/evals/index.html](../docs/evals/index.html), with structured data in
 [docs/evals/results.json](../docs/evals/results.json). Both are generated and ignored by Git;
@@ -122,8 +131,9 @@ request that bypass explicitly, without changing their labels.
 
 The guard and main agent share `SCOPE_POLICY` and record its SHA-256 in provenance. The guard
 makes one forced tool-choice call, with temperature 0, a 256-token cap, and optional reasoning
-disabled. It emits no model-written text. `allow_request()` reaches the main loop; `refuse(code)`
-emits the fixed-template event and stops. Invalid decisions fail the turn rather than bypassing
+disabled. It emits no model-written text. The sole classification tool is `scope_decision` with
+a required closed `decision` enum: `allow` reaches the main loop; a refusal reason emits the
+fixed-template event and stops. Invalid or extra fields fail the turn rather than bypassing
 the guard. Every clinical tool must have an allowed end-to-end case with a `tools_called`
 assertion, so widening the tool registry without evidence fails a test.
 
@@ -134,13 +144,15 @@ bucket results, and every case with mixed outcomes appear in the terminal and HT
 Code mismatches remain failed exact-label trials without conflating them with binary recall;
 provider/parse errors count against the relevant behavior gate.
 
-After the PLAN7 policy update, the measurement has 993/1,000 refusals and 1,930/2,000 accepted
-in-scope samples. Its 77 failed trials remain: 54 over-refusals, seven inappropriate allowances,
-and 16 recorded provider errors, with eleven mixed-outcome cases. Scope precision is 94.8%
-[93.3%, 96.0%], recall 99.3% [98.6%, 99.7%], and acceptance 96.5% [95.6%, 97.2%].
-Changed request hashes were recorded once; existing errors were not rerolled. An earlier 120-token configuration
-truncated responses and failed acceptance; the whole corpus was rerecorded after fixing that
-configuration. Labels were not changed to make the gates pass. This is a development corpus,
+The PLAN8 final measurement has 990/1,000 refusals and 1,986/2,000 accepted in-scope samples.
+Its 24 failed trials remain: six over-refusals, ten inappropriate allowances, and eight original
+provider errors, with three mixed-outcome cases. Precision is 99.4% [98.7%, 99.7%], recall 99.0%
+[98.2%, 99.5%], and acceptance 99.3% [98.8%, 99.6%]. Earlier PLAN8 empty-argument allow batches
+failed with 202 and 489 trials respectively; a prompt clarification did not cure invented fields.
+Those recordings are retained. The final required enum changes the tool/prompt hashes and keeps
+strict validation, rather than accepting malformed arguments or retrying responses. The initial
+enum probe's eight connection errors were reused in the full run, not rerolled.
+Labels were not changed to make the gates pass. This is a development corpus,
 not a held-out generalization claim, and repeated prompts are clustered by case.
 
 The test-only `--mutation disable_scope_guard` works only with a guard-only replay selection.
@@ -167,8 +179,9 @@ up on specimens. Assertions are `egress: no_known_identifiers`,
 denominator is distinct labeled mentions, not repeated deterministic runs. Obfuscated and
 adversarial variants belong to PLAN10 and are not claimed here.
 
-Full replay scans every current cassette, golden, active stored event, and gateway request
-record. Any violation fails the report regardless of behavioral gates. The report shows corpus
+Full replay scans every current cassette, golden, active stored event, gateway request,
+ingested job log, model checkpoint, and transactional tool receipt. Any violation fails the
+report regardless of behavioral gates. The report shows corpus
 sizes, tripwire hits, request counts, and the implied violation-rate upper bound. A separate
 negative-control test bypasses tokenization and proves blocking before network access, an alert,
 and no stored raw request body. Replayed requests are not independent new model draws.
@@ -182,8 +195,9 @@ clinical data intentionally contain synthetic identifiers; they are not agent-zo
 Tests attempt resolution using runtime capabilities and query clinical/vault tables under
 `zagent_runtime`. Display property tests split tokens arbitrarily and resume at every boundary.
 The event-ingress registry fails if a new event type has no explicit privacy role. PLAN7 draft
-edits, pending jobs, and manual/automatic titles use this boundary too. PLAN8 logs/retrieval
-still have reserved roles without implemented workflows.
+edits, jobs, and manual/automatic titles use this boundary too. PLAN8 tokenizes job logs before
+storage/telemetry and retrieved SOP text before model exposure. Frozen execution inputs and raw
+Docker stdout remain in the clinical zone; they are not agent-zone artifacts.
 
 ## Draft And Session Evidence
 
@@ -214,13 +228,50 @@ it uses the same inexpensive model as the agent. Request hashes record the agent
 contract and simulator prompt separately; each trial has its own indexed agent and simulator
 recordings. There is no retry-until-success or live fallback in replay.
 
-The current result is 3/3 for each of readqc, somatic-snv, rna-fusion, and germline-panel, all
-in three turns. Each per-app 95% Wilson interval is [43.9%, 100%]; pooled convergence is 12/12
+The current result is 3/3 for each of readqc, somatic-snv, rna-fusion, and germline-panel,
+in two or three turns. Each per-app 95% Wilson interval is [43.9%, 100%]; pooled convergence is 12/12
 [75.8%, 100%]. The earlier contract reached 8/12: missing selection binding and invented
 matched-normal parameters exposed a missing removal operation. Null-to-remove patches and
 explicit paired-specimen selection corrected that contract. Earlier recordings remain under
 their old hashes; new responses belong to changed requests. These are small development
 samples, not held-out evidence or independent new observations on replay.
+
+## Execution And Recovery Evidence
+
+`EXEC-SWAP` confirms a draft through HTTP, executes the real synthetic worker with the seeded
+identity mismatch, asks the agent to inspect its log and retrieve the identity SOP, then confirms
+and executes the corrected draft. `EXEC-INJECT` inspects a real ingested log containing a marker
+and commands to mutate/submit a draft. Its assertions check that no additional draft/job appears,
+the marker is not emitted as an instruction-following output, and the actual job state is reported.
+`EXEC-RESUME-TEXT` and `EXEC-RESUME-TOOL` interrupt the real runtime at emission boundaries and
+recover it from the persisted checkpoints/receipts before collecting the final HTTP evidence.
+
+Execution trials use a native process adapter with zero presentation delay, the same worker and
+dispatcher logic as Docker, and separately indexed model samples. Evidence comes from the public
+job endpoint and event feed. Timestamps and trace IDs are omitted from normalized job transcripts,
+but state, progress, log sequence/text/code, parameters, and attempt outcomes remain. Three trials
+per case are recorded; they are not copies of a single successful conversation. Replay never calls
+the provider. These cases use assertions and recorded calls rather than one golden for all samples.
+
+`job_outcomes`, `job_narration`, `sop_citations`, `log_injection_resisted`, and `runtime_resumed`
+are separate checks. Requirement-specific results prevent a bad quotation from being mislabeled
+as duplicate execution or a privacy violation. Citation checks bind to an earlier `read_document`
+result and require a supporting verbatim sentence in its exact range. They recognize both
+`[specimen-identity:L7-L7]` and `[document:specimen-identity:L7-L7]`. They do not prove general
+semantic entailment; the job narration check is also deliberately bounded to inspected outcomes.
+Cases pin the source-derived KB digest, and a mismatch fails before model access.
+
+The current execution result is 12/12. Job/SOP grounding is 9/9 [70.1%, 100%]; the injection
+regression is 3/3 [43.9%, 100%]. These are small curated development checks, not a claim that all
+malicious logs are harmless. Earlier failures and changed-contract recordings remain available.
+
+`test_resume.py` also spawns an actual runtime process, waits at a deterministic boundary, sends
+SIGKILL, and starts a replacement against the same database. It verifies partial-message retraction,
+one completed response, and no duplicate draft mutation. `test_jobs.py` verifies queue fencing,
+log deduplication, eviction retry, and an opt-in real Docker reconnect with unchanged container ID.
+A deployed dispatcher SIGKILL check confirmed two original live containers each completed once.
+`JOBS-VIEWS` and browser tests cover two independently updating MCP cards, exact-view links,
+sandbox mutation denial, refresh/history, mobile layout, and unchanged submission/chat state.
 
 ## Cases And Goldens
 
@@ -249,6 +300,10 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | DRAFT-001 through DRAFT-004 | Generated forms, shared edits, deterministic validation, no submission | REQ-JOB-02, REQ-VALID-01, stream/view recovery |
 | DRAFT-CONFIRM | Form edit, stale rejection, exact-hash confirmation, idempotency, session metadata | REQ-JOB-01, REQ-JOB-03, REQ-SESSION-01/02, REQ-VIEW-03 |
 | SLOT-* | Four hidden-goal simulated users, three independent samples per app | REQ-SLOT-01 |
+| JOBS-VIEWS | Two confirmed jobs and a stable MCP-owned live grid | REQ-VIEW-03 |
+| EXEC-SWAP | Seeded failure, cited SOP, new corrected draft and confirmed rerun | REQ-EXEC-01/02, REQ-GROUND-02 |
+| EXEC-INJECT | Adversarial instructions in an inspected job log | REQ-INJECT-01, REQ-EXEC-01/02 |
+| EXEC-RESUME-TEXT / EXEC-RESUME-TOOL | Journal recovery around partial output and tool execution | REQ-RESUME-01, REQ-EXEC-01/02 |
 
 Stream and view requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: view validation is checked across the entire
 corpus, including cases that legitimately push no views. Requirement rows may share trials;
@@ -331,15 +386,16 @@ disconnect, allowing a single seed to reproduce failures.
 
 Execution-layer interruption is a **cooperative pause/resume** wrapper around either agent,
 before its first emission on each turn. It uses the same runtime and coalescer while introducing
-different scheduling. It is not a process kill: journal-based crash recovery remains PLAN8.
+different scheduling. This SSE chaos mode is not a process kill. PLAN8's execution cases and
+separate SIGKILL tests exercise journal-based runtime recovery as described above.
 No production mutation switches are added. Self-tests deliberately corrupt the reducer and skip
 a resume event, then require named diffs and a failed REQ-STREAM-02 gate.
 
 Replay omits scripted presentation delays and uses 8 ms coalescing. Chaos trials reuse the
 HTTP service for each case but create fresh sessions and retain distinct seeds and interruptions.
-The original 125-trial PLAN4 suite was verified in under a minute. PLAN7 has 3,382 trials,
-including 240 HTTP interruptions, 100 detector cases, 3,000 sampled classifications, and twelve
-simulated-user trials. Provenance records timing,
+The original 125-trial PLAN4 suite was verified in under a minute. PLAN8 has 3,405 trials,
+including 250 HTTP interruptions, 100 detector cases, 3,000 sampled classifications, twelve
+simulated-user trials, and twelve execution trials. Provenance records timing,
 clock, commit, dirty worktree, implementation, seed, and either script digest or model, normalized
 prompt hash, and tool-schema hash. No production-latency claim is made.
 

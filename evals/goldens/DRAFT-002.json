@@ -205,7 +205,73 @@
     },
     {
       "payload": {
-        "text": "Draft prepared \u2014 not submitted.\n\n- **Draft:** Read quality control (readqc), `draft-0001`, version 1, status **editing**\n- **Scope:** the 3 specimens received in the last 24 hours for [PT_1]\n- **Parameters:** min_coverage = 40, check_identity = true\n- **Validation:** no issues reported\n\nThe draft form is published in the working surface as **Read quality control**. Review it there; only the human Confirm control can submit this exact content hash. Let me know if you'd like any parameter changed."
+        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
+        "name": "push_view"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "kind",
+                "label": "Type",
+                "type": "string"
+              },
+              {
+                "key": "purity",
+                "label": "Purity",
+                "type": "number"
+              },
+              {
+                "key": "received_at",
+                "label": "Received",
+                "type": "string"
+              }
+            ],
+            "handle": "query-0002",
+            "row_count": 3,
+            "title": "Specimens received in the last 24 hours"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "push_view",
+        "result": {
+          "kind": "table",
+          "ok": true,
+          "title": "Specimens received in the last 24 hours"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "push_view"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 5"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "Draft prepared (not submitted).\n\n- **Draft:** readqc \u2014 status *editing*, version 1, no validation issues.\n- **Scope:** the query handle for [PT_1]'s specimens received in the last 24 hours (3 specimens, shown in the published table *\"Specimens received in the last 24 hours\"*).\n- **Parameters:** min_coverage=40, check_identity=true (default).\n\nThe draft form is published in the working surface. It stays pending until a human uses the Confirm control on the reviewed content hash \u2014 a chat \"yes\" does not submit it. Tell me if you want any parameter changed before review."
       },
       "type": "text_delta"
     },
@@ -233,7 +299,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Draft prepared \u2014 not submitted.\n\n- **Draft:** Read quality control (readqc), `draft-0001`, version 1, status **editing**\n- **Scope:** the 3 specimens received in the last 24 hours for [PT_1]\n- **Parameters:** min_coverage = 40, check_identity = true\n- **Validation:** no issues reported\n\nThe draft form is published in the working surface as **Read quality control**. Review it there; only the human Confirm control can submit this exact content hash. Let me know if you'd like any parameter changed."
+      "text": "Draft prepared (not submitted).\n\n- **Draft:** readqc \u2014 status *editing*, version 1, no validation issues.\n- **Scope:** the query handle for [PT_1]'s specimens received in the last 24 hours (3 specimens, shown in the published table *\"Specimens received in the last 24 hours\"*).\n- **Parameters:** min_coverage=40, check_identity=true (default).\n\nThe draft form is published in the working surface. It stays pending until a human uses the Confirm control on the reviewed content hash \u2014 a chat \"yes\" does not submit it. Tell me if you want any parameter changed before review."
     }
   ],
   "steps": [
@@ -339,9 +405,26 @@
       ]
     },
     {
+      "detail": "push_view",
+      "status": "complete",
+      "title": "Agent step 4",
+      "tools": [
+        {
+          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
+          "name": "push_view",
+          "result": {
+            "kind": "table",
+            "ok": true,
+            "title": "Specimens received in the last 24 hours",
+            "view_id": "view-0002"
+          }
+        }
+      ]
+    },
+    {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 4"
+      "title": "Agent step 5"
     }
   ],
   "views": [
@@ -350,6 +433,37 @@
       "props": {
         "draft_id": "draft-0001",
         "title": "Read quality control"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "kind",
+            "label": "Type",
+            "type": "string"
+          },
+          {
+            "key": "purity",
+            "label": "Purity",
+            "type": "number"
+          },
+          {
+            "key": "received_at",
+            "label": "Received",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0002",
+        "row_count": 3,
+        "title": "Specimens received in the last 24 hours"
       },
       "version": 1
     }

@@ -15,12 +15,13 @@ handles and counts, not rows. A context-aware scope guard emits structured refus
 or unavailable work. A privacy service tokenizes registered identifiers before they enter the
 agent log, and X-ray shows the displayed conversation beside actual token-only model requests.
 Chat and generated forms edit the same versioned analysis draft. Only a human confirmation of
-the displayed content hash creates a pending job; execution remains PLAN8.
+the displayed content hash queues a synthetic analysis. Live MCP Apps show progress and logs,
+and the agent can diagnose fixture failures using versioned SOP citations and prepare a new draft.
 
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN7](docs/PLAN7.md).**
+**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN8](docs/PLAN8.md).**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
@@ -108,7 +109,7 @@ stack, run `make down` once before `make up` to replace the network layout; volu
 
 ```bash
 git clone https://github.com/w9/zagent && cd zagent
-make up            # Postgres, privacy, BFF, MCP tools, model gateway, agent, and web in replay.
+make up            # Workbench, MCP servers, dispatcher, collector, and Postgres in replay.
 # Open http://localhost:5173
 ```
 
@@ -136,10 +137,22 @@ For a recorded draft workflow, start a fresh session with
 `min VAF 0.03`. The form updates in place, but missing-normal validation disables confirmation.
 For a valid draft, start another session with
 `Prepare a readqc draft for specimens received in the last day for NGC-0041872 with minimum coverage 40. Do not submit it.`
-Edit and save a field in the form, then press **Confirm submission** to create one pending job.
+Open the titled draft reference, edit and save a field, then press **Confirm submission** to queue it.
 A concurrent edit produces a field-level diff and requires review before confirmation can succeed.
 The next conversation turn receives authoritative persisted state, including saved form edits.
-There is no dispatcher, execution, or live job monitor yet.
+The live job card shows state, progress, elapsed time, attempt history, and a bounded log tail.
+
+For a recorded live-grid workflow, start a fresh session with
+`Prepare two separate readqc drafts for all specimens received in the last week for NGC-0041877. Use default parameters for both and do not submit either.`
+Confirm each draft through its form, then ask `Show a live job grid for this session.`
+The two synthetic jobs run independently for about 40 seconds at the default schedule.
+The backend also supports active/completed/failed job filters and a `today` window in live mode.
+
+For a live failure diagnosis, prepare somatic calling on all of NGC-0041872's specimens from the
+last week, confirm, and ask the agent to explain the failed job using the identity SOP and prepare
+a corrected rerun. Verified selection changes only the query's role assignments, not clinical
+rows. The corrected draft requires another human confirmation. The independently recorded
+`EXEC-SWAP` evaluation exercises that whole path, including the corrected execution.
 
 Previous/next controls and the history menu let you revisit earlier views. Navigating back pins
 that view while new ones arrive; selecting the latest resumes following. Refresh keeps the
@@ -181,12 +194,20 @@ service, and database stay on an internal network. Fixed TCP forwards on the gat
 loopback-only web, BFF API, and database ports. A one-shot `privacy-init` container generates
 private capability files in Docker volumes and exits; it does not contain the provider key.
 
+The Compose dispatcher mounts the Docker socket, which grants host-level Docker control. It is
+a trusted local development service, not a production isolation boundary. Workers run as a
+non-root user with no network, no mounted secrets, a read-only root filesystem, and resource
+limits. Their raw synthetic inputs/stdout remain in the clinical execution environment; logs
+are tokenized before database ingestion or telemetry export. Completed containers are retained
+for restart reconciliation and audit. Do not delete active execution containers manually.
+Kubernetes Jobs, platform-managed cleanup, and tighter dispatcher privileges arrive in PLAN9.
+
 ```bash
 make test          # Python tests, client/component tests, build, lint.
 make evals         # The shared evidence harness; writes docs/evals/index.html.
-make chaos         # 240 interruptions across HTTP cases; checks normal references too.
+make chaos         # 250 SSE interruptions across HTTP cases; checks normal references too.
 make report        # Render stored results; evaluates first if none exist.
-make install       # Local Python and JavaScript dependencies.
+make install       # Dependencies, MCP App bundle, and immutable SOP index.
 cd apps/web && npx playwright install chromium && cd ../..
 make browser       # Real-agent browser tests against the running replay app.
 make browser ZAGENT_AGENT=scripted  # Against a stack started in scripted mode.
@@ -197,6 +218,8 @@ uv run zagent evals --filter 'PRIVACY-*' --no-chaos
 uv run zagent evals --filter 'DETECT-*' --no-chaos
 uv run zagent evals --filter 'DRAFT-*' --no-chaos
 uv run zagent evals --filter 'SLOT-*' --no-chaos
+uv run zagent evals --filter 'EXEC-*' --no-chaos
+ZAGENT_DOCKER_TESTS=1 uv run pytest services/agent/tests/test_jobs.py -q
 make down          # Stops containers; keeps the Postgres volume.
 ```
 
@@ -229,10 +252,11 @@ in-process privacy vault over the dedicated test database. Native live gateway p
 `make db` starts Postgres, privacy initialization, the privacy service, and gateway ingress.
 Choose free ports for host-side servers; the configured published ports are already reserved.
 
-The runtime is deliberately single-process in PLAN1. Browser disconnections never cancel a
-conversation turn. A service restart marks interrupted conversation turns as failed;
-resuming execution after a process crash belongs to PLAN8. This local stack has no
-authentication and must not be exposed publicly. Bindings are loopback-only.
+The runtime remains single-owner, protected by a database advisory lock. Browser disconnections
+never cancel a turn. PLAN8 resumes interrupted LLM turns from tokenized model checkpoints and
+transactional tool receipts, retracting partial text before re-emitting it. Scripted fixtures retain
+their fail-on-restart behavior. This local stack has no authentication and must not be exposed publicly.
+Bindings are loopback-only.
 
 Existing PLAN1 databases migrate automatically. PLAN6 preserves raw legacy history privately
 while converting active event payloads to tokens.
@@ -244,6 +268,10 @@ PLAN7 adds `drafts`, immutable draft revisions, and pending `jobs`, plus stable 
 Draft updates and confirmation append events even after their originating conversation turn has
 finished. Draft/job tables are inaccessible to the runtime database role. Human edit and confirm
 endpoints are display-only; this is a local capability boundary, not production authentication.
+PLAN8 atomically freezes execution input and enqueues new confirmations. Existing PLAN7 pending
+records are preserved without retroactively executing expired selections; prepare and confirm a
+new draft to run one. Job state/logs live separately from the chat event sequence. The snapshot's
+`jobs` projection records submission; live state comes from the job API and handle subscriptions.
 View payloads have their own `{kind, version, props}` schema. Legacy scripted tables support
 inline snapshots; real tools accept only handle-backed tables and charts. Handles are bound to
 one session and site, expire after 24 hours, and contain at most 200 rows. Expired handles return
@@ -283,8 +311,7 @@ Historical Git commits still contain synthetic pre-PLAN6 recordings; history was
 ## Things to try
 
 Queries, tables, charts, follow-ups, stream durability, structured scope refusals, tokenization,
-X-ray, draft editing, and human confirmation are available. Execution and live monitoring remain
-deferred to PLAN8.
+X-ray, draft editing, human confirmation, synthetic execution, and live monitoring are available.
 Each workflow exercises a specific row in the guarantee table.
 
 | Ask it | What happens | Guarantee |
@@ -293,16 +320,16 @@ Each workflow exercises a specific row in the guarantee table.
 | `What's 2+2?` | Refused as out of scope, as a structured event rather than improvised prose. | Scope control |
 | `Prepare somatic calling on specimens received in the last day for NGC-0041875.` | A pre-filled form appears with missing-normal validation. | Slot filling, validation |
 | `min VAF 0.03` | The form updates live. Chat and form are editing one object. | Draft state |
-| *(press Confirm on a valid draft)* | One pending job is created and a static job card appears. | Confirmation invariant |
-| `Show me the running jobs from today` | Planned for PLAN8: live job cards and logs. | Dynamic views |
+| *(press Confirm on a valid draft)* | A synthetic job runs and a live MCP-owned job card appears. | Confirmation invariant |
+| `Show me the running jobs from today` | A live grid of active jobs in this session. | Dynamic views |
 | *(refresh mid-stream)* | The stream picks up exactly where it left off. | Stream durability |
 | *(toggle X-ray)* | The model's view of the conversation, side by side with yours. | Privacy boundary |
 
-The planned somatic job on the seeded cohort fails on genotype concordance, because the fixtures
+The somatic job on the seeded cohort fails on genotype concordance, because the fixtures
 contain a deliberate tumor/normal swap. Watching the agent diagnose that from the job log and
 a retrieved SOP, then draft a corrected re-run, is the most interesting ninety seconds in the
 demo. Patient NGC-0041872 has the swap fixture and a matched normal; NGC-0041875 is the
-missing-normal fixture. Neither job executes in PLAN7.
+missing-normal fixture. Execution is synthetic and performs no real genomics analysis.
 
 ---
 
@@ -330,19 +357,22 @@ Four analysis applications, modeled on the shape of well-known open pipelines:
 
 Fixtures are generated from seed 41872 relative to the current time. A background simulator
 refreshes their relative receipt times every minute in live mode, keeping today and yesterday
-populated. The four deliberately seeded conditions are a tumor/normal swap, low tumor purity,
-low library coverage, and a missing matched normal. Evals use a frozen clock and no simulator.
+populated. Fixtures include a tumor/normal swap, low tumor purity, low library coverage, missing
+matched normal, node eviction, long-running processing, and an untrusted injected log. Evals use
+a frozen clinical clock. NGC-0041876 exercises eviction, NGC-0041877 long execution, and
+NGC-0041878 the injected log.
 
 ---
 
 ## Running the evidence suite
 
-The suite covers 24 requirements with 428 cases. Twenty-four HTTP cases cover streams, views,
+The suite covers 29 requirements with 433 cases. Twenty-five ordinary HTTP cases cover streams, views,
 tools, RLS, real conversations, refusals, drafts, confirmation, and session metadata. The 300 labeled guard
 cases span obvious requests, short continuations, near-boundary questions, and scope wrappers.
 Another 100 detector cases cover literal MRNs and names across all five sites. Four hidden-goal
-simulated-user cases contribute three independent recordings per application. Full runs scan
-active events, gateway request records, cassettes, and goldens for known identifiers.
+simulated-user cases contribute three independent recordings per application. Four execution
+cases contribute twelve independent diagnosis, injection, and recovery trials. Full runs scan
+active events, gateway requests, cassettes, goldens, job logs, checkpoints, and tool receipts.
 The same evaluator serves pytest and `zagent evals`.
 
 The suite is the point of the project, so it is a first-class artifact rather than a test
@@ -365,8 +395,8 @@ REQ-ISO-01           invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-GROUND-01        measured   PASS          6/6        [61.0%, 100.0%]
 REQ-CTX-01           measured   PASS          3/3        [43.9%, 100.0%]
 REQ-PRESENT-01       measured   PASS          9/9        [70.1%, 100.0%]
-REQ-SCOPE-01         measured   PASS          993/1000   [98.6%, 99.7%]
-REQ-SCOPE-02         measured   PASS          1930/2000  [95.6%, 97.2%]
+REQ-SCOPE-01         measured   PASS          990/1000   [98.2%, 99.5%]
+REQ-SCOPE-02         measured   PASS          1986/2000  [98.8%, 99.6%]
 REQ-SCOPE-03         invariant  PASS          3009/3009  [99.9%, 100.0%]
 REQ-PHI-01           invariant  PASS          10/10      [72.2%, 100.0%]
 REQ-PHI-02           invariant  PASS          10/10      [72.2%, 100.0%]
@@ -379,24 +409,35 @@ REQ-JOB-01           invariant  PASS          1/1        [20.7%, 100.0%]
 REQ-JOB-03           invariant  PASS          1/1        [20.7%, 100.0%]
 REQ-SESSION-01       invariant  PASS          1/1        [20.7%, 100.0%]
 REQ-SESSION-02       invariant  PASS          1/1        [20.7%, 100.0%]
-REQ-VIEW-03          invariant  PASS          5/5        [56.6%, 100.0%]
+REQ-VIEW-03          invariant  PASS          12/12      [75.8%, 100.0%]
+REQ-EXEC-01          invariant  PASS          12/12      [75.8%, 100.0%]
+REQ-EXEC-02          invariant  PASS          12/12      [75.8%, 100.0%]
+REQ-RESUME-01        invariant  PASS          6/6        [61.0%, 100.0%]
+REQ-GROUND-02        measured   PASS          9/9        [70.1%, 100.0%]
+REQ-INJECT-01        measured   PASS          3/3        [43.9%, 100.0%]
 
-24 requirements, 3382 trials, 77 failed trials; 306 HTTP case executions.
+29 requirements, 3405 trials, 24 failed trials; 330 HTTP case executions.
 Report: docs/evals/index.html
 ```
 
-The scope gates pass without hiding failures: 54 in-scope samples were over-refused, seven
-unsupported requests were allowed, and 16 recorded provider errors remain. Refusal precision is
-94.8% [93.3%, 96.0%]; recall is 99.3% [98.6%, 99.7%]. In-scope acceptance is 96.5%
-[95.6%, 97.2%]. Eleven cases have differing trial
+The scope gates pass without hiding failures: six in-scope samples were over-refused, ten
+unsupported requests were allowed, and eight recorded provider errors remain. Refusal precision is
+99.4% [98.7%, 99.7%]; recall is 99.0% [98.2%, 99.5%]. In-scope acceptance is 99.3%
+[98.8%, 99.6%]. Three cases have differing trial
 outcomes and are listed for review. These figures describe this curated corpus, not a held-out
 estimate of production accuracy or prompt-injection resistance.
 
 Each application reached its hidden parameter target in 3/3 simulated conversations, with a
-95% Wilson interval of [43.9%, 100%] per application. All took three turns and submitted no jobs.
+95% Wilson interval of [43.9%, 100%] per application. They took two or three turns and submitted no jobs.
 This small, curated development sample is not a production convergence estimate. Earlier
 recordings exposed missing selection binding and unremovable invented parameters; those recordings
 were retained, the contract was corrected, and changed requests were recorded under new hashes.
+
+PLAN8's original empty-argument scope contract and a prompt-only clarification both failed
+acceptance because the model invented argument fields. The final guard uses one required closed
+`decision` enum and still fails closed on extra or invalid fields. Earlier batches remain in the
+recordings. No runtime correction retry, permissive argument parsing, or failure reroll was added.
+The small injection and quotation regressions are not a general prompt-injection or factuality proof.
 
 Each golden reference executes twice to expose hidden nondeterminism without inflating trial
 counts. `--filter`, `--seed`, and `--trials` reproduce a single case; `--update-golden` explicitly
@@ -425,8 +466,9 @@ production guard settings; rerunning replay does not create additional statistic
 The simulated-user route is independently pinned by `ZAGENT_SIMULATOR_MODEL`; its recorded
 samples also do not become fresh draws when replayed.
 Grounding currently checks explicit numeric patient/specimen/library counts against preceding
-tool results. Broader factual checks and the model matrix remain PLAN10. Execution-layer chaos
-pauses and resumes both agent implementations; process-crash recovery belongs to PLAN8.
+tool results, job outcome words against inspected state, and exact SOP quotations/ranges.
+Broader semantic checks and the model matrix remain PLAN10. Separate SIGKILL tests verify
+runtime-process recovery; Docker and deployed dispatcher-kill checks verify execution identity.
 
 ---
 
@@ -465,7 +507,7 @@ green, so correctness is visible at every step rather than at the end.
 | [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | Complete |
 | [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | Complete |
 | [PLAN7](docs/PLAN7.md) | Drafts, confirmation, view references, session titles | Complete |
-| [PLAN8](docs/PLAN8.md) | Execution: dispatcher, OTel job logs, live views | ☐ |
+| [PLAN8](docs/PLAN8.md) | Execution, MCP Apps, SOP retrieval, turn recovery | Complete |
 | [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | ☐ |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | ☐ |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |

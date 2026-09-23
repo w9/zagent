@@ -1,6 +1,6 @@
 # PLAN8: Execution and Live Views
 
-**Status:** not started
+**Status:** implemented
 **Depends on:** [PLAN7](PLAN7.md)
 **Shippable outcome:** confirmed jobs run, the right panel shows live progress and logs, and the
 agent diagnoses a failure from a job log and a retrieved SOP.
@@ -52,7 +52,7 @@ and outcome the fixtures dictate. The seeded conditions produce their outcomes h
 | Tumor/normal swap | `somatic-snv` fails on genotype concordance |
 | Low tumor purity | Completes with a warning |
 | Low coverage | `readqc` fails |
-| Node eviction | Retried by the Job spec, visible in the card's history |
+| Node eviction | One bounded retry under Compose, visible in attempt history; Job-spec policy follows in PLAN9 |
 | Long-running job | Runs long enough to watch |
 
 **Log ingestion.** The dispatcher tails stdout, parses the JSONL, tokenizes it (job logs are an
@@ -121,18 +121,97 @@ the report can pin it. This is what lets groundedness be checked rather than jud
 
 ## Definition of done
 
-- [ ] A confirmed job runs and its card shows progress, elapsed time and a tailing log.
-- [ ] `job_grid` shows multiple live jobs, each updating independently.
-- [ ] Chat references reopen the exact published `job_card` or `job_grid`, including MCP-owned
+- [x] A confirmed job runs and its card shows progress, elapsed time and a tailing log.
+- [x] `job_grid` shows multiple live jobs, each updating independently.
+- [x] Chat references reopen the exact published `job_card` or `job_grid`, including MCP-owned
 	views, on desktop and mobile; current state appears without submitting or restarting a job.
-- [ ] The somatic job fails on genotype concordance from the seeded swap.
-- [ ] The agent explains the failure and cites a line range in the SOP.
-- [ ] The agent drafts a corrected re-run, which goes through the PLAN7 confirmation path.
-- [ ] A job log containing injected instructions does not change agent behavior.
-- [ ] Job logs contain no identifiers after ingestion. Corpus scan.
-- [ ] Killing the runtime mid-turn resumes, retracts the partial message, and completes.
-- [ ] Killing the dispatcher mid-job does not lose or duplicate the job.
-- [ ] `job_card` and `job_grid` are served by the jobs MCP server, not the web registry.
+- [x] The somatic job fails on genotype concordance from the seeded swap.
+- [x] The agent explains the failure and cites a line range in the SOP.
+- [x] The agent drafts a corrected re-run, which goes through the PLAN7 confirmation path.
+- [x] A job log containing injected instructions does not change agent behavior in the measured cases.
+- [x] Job logs contain no known identifiers after ingestion. Corpus scan.
+- [x] Killing the runtime mid-turn resumes, retracts the partial message, and completes.
+- [x] Killing the dispatcher mid-job does not lose or duplicate the job.
+- [x] `job_card` and `job_grid` are served by the jobs MCP server, not the web registry.
+
+## Implementation And Evidence
+
+Migrations 008-011 add the queue, private frozen execution inputs, attempts/logs, live handles,
+model checkpoints, and transactional tool receipts. New confirmation writes the job, frozen
+selection/parameters, and queue entry in one transaction. Existing PLAN7 pending records remain
+preserved and are not silently enqueued: expired historical selections need a fresh reviewed draft.
+
+`JobStore` uses `SKIP LOCKED`, expiring leases, and monotonic lease revisions. `DockerExecutor`
+reconciles by deterministic session/job/attempt name plus input fingerprint. A crash after create
+reattaches to that unit, and unique attempt/log sequence keys suppress replayed stdout. An
+`Executor` protocol also has a native process adapter for tests; Kubernetes remains PLAN9.
+Synthetic eviction retries once; a domain failure is terminal. Confirmed inputs do not depend on
+a query handle remaining valid while the job runs.
+
+The workers read fixture identity, purity, coverage, and simulation attributes. NGC-0041872's
+reported tumor/normal roles disagree with assayed identity and fail genotype concordance.
+`find_specimens(identity="verified")` creates a new handle with verified roles; it changes no
+clinical row. A new draft with that selection, confirmed by a human, completes. NGC-0041873
+warns for purity, NGC-0041874 fails ReadQC coverage, NGC-0041876 retries eviction, NGC-0041877
+runs about forty seconds, and NGC-0041878 includes adversarial log text.
+
+OTel-shaped JSONL is tokenized at ingestion before storage or collector export. Logs/attempts
+have their own tables and notifications, not repeated `view_pushed` events. `get_job` exposes
+state, history, and at most ten summarized lines per request; the card tails forty. The database
+keeps the complete ingested log. Raw synthetic Docker input/stdout remains clinical-zone data.
+
+The independent jobs MCP server owns `ui://jobs/card` and `ui://jobs/grid`. Its React resource is
+bundled with the official MCP Apps SDK and baked into the backend image. The host uses
+AppBridge/PostMessageTransport, an opaque `allow-scripts` sandbox, and a CSP denying network,
+forms, and external assets. Host RPC accepts only bound read access, never arbitrary tool calls
+or URLs. Published view IDs and live handles stay stable; old v1 cards also render through MCP.
+Desktop/mobile tests verify two independent jobs, refresh/history, keyboard activation,
+unauthorized frame-call rejection, and unchanged chat/draft/job submission state on navigation.
+
+The SOP index is generated from versioned Markdown at install/image-build time and opened with
+SQLite `mode=ro&immutable=1`. Search returns exact line hits; range reads require the source
+digest. Execution cases pin KB version
+`693ea2d31132a7fd07d85209a5824f2ccd579706f617399a3d46b390636f6640`.
+Citation assertions require a previously retrieved range and a supporting verbatim quotation.
+They accept both `[specimen-identity:L7-L7]` and `[document:specimen-identity:L7-L7]`; this is
+a bounded grounding check, not general semantic entailment.
+
+The runtime journals each scope decision and tokenized completion before emission. Stable
+operation IDs bind tool side effects and receipts to one transaction. On restart, completed
+operations are reused and partial assistant text is retracted before replay. A database advisory
+lock permits one LLM runtime owner. SIGKILL tests cover partial text and committed tool mutation;
+the final visible response/mutations agree while the audit retains the retraction history.
+Scripted transport fixtures intentionally retain their older failed-on-restart behavior.
+
+Verification: 482 backend tests passed, with one opt-in Docker test skipped in the full suite;
+the real-Docker execution suite passed separately. All 46 frontend tests, build, lint, 22
+LLM/draft/job/privacy browser checks, and six scripted browser checks passed. The deployed
+dispatcher was killed during two live jobs: both original containers completed with one attempt,
+21 log entries each, and no chat sequence changes. Live swap diagnosis retrieved the SOP and
+prepared an unsubmitted corrected draft. Views were inspected at desktop and 320-pixel mobile.
+
+The full report has 29 requirements, 433 cases, 3,405 trials, 250 SSE interruptions, and 330 HTTP
+case executions. All gates pass. Twelve independent recorded execution trials passed; grounding
+is 9/9 [70.1%, 100%] and the small injection set is 3/3 [43.9%, 100%], using 95% Wilson intervals.
+Slot filling remains 12/12 in two or three turns. These curated development samples and their
+replay do not establish general resistance to malicious logs or production performance.
+
+The final scope classifier uses one required closed `decision` enum. Empty-object allow calls
+and a prompt-only clarification produced many invalid argument objects; both earlier batches
+are retained under their original hashes. Strict validation was not loosened and no runtime
+correction retry was added. The final 3,000-sample run retains 24 failures: six over-refusals,
+ten inappropriate allowances, and eight provider connection failures. Recall is 990/1,000
+[98.2%, 99.5%], acceptance 1,986/2,000 [98.8%, 99.6%], and precision 990/996 [98.7%, 99.7%].
+
+The full privacy scan found zero known-identifier violations across 2,339 cassettes, 25 goldens,
+63,023 active test events, 50,290 recorded requests, 673 job log records, 2,175 checkpoints, and
+1,275 tool receipts. Raw clinical inputs and legacy private archives are not agent-zone evidence.
+
+Local limits: the dispatcher has privileged Docker-socket access; this is not production
+authorization or host isolation. Job containers are non-root, networkless, read-only, bounded,
+and receive no database/provider credentials. Finished containers are retained for reconciliation;
+external deletion of an execution unit is outside the restart invariant. Cleanup, platform retry
+policy, and Kubernetes execution are PLAN9. No real clinical analysis or result release occurs.
 
 ---
 
@@ -142,12 +221,14 @@ Extend **REQ-VIEW-03** from PLAN7 to live and MCP-owned views: reopening a refer
 identity and session scope, resumes read-only updates, and leaves job counts and state unchanged
 by the navigation action.
 
-**REQ-EXEC-01 (invariant).** A confirmed job runs exactly once. Tested by killing the dispatcher at
-seeded points and asserting the job count.
+**REQ-EXEC-01 (invariant).** One deterministic execution unit per confirmed job attempt, including
+dispatcher restart reconciliation and bounded eviction retries. Tests assert container identity,
+attempt count, and deduplicated logs, not just the number of job rows.
 
 **REQ-EXEC-02 (invariant).** Job logs are tokenized before entering model context. Corpus scan.
 
-**REQ-RESUME-01 (invariant).** A conversation turn interrupted at any point resumes to the same final transcript.
+**REQ-RESUME-01 (invariant).** An interrupted journaled turn resumes to the same final visible
+response and mutations; the append-only history retains partial output and retraction events.
 Extends the PLAN1 chaos suite from the connection layer to the runtime layer.
 
 **REQ-GROUND-02 (measured).** Claims about job state and about retrieved documents are supported.

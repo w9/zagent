@@ -1,0 +1,42 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Give me the metadata of patient [PT_1]. Show the patient table.",
+        "role": "user"
+      },
+      {
+        "content": "Published the table **Patient Metadata \u2014 [PT_1]** in the working surface, with one matching patient record and columns Patient, MRN, and Name.\n\nNote: the patient query returns only these three fields \u2014 no additional demographic or clinical metadata is available through this workbench. If you'd like, I can look up specimens for this patient (e.g., last 24 hours, 7 days, or 30 days) or their libraries.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "1053c50c642edfcd570c9db991d8a19213fdf8c5748bae71064a995770da7547",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "\n",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 2,
+      "cost": 2.38e-05,
+      "prompt_tokens": 164,
+      "total_tokens": 166
+    }
+  },
+  "version": 1
+}

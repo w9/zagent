@@ -1,0 +1,33 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I've prepared the draft.\n\n**Specimens** \u2014 the query for [PT_1] over the last 7 days returned 3 specimens; the published table **\"Specimens from [PT_1], last 7 days\"** lists them (specimen, type, purity, received). Because somatic calling needs both tumor and normal from the same patient, I queried all specimen kinds rather than filtering, so both roles are included in that selection.\n\n**Draft** \u2014 the published form **\"Somatic variant calling\"** (draft-0001, version 1) is bound to that specimen selection with the app defaults:\n- min_vaf = 0.05\n- min_depth = 20\n\nValidation returned no issues, so nothing is missing at this point. Status is *editing* \u2014 it has not been submitted and no job has been started. Only the human **Confirm** control can submit the reviewed content hash.\n\nSend me your preferred parameters (e.g. min_vaf, min_depth) and I'll patch this same draft; the form will republish with the new version and hash for you to review.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "6e3aeaa1bbb05503b6f89e8a296d20bfd3528d70f7e832eb7670b11b94252170",
+  "samples": {
+    "1": {
+      "gateway_error": "Model completion interrupted: length"
+    }
+  },
+  "version": 2
+}

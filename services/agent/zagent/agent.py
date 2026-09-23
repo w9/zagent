@@ -151,15 +151,19 @@ class LlmAgent:
         tools: ToolsGateway,
         *,
         max_iterations: int = 8,
+        max_tokens: int = 1200,
         route: str = "default",
         guard: ScopeGuard | None = None,
     ):
         if not 1 <= max_iterations <= 20:
             raise ValueError("max_iterations must be between 1 and 20")
+        if not 1 <= max_tokens <= 4096:
+            raise ValueError("max_tokens must be between 1 and 4096")
         self.store = store
         self.gateway = gateway
         self.tools = tools
         self.max_iterations = max_iterations
+        self.max_tokens = max_tokens
         self.route = route
         self.guard = guard if guard is not None else ScopeGuard(gateway, route=route)
 
@@ -212,6 +216,7 @@ class LlmAgent:
                         route=self.route,
                         messages=messages,
                         tools=MAIN_TOOLS,
+                        max_tokens=self.max_tokens,
                         metadata={**metadata, "purpose": "agent"},
                     )
                 )

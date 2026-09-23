@@ -17,7 +17,7 @@ from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
 from zagent.draft_store import DraftConflict, DraftStore
 from zagent.drafts import AppId, DraftState
 from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
-from zagent.privacy import PrivacyError, Raw, Tokenized
+from zagent.privacy import TOKEN, PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
 
@@ -232,6 +232,27 @@ class ClinicalTools:
                 Tokenized(value=arguments),
                 strict=True,
             )
+            reference = arguments.get("mrn") if name == "find_patients" else None
+            if (
+                isinstance(reference, str)
+                and reference.startswith("[PT_")
+                and TOKEN.fullmatch(reference)
+            ):
+                session = await self.clinical.store.get_session(session_id)
+                async with self.clinical.site_connection(session.site_id) as connection:
+                    matches = await connection.fetch(
+                        """SELECT mrn FROM patients
+                           WHERE lower(mrn)=lower($1) OR id=$1 OR lower(display_name)=lower($1)
+                           ORDER BY id LIMIT 2""",
+                        resolved.value["mrn"],
+                    )
+                if len(matches) > 1:
+                    return failure(
+                        "invalid_arguments",
+                        "Patient reference is ambiguous at this site; ask for the exact MRN.",
+                    )
+                if matches:
+                    resolved = Raw(value={**resolved.value, "mrn": matches[0]["mrn"]})
             if conversation_turn_id is not None:
                 await self.clinical.store.pool.execute(
                     """INSERT INTO privacy.execution_audit

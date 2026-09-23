@@ -225,6 +225,88 @@ async def test_event_ingress_and_tool_execution_keep_identifiers_at_the_edges(st
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("field", ["display_name", "id", "mrn"])
+async def test_patient_reference_tokens_resolve_to_site_scoped_mrns(store, field):
+    from zagent.cohort import FROZEN_NOW, ClinicalStore
+    from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
+
+    clinical = ClinicalStore(store, lambda: FROZEN_NOW)
+    await clinical.seed()
+    patient = await store.pool.fetchrow(
+        "SELECT id,mrn,display_name FROM patients "
+        "WHERE site_id='northgate' AND display_name='Arin Vellorin'"
+    )
+    assert patient is not None
+    session = await store.create_session()
+    turn = await store.begin_conversation_turn(session.id, f"Let's use {patient[field]}")
+    assert turn.message == "Let's use [PT_1]"
+    gateway = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
+    result = await gateway.execute(turn, "find_patients", '{"mrn":"[PT_1]"}')
+    assert result["count"] == 1
+    assert set(result) == {"handle", "count", "schema"}
+    selected = await clinical.resolve(session.id, result["handle"], "patients")
+    assert selected["row_ids"] == [patient["id"]]
+    executed = await store.pool.fetchval(
+        "SELECT arguments FROM privacy.execution_audit WHERE conversation_turn_id=$1",
+        turn.conversation_turn_id,
+    )
+    assert executed == {"mrn": patient["mrn"]}
+    audit = await store.pool.fetchrow(
+        "SELECT arguments,result FROM tool_audit WHERE conversation_turn_id=$1",
+        turn.conversation_turn_id,
+    )
+    assert patient["mrn"] not in json.dumps(dict(audit))
+    assert patient["display_name"] not in json.dumps(dict(audit))
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
+
+
+@pytest.mark.integration
+async def test_patient_reference_does_not_guess_ambiguous_names_or_cross_sites(store):
+    from zagent.cohort import FROZEN_NOW, ClinicalStore
+    from zagent.tools import ClinicalTools
+
+    clinical = ClinicalStore(store, lambda: FROZEN_NOW)
+    await clinical.seed()
+    backend = ClinicalTools(clinical)
+    patients = await store.pool.fetch(
+        "SELECT id,mrn,display_name FROM patients WHERE site_id='northgate' ORDER BY id LIMIT 2"
+    )
+    selected, other = patients
+    session = await store.create_session()
+    token = await store.privacy.tokenize(
+        session.id, Raw(value=selected["display_name"]), path="user_message"
+    )
+    async with store.pool.atomic() as connection:
+        await connection.execute(
+            "UPDATE patients SET display_name=$2 WHERE id=$1", other["id"], selected["display_name"]
+        )
+        try:
+            result = await backend.dispatch(session.id, "find_patients", {"mrn": token.value})
+            assert result["error"]["code"] == "invalid_arguments"
+            assert "ambiguous" in result["error"]["message"]
+            assert "handle" not in result
+        finally:
+            await connection.execute(
+                "UPDATE patients SET display_name=$2 WHERE id=$1",
+                other["id"],
+                other["display_name"],
+            )
+    foreign = await store.create_session("lakeside")
+    assert (await backend.dispatch(foreign.id, "find_patients", {"mrn": token.value}))["error"][
+        "code"
+    ] == "invalid_arguments"
+    foreign_token = await store.privacy.tokenize(
+        foreign.id, Raw(value=selected["mrn"]), path="user_message"
+    )
+    assert (await backend.dispatch(foreign.id, "find_patients", {"mrn": foreign_token.value}))[
+        "count"
+    ] == 0
+    assert (await backend.dispatch(session.id, "find_patients", {"mrn": selected["display_name"]}))[
+        "count"
+    ] == 0
+
+
+@pytest.mark.integration
 async def test_tripwire_blocks_bypassed_ingress_before_network_and_emits_alert(store, tmp_path):
     import httpx
     from zagent.llm import CompletionRequest, LlmGateway

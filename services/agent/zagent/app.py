@@ -38,6 +38,17 @@ class Settings(BaseModel):
     agent_mode: Literal["llm", "scripted"] = Field(
         default_factory=lambda: os.environ.get("ZAGENT_AGENT", "llm")
     )
+    agent_max_tokens: int = Field(
+        default_factory=lambda: int(
+            os.environ.get(
+                "ZAGENT_AGENT_MAX_TOKENS",
+                "4096" if os.environ.get("ZAGENT_LLM_MODE") == "live" else "1200",
+            )
+        ),
+        ge=1,
+        le=4096,
+        validate_default=True,
+    )
     gateway_url: str = Field(
         default_factory=lambda: os.environ.get("ZAGENT_GATEWAY_URL", "http://127.0.0.1:8001")
     )
@@ -124,6 +135,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                                 kb_url=settings.kb_url,
                             ),
                         ),
+                        max_tokens=settings.agent_max_tokens,
                     )
                 )
             runtime = Runtime(

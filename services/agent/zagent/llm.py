@@ -84,6 +84,20 @@ class CassetteMiss(GatewayError):
     pass
 
 
+def usage_summary(usage: dict) -> dict[str, int | float]:
+    summary = {
+        name: value
+        for name, value in usage.items()
+        if name
+        in {"prompt_tokens", "completion_tokens", "total_tokens", "cost", "reasoning_tokens"}
+        and type(value) in {int, float}
+    }
+    details = usage.get("completion_tokens_details", {})
+    if isinstance(details, dict) and type(details.get("reasoning_tokens")) in {int, float}:
+        summary["reasoning_tokens"] = details["reasoning_tokens"]
+    return summary
+
+
 def canonical_json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
@@ -186,6 +200,7 @@ class LlmGateway:
             completion = await self._complete(request, entry)
             entry["outcome"] = "completed"
             entry["usage"] = completion.usage
+            entry.setdefault("finish_reason", completion.finish_reason)
             return completion
         except BaseException as error:
             entry["error_type"] = type(error).__name__
@@ -197,7 +212,13 @@ class LlmGateway:
                 and isinstance(error, GatewayError)
                 and entry["provider_calls"]
             ):
-                await self._record_response(request, {"gateway_error": str(error)})
+                await self._record_response(
+                    request,
+                    {
+                        "gateway_error": str(error),
+                        **{key: entry[key] for key in ("finish_reason", "usage") if key in entry},
+                    },
+                )
             raise
         finally:
             if self.audit_path is not None:
@@ -345,6 +366,10 @@ class LlmGateway:
                     "Re-record with ZAGENT_LLM_MODE=record; replay never calls the provider."
                 )
             if "gateway_error" in response:
+                if "finish_reason" in response:
+                    audit["finish_reason"] = response["finish_reason"]
+                if "usage" in response:
+                    audit["usage"] = usage_summary(response["usage"])
                 raise GatewayError(response["gateway_error"])
             return Completion.model_validate(response)
 
@@ -362,15 +387,21 @@ class LlmGateway:
                     raise GatewayError(f"Model provider returned HTTP {response.status_code}")
                 data = response.json()
                 choice = data["choices"][0]
+                finish_reason = choice.get("finish_reason") or "stop"
+                usage = usage_summary(data.get("usage", {}))
+                audit["finish_reason"] = (
+                    finish_reason
+                    if finish_reason
+                    in {"stop", "length", "tool_calls", "function_call", "content_filter", "error"}
+                    else "unknown"
+                )
+                audit["usage"] = usage
+                if finish_reason in {"length", "content_filter"}:
+                    raise GatewayError(f"Model completion interrupted: {finish_reason}")
                 completion = Completion(
                     message=AssistantMessage.model_validate(choice["message"]),
-                    finish_reason=choice.get("finish_reason") or "stop",
-                    usage={
-                        name: value
-                        for name, value in data.get("usage", {}).items()
-                        if name in {"prompt_tokens", "completion_tokens", "total_tokens", "cost"}
-                        and isinstance(value, (int, float))
-                    },
+                    finish_reason=finish_reason,
+                    usage=usage,
                 )
         except httpx.HTTPError:
             raise GatewayError(
@@ -378,8 +409,6 @@ class LlmGateway:
             ) from None
         except (ValueError, KeyError, IndexError, TypeError):
             raise GatewayError("Model provider returned an invalid completion") from None
-        if completion.finish_reason in {"length", "content_filter"}:
-            raise GatewayError(f"Model completion interrupted: {completion.finish_reason}")
         if self.protect_response is not None:
             completion = await self.protect_response(request, completion)
         if self.mode == "record":

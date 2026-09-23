@@ -206,6 +206,73 @@ async def test_provider_errors_do_not_echo_secrets(tmp_path, monkeypatch):
     assert not list(tmp_path.iterdir())
 
 
+@pytest.mark.parametrize("reason", ["length", "content_filter"])
+@pytest.mark.parametrize("mode", ["live", "record"])
+async def test_interrupted_completion_keeps_safe_diagnostics_without_retry(
+    tmp_path, monkeypatch, reason, mode
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    calls = []
+
+    def provider(incoming):
+        calls.append(incoming)
+        return httpx.Response(
+            200,
+            json={
+                "choices": [
+                    {
+                        "finish_reason": reason,
+                        "message": {
+                            "content": "Arin Vellorin",
+                            "tool_calls": [{"function": {"arguments": "{"}}],
+                        },
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5000,
+                    "completion_tokens": 1200,
+                    "total_tokens": 6200,
+                    "cost": 0.001,
+                    "completion_tokens_details": {
+                        "reasoning_tokens": 1100,
+                        "private_text": "Arin Vellorin",
+                    },
+                    "private_text": "test-private-credential",
+                },
+            },
+        )
+
+    gateway = LlmGateway(
+        tmp_path / "cassettes",
+        mode=mode,
+        transport=httpx.MockTransport(provider),
+        audit_path=tmp_path / "audit.db",
+    )
+    incoming = request(metadata={"session_id": "session", "conversation_turn_id": "turn"})
+    for current_mode in ["record", "replay"] if mode == "record" else ["live"]:
+        gateway.mode = current_mode
+        with pytest.raises(GatewayError, match=f"Model completion interrupted: {reason}"):
+            await gateway.complete(incoming)
+    assert len(calls) == 1
+    audits = gateway.requests_for_session("session")
+    assert len(audits) == (2 if mode == "record" else 1)
+    for item in audits:
+        assert item["audit"]["outcome"] == "failed"
+        assert item["audit"]["finish_reason"] == reason
+        assert item["audit"]["usage"] == {
+            "prompt_tokens": 5000,
+            "completion_tokens": 1200,
+            "total_tokens": 6200,
+            "cost": 0.001,
+            "reasoning_tokens": 1100,
+        }
+    stored = json.dumps(audits) + "".join(
+        path.read_text() for path in (tmp_path / "cassettes").glob("*.json")
+    )
+    assert "Arin Vellorin" not in stored
+    assert "test-private-credential" not in stored
+
+
 async def test_egress_hook_blocks_before_provider_access(tmp_path):
     def blocked(_request):
         raise GatewayError("Egress blocked")
@@ -350,8 +417,25 @@ class SequenceCompleter:
         return next(self.completions)
 
 
+@pytest.mark.parametrize("mode,expected", [("live", 4096), ("record", 1200), ("replay", 1200)])
+def test_live_budget_increases_without_changing_recorded_request_contracts(
+    monkeypatch, mode, expected
+):
+    from zagent.app import Settings
+
+    monkeypatch.setenv("ZAGENT_LLM_MODE", mode)
+    monkeypatch.delenv("ZAGENT_AGENT_MAX_TOKENS", raising=False)
+    assert Settings().agent_max_tokens == expected
+    monkeypatch.setenv("ZAGENT_AGENT_MAX_TOKENS", "2048")
+    assert Settings().agent_max_tokens == 2048
+    monkeypatch.setenv("ZAGENT_AGENT_MAX_TOKENS", "4097")
+    with pytest.raises(ValueError):
+        Settings()
+
+
 @pytest.mark.integration
-async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(store):
+@pytest.mark.parametrize("max_tokens", [1200, 4096])
+async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(store, max_tokens):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     await clinical.seed()
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
@@ -367,7 +451,7 @@ async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(st
             Completion(message=AssistantMessage(content="Those specimens have 3 libraries.")),
         ]
     )
-    runtime = Runtime(store, LlmAgent(store, completer, tools))
+    runtime = Runtime(store, LlmAgent(store, completer, tools, max_tokens=max_tokens))
     session = await store.create_session()
     first = await store.begin_conversation_turn(session.id, "Find specimens for NGC-0041872")
     await runtime._run_turn(first)
@@ -385,6 +469,11 @@ async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(st
     assert "SPC-northgate" not in json.dumps(history)
     assert all(
         '"rows"' not in message["content"] for message in history if message["role"] == "tool"
+    )
+    assert all(
+        incoming.max_tokens
+        == (256 if incoming.metadata["purpose"] == "scope_guard" else max_tokens)
+        for incoming in completer.requests
     )
 
 

@@ -132,6 +132,10 @@ contains `[PT_1]`, while Display and tool-execution arguments show the resolved 
 Select a highlighted value to highlight its token across both panes. Follow up with
 `Show the specimens received in the last day for that patient.`
 
+Names, patient IDs, and MRNs represented by a bound patient token resolve to an exact MRN at
+the clinical edge, under the current site's database role. Ambiguous names require an MRN;
+the runtime still sees only the token and a result handle, never the resolved identifier.
+
 For a recorded draft workflow, start a fresh session with
 `Prepare somatic calling on specimens received in the last day for NGC-0041875.`, then
 `min VAF 0.03`. The form updates in place, but missing-normal validation disables confirmation.
@@ -185,7 +189,10 @@ Compose environment values, cassettes, browser code, or git. Set `ZAGENT_OPENROU
 to use a different external file. Rotate any key shared in chat or logs. Live mode permits
 unrecorded questions through the scope guard and incurs provider charges. The default is the
 inexpensive Flash model: one nonreasoning guard call with a 256-token cap, then up to eight
-main-agent iterations at 1,200 output tokens each for allowed requests. One optional title call
+main-agent iterations at 4,096 output tokens each for live requests. Replay and recording retain
+the historical 1,200-token default so existing cassettes remain reproducible. The agent process's
+`ZAGENT_AGENT_MAX_TOKENS` setting can explicitly override that budget within 1-4096 tokens.
+One optional title call
 uses at most 80 output tokens and a 15-second timeout after the first meaningful exchange.
 A guard refusal stops before any main-agent, title, or clinical tool call.
 
@@ -274,8 +281,10 @@ port for host-side commands. Browser tests accept `ZAGENT_WEB_URL`. Keep using t
 `COMPOSE_PROJECT_NAME` when restarting an existing stack; changing project names creates a
 second set of containers and database volumes.
 
-The gateway audit log stores request/prompt/scope hashes, turn IDs, call purpose, outcome, and
-usage, never prompts, completions, or credentials. Compose persists it in the `gateway_audit`
+The gateway audit log stores request/prompt/scope hashes, turn IDs, call purpose, outcome,
+finish reason, and available token usage (including reasoning tokens), even for truncated
+completions. It never stores prompts, partial responses, or credentials. Truncation remains a
+visible failure, not an automatic retry. Compose persists it in the `gateway_audit`
 volume at `/var/lib/zagent/gateway-audit.sqlite3`. Host runs use
 `~/.local/state/zagent/gateway-audit.sqlite3`; `ZAGENT_GATEWAY_AUDIT` overrides that location.
 The `gateway_audit` SQLite table can be queried by `conversation_turn_id` to verify that a

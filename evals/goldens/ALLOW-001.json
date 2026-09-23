@@ -22,7 +22,7 @@
     },
     {
       "payload": {
-        "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for [PT_1]?"
+        "text": "Would you like me to look up the libraries for specimens received in the last day (P1D) for [PT_1]?"
       },
       "type": "text_delta"
     },
@@ -282,7 +282,7 @@
     },
     {
       "payload": {
-        "text": "[PT_1] had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for [PT_1] specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
+        "text": "[PT_1] had 3 specimens received in the last 24 hours, and 3 libraries were found for them. I've published the table \"Libraries for [PT_1] specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status.\n\nWant me to filter these by QC status (passed / review / failed), or follow up with a draft for one of the analysis apps?"
       },
       "type": "text_delta"
     },
@@ -310,7 +310,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for [PT_1]?"
+      "text": "Would you like me to look up the libraries for specimens received in the last day (P1D) for [PT_1]?"
     },
     {
       "role": "user",
@@ -320,7 +320,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "[PT_1] had 3 specimens received in the last 24 hours, and those specimens have 3 libraries. I've published the table \"Libraries for [PT_1] specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status."
+      "text": "[PT_1] had 3 specimens received in the last 24 hours, and 3 libraries were found for them. I've published the table \"Libraries for [PT_1] specimens received in the last 24 hours\" in the working surface, showing library ID, specimen, preparation, coverage, and QC status.\n\nWant me to filter these by QC status (passed / review / failed), or follow up with a draft for one of the analysis apps?"
     }
   ],
   "steps": [

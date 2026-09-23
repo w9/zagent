@@ -1,0 +1,49 @@
+cases:
+  - id: SLOT-READQC
+    requirement: REQ-SLOT-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare readqc for recent specimens from NGC-0041872. I will give you my preferred parameters after I see the draft.
+    simulator: {app_id: readqc, parameters: {min_coverage: 42, check_identity: false}, max_turns: 5}
+    expect:
+      draft: {app: readqc, params_match: {min_coverage: 42, check_identity: false}, validation: []}
+      submitted: false
+      refusal: none
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+  - id: SLOT-SOMATIC
+    requirement: REQ-SLOT-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare somatic-snv for specimens from NGC-0041872 received in the past week. I will give you my preferred parameters after I see the draft.
+    simulator: {app_id: somatic-snv, parameters: {min_vaf: 0.03, min_depth: 35}, max_turns: 5}
+    expect:
+      draft: {app: somatic-snv, params_match: {min_vaf: 0.03, min_depth: 35}, validation: []}
+      submitted: false
+      refusal: none
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+  - id: SLOT-RNA
+    requirement: REQ-SLOT-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare rna-fusion for RNA specimens from NGC-0041872 in the past week. I will give you my preferred parameters after I see the draft.
+    simulator: {app_id: rna-fusion, parameters: {min_support: 9, filter_artifacts: false}, max_turns: 5}
+    expect:
+      draft: {app: rna-fusion, params_match: {min_support: 9, filter_artifacts: false}, validation: []}
+      submitted: false
+      refusal: none
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+  - id: SLOT-GERMLINE
+    requirement: REQ-SLOT-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare germline-panel for normal specimens from NGC-0041872 in the last week. I will give you my preferred parameters after I see the draft.
+    simulator: {app_id: germline-panel, parameters: {panel: extended, min_coverage: 45}, max_turns: 5}
+    expect:
+      draft: {app: germline-panel, params_match: {panel: extended, min_coverage: 45}, validation: []}
+      submitted: false
+      refusal: none
+      egress: no_known_identifiers
+      event_log: no_known_identifiers

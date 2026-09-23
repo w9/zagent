@@ -64,11 +64,12 @@ class DeltaCoalescer:
 
 
 class Runtime:
-    def __init__(self, store: Store, agent: Agent, coalesce_seconds: float = 0.18):
+    def __init__(self, store: Store, agent: Agent, coalesce_seconds: float = 0.18, titles=None):
         self.store = store
         self.agent = agent
         self.coalesce_seconds = coalesce_seconds
         self.tasks: dict = {}
+        self.titles = titles
 
     def start(self, session: AgentSession) -> None:
         task = asyncio.create_task(
@@ -130,8 +131,12 @@ class Runtime:
             )
         else:
             await self.store.finish_conversation_turn(session.id, session.conversation_turn_id)
+            if self.titles is not None:
+                self.titles.start(session)
 
     async def close(self) -> None:
+        if self.titles is not None:
+            await self.titles.close()
         tasks = list(self.tasks.values())
         for task in tasks:
             task.cancel()

@@ -99,8 +99,7 @@ export function validateViewSpec(value: unknown): ViewSpec {
 }
 
 export function viewPosition(views: PushedView[], selectedId?: string): number {
-  const selected = views.findIndex((view) => view.id === selectedId)
-  return selected >= 0 ? selected : views.length - 1
+  return selectedId === undefined ? views.length - 1 : views.findIndex((view) => view.id === selectedId)
 }
 
 export function selectionAt(

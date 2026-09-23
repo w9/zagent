@@ -1,0 +1,372 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "drafts": {
+    "draft-0001": {
+      "app_id": "germline-panel",
+      "content_hash": "b17eda5fbb6d00f6565f0ab58e7d2d426f3e11885f8d2dfee54c55f53b7edfd1",
+      "draft_id": "draft-0001",
+      "job_id": null,
+      "parameters": {
+        "min_coverage": 45,
+        "panel": "extended"
+      },
+      "specimen_handle": "query-0002",
+      "status": "editing",
+      "validation": [],
+      "version": 1,
+      "view_id": "view-0001"
+    }
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Prepare a germline-panel draft on normal specimens from [PT_1] received in the last week. Use the extended panel and minimum coverage 45."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "I'll look up the patient and their normal specimens from the last week."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "name": "find_patients"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "find_patients",
+        "result": {
+          "count": 1,
+          "handle": "query-0001",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Patient",
+              "type": "string"
+            },
+            {
+              "key": "mrn",
+              "label": "MRN",
+              "type": "string"
+            },
+            {
+              "key": "display_name",
+              "label": "Name",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_patients"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"normal\"}",
+        "name": "find_specimens"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "find_specimens",
+        "result": {
+          "count": 1,
+          "handle": "query-0002",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Specimen",
+              "type": "string"
+            },
+            {
+              "key": "kind",
+              "label": "Type",
+              "type": "string"
+            },
+            {
+              "key": "purity",
+              "label": "Purity",
+              "type": "number"
+            },
+            {
+              "key": "received_at",
+              "label": "Received",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_specimens"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"app_id\": \"germline-panel\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"panel\": \"extended\", \"min_coverage\": 45}}",
+        "name": "update_draft"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "draft": {
+          "content_hash": "b17eda5fbb6d00f6565f0ab58e7d2d426f3e11885f8d2dfee54c55f53b7edfd1",
+          "parameters": {
+            "min_coverage": 45,
+            "panel": "extended"
+          },
+          "specimen_handle": "query-0002",
+          "status": "editing",
+          "validation": [],
+          "version": 1
+        }
+      },
+      "type": "draft_updated"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "draft_form",
+          "props": {
+            "title": "Germline panel"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "update_draft",
+        "result": {
+          "draft": {
+            "content_hash": "b17eda5fbb6d00f6565f0ab58e7d2d426f3e11885f8d2dfee54c55f53b7edfd1",
+            "parameters": {
+              "min_coverage": 45,
+              "panel": "extended"
+            },
+            "specimen_handle": "query-0002",
+            "status": "editing",
+            "validation": [],
+            "version": 1
+          },
+          "kind": "draft_form",
+          "ok": true,
+          "title": "Germline panel"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "update_draft"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 4"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "Draft prepared \u2014 **Germline panel** (draft-0001, version 1), published as a form in the working surface.\n\n- **Specimen scope:** normal specimens from [PT_1] received in the last week (1 specimen)\n- **Parameters:** panel = extended, min_coverage = 45\n- **Validation:** no issues reported\n\nThe draft is in *editing* status and has not been submitted. Review the form and use the human **Confirm** control to submit the exact reviewed content hash. Let me know if you'd like any parameter changes first."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Prepare a germline-panel draft on normal specimens from [PT_1] received in the last week. Use the extended panel and minimum coverage 45."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "I'll look up the patient and their normal specimens from the last week."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Draft prepared \u2014 **Germline panel** (draft-0001, version 1), published as a form in the working surface.\n\n- **Specimen scope:** normal specimens from [PT_1] received in the last week (1 specimen)\n- **Parameters:** panel = extended, min_coverage = 45\n- **Validation:** no issues reported\n\nThe draft is in *editing* status and has not been submitted. Review the form and use the human **Confirm** control to submit the exact reviewed content hash. Let me know if you'd like any parameter changes first."
+    }
+  ],
+  "steps": [
+    {
+      "detail": "find_patients",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "name": "find_patients",
+          "result": {
+            "count": 1,
+            "handle": "query-0001",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Patient",
+                "type": "string"
+              },
+              {
+                "key": "mrn",
+                "label": "MRN",
+                "type": "string"
+              },
+              {
+                "key": "display_name",
+                "label": "Name",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "find_specimens",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"normal\"}",
+          "name": "find_specimens",
+          "result": {
+            "count": 1,
+            "handle": "query-0002",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "kind",
+                "label": "Type",
+                "type": "string"
+              },
+              {
+                "key": "purity",
+                "label": "Purity",
+                "type": "number"
+              },
+              {
+                "key": "received_at",
+                "label": "Received",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "update_draft",
+      "status": "complete",
+      "title": "Agent step 3",
+      "tools": [
+        {
+          "arguments": "{\"app_id\": \"germline-panel\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"panel\": \"extended\", \"min_coverage\": 45}}",
+          "name": "update_draft",
+          "result": {
+            "draft": {
+              "app_id": "germline-panel",
+              "content_hash": "b17eda5fbb6d00f6565f0ab58e7d2d426f3e11885f8d2dfee54c55f53b7edfd1",
+              "draft_id": "draft-0001",
+              "job_id": null,
+              "parameters": {
+                "min_coverage": 45,
+                "panel": "extended"
+              },
+              "specimen_handle": "query-0002",
+              "status": "editing",
+              "validation": [],
+              "version": 1,
+              "view_id": "view-0001"
+            },
+            "kind": "draft_form",
+            "ok": true,
+            "title": "Germline panel",
+            "view_id": "view-0001"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 4"
+    }
+  ],
+  "views": [
+    {
+      "kind": "draft_form",
+      "props": {
+        "draft_id": "draft-0001",
+        "title": "Germline panel"
+      },
+      "version": 1
+    }
+  ]
+}

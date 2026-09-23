@@ -137,6 +137,42 @@ def test_numeric_grounding_does_not_treat_a_view_title_identifier_as_a_count(tmp
     assert check_case(case, evidence, tmp_path, skip_golden=True) == []
 
 
+def test_simulated_user_cases_have_separate_model_targets_and_never_confirm():
+    from zagent.drafts import CATALOG
+    from zagent.evals.schema import load_suite
+    from zagent.evals.simulator import SIMULATOR_MODEL, SampleGateway
+
+    cases = [case for case in load_suite(Path(__file__).parent).cases if case.simulator]
+    assert {case.simulator.app_id for case in cases} == set(CATALOG)
+    assert all(case.expect["submitted"] is False for case in cases)
+    assert all(case.simulator.max_turns >= 3 for case in cases)
+    assert SIMULATOR_MODEL and SampleGateway
+
+
+async def test_simulated_user_gateway_preserves_each_independent_sample():
+    from zagent.evals.simulator import SampleGateway
+    from zagent.llm import AssistantMessage, Completion, CompletionRequest
+
+    class RecordedGateway:
+        samples = []
+
+        async def complete(self, request):
+            self.samples.append(request.sample)
+            return Completion(message=AssistantMessage(content="Set min_depth to 35."))
+
+        def requests_for_session(self, session_id):
+            return [{"session_id": session_id}]
+
+    gateway = RecordedGateway()
+    request = CompletionRequest(messages=[{"role": "user", "content": "Next correction"}])
+    for sample in range(3):
+        sampled = SampleGateway(gateway, sample)
+        assert (await sampled.complete(request)).message.content == "Set min_depth to 35."
+        assert sampled.requests_for_session("session") == [{"session_id": "session"}]
+    assert gateway.samples == [0, 1, 2]
+    assert request.sample is None
+
+
 def test_real_agent_assertions_reject_bad_configuration_and_inline_rows(tmp_path):
     evidence = sample_evidence()
     for name in (
@@ -326,6 +362,22 @@ def test_view_chaos_targets_complete_view_push_boundaries():
     plans = [chaos_plan(sample_case(), reference, seed) for seed in range(10)]
     assert all(plan.disconnect_after_view is not None for plan in plans)
     assert len({plan.disconnect_after_view for plan in plans}) > 1
+
+
+def test_chaos_does_not_target_views_from_later_human_actions():
+    from zagent.evals.runner import chaos_plan
+
+    reference = view_evidence()
+    published = next(event for event in reference.events if event.type == "view_pushed")
+    later = published.model_copy(update={"seq": reference.events[-1].seq + 1})
+    with_workflow = Evidence(
+        [*reference.events, later],
+        project(reference.projection.session_id, [*reference.events, later]),
+    )
+    for seed in range(10):
+        assert chaos_plan(sample_case(), with_workflow, seed) == chaos_plan(
+            sample_case(), reference, seed
+        )
 
 
 def test_unredacted_nondeterminism_produces_a_readable_diff():

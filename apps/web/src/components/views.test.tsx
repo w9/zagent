@@ -7,11 +7,57 @@ import { StepMarker } from './step-marker'
 import { RefusalChip } from './refusal-chip'
 import { XrayContent } from './xray-panel'
 import type { XrayData } from '../lib/api'
+import { DraftEditor } from './views/draft_form.view'
+import type { CatalogApp } from './views/draft_form.view'
+import type { DraftState } from '../lib/events'
+import catalog from '../../../../services/agent/zagent/catalog.json'
 import { validateViewSpec } from '../lib/views'
 import type { ChartSpec, TableData, TableSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+const analysisDraft: DraftState = {
+  draft_id: 'draft-0001', view_id: 'view-0001', app_id: 'somatic-snv',
+  specimen_handle: 'query-0001', parameters: { min_vaf: 0.05, min_depth: 20 },
+  version: 1, content_hash: 'a'.repeat(64), status: 'editing', validation: [], job_id: null,
+}
+
+it('generates parameter controls and requires review after stale confirmation', async () => {
+  const changed = { ...analysisDraft, version: 2, content_hash: 'b'.repeat(64), parameters: { min_vaf: 0.03, min_depth: 20 } }
+  const fetcher = vi.fn().mockResolvedValueOnce({ ok: false, status: 409, json: async () => ({
+    detail: 'The draft changed.', current: changed,
+    changes: [{ field: 'parameters.min_vaf', before: 0.05, after: 0.03 }],
+  }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ job_id: 'job-0001', status: 'pending' }) })
+  vi.stubGlobal('fetch', fetcher)
+  render(<DraftEditor draft={analysisDraft} catalog={catalog as unknown as CatalogApp[]} sessionId="session" />)
+  expect((screen.getByRole('spinbutton', { name: 'Minimum VAF' }) as HTMLInputElement).value).toBe('0.05')
+  await userEvent.click(screen.getByRole('button', { name: 'Confirm submission' }))
+  await screen.findByText('Draft changed')
+  expect(screen.getByText(/0.05 to 0.03/)).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Confirm submission' }) as HTMLButtonElement).disabled).toBe(true)
+  await userEvent.click(screen.getByRole('button', { name: 'Review current draft' }))
+  expect((screen.getByRole('spinbutton', { name: 'Minimum VAF' }) as HTMLInputElement).value).toBe('0.03')
+  await userEvent.click(screen.getByRole('button', { name: 'Confirm submission' }))
+  await screen.findByText('Submitted / job-0001')
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).content_hash).toBe(analysisDraft.content_hash)
+  expect(JSON.parse(fetcher.mock.calls[1][1].body).content_hash).toBe(changed.content_hash)
+})
+
+it('draft validation disables confirmation but permits editing and a save', async () => {
+  const draft = { ...analysisDraft, validation: [{ code: 'missing_matched_normal', field: 'specimen_handle', message: 'A matched normal specimen is missing.' }] }
+  const fetcher = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ...draft, version: 2 }) })
+  vi.stubGlobal('fetch', fetcher)
+  render(<DraftEditor draft={draft} catalog={catalog as unknown as CatalogApp[]} sessionId="session" />)
+  expect(screen.getByText('A matched normal specimen is missing.')).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'Confirm submission' }) as HTMLButtonElement).disabled).toBe(true)
+  const input = screen.getByRole('spinbutton', { name: 'Minimum VAF' })
+  await userEvent.clear(input); await userEvent.type(input, '0.03')
+  await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(1))
+  expect(fetcher.mock.calls[0][1].method).toBe('PATCH')
+  expect(JSON.parse(fetcher.mock.calls[0][1].body).parameters).toEqual({ min_vaf: 0.03 })
+})
 
 it('links real identifiers to model tokens without exposing raw values in the model pane', async () => {
   const empty = { session_id: 'session', seq: 1, messages: [], views: [], steps: [], conversation_turn: null }

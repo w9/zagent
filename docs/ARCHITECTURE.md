@@ -4,10 +4,12 @@ This document records the decisions that are expensive to reverse and the reason
 them. It deliberately stops short of implementation detail: where a choice is local to one
 module and cheap to change later, it is the implementer's call, not this document's.
 
-**Implementation status:** PLAN1 through PLAN6 are implemented. The local stack tokenizes at
+**Implementation status:** PLAN1 through PLAN7 are implemented. The local stack tokenizes at
 ingress, resolves only at clinical tool/display edges, restricts runtime database credentials,
 and checks outbound requests with a keyed-hash tripwire. X-ray shows actual recorded model
-requests. Jobs, knowledge retrieval, and Kubernetes NetworkPolicy remain later plans; this local
+requests. Draft editing, exact-hash human confirmation, pending job cards, view references,
+and persisted session titles are available. Job execution, knowledge retrieval, and
+Kubernetes NetworkPolicy remain later plans; this local
 development deployment is not a production security certification.
 
 **Contents**
@@ -104,8 +106,10 @@ That row lock serializes appends within a session, which is the desired behavior
 avoids the gap and out-of-order-visibility problems a shared sequence introduces for a reader
 that must not skip.
 
-Everything else is a projection of this log: the rendered transcript, the right panel's view
-stack, the session list, and the eval trace. Three consequences follow, and they are the reason
+Conversation and workflow state are projections of this log: the rendered transcript, the right
+panel's view stack, drafts/jobs, and the eval trace. Session organization is persisted metadata:
+creation time, title, title origin, and the one-time naming claim live on the session row, with
+a separate metadata notification feed. Three consequences follow, and they are the reason
 for the design.
 
 **Stream resume is a read.** A reconnecting client asks for events after a sequence number.
@@ -319,9 +323,11 @@ ID means follow the newest view. Navigation to an older ID pins it across refres
 pushes; selecting the head resumes following. Compact screens expose chat and surface as tabs.
 
 The renderer registry discovers versioned components independently of the panel and reducer.
-Table props allow inline rows or an injected handle source, but live handle resolution remains
-PLAN4. Schema, prefix-replay, component-snapshot, and seeded reconnect evidence cover the current
-table contract. Step markers are collapsed disclosures over started/finished step events.
+Table props allow inline fixture rows or a session-scoped handle source. PLAN7 adds generated
+draft forms and pending job cards. Chat links use persisted publication identity, kind, and title;
+they never parse model-written URLs. Explicit `view` selections remain pinned even at the head,
+and missing targets do not select another view. Step markers are collapsed disclosures over
+started/finished step events.
 
 ---
 
@@ -342,9 +348,31 @@ parameters between render and click. Binding the confirmation to a specific vers
 user always confirms exactly the thing they saw. The model has no submit tool at all, only
 draft mutation, so submission is structurally a human action.
 
+PLAN7 implements this with draft/revision rows and pending jobs. A single transaction locks the
+session and draft, compares the semantic content hash, reruns deterministic validation, writes
+one job, and publishes its events/view. Repeated confirmation returns that job. A stale hash
+returns a field-level diff. The hash covers application, specimen handle, and parameters, not
+validation messages, timestamps, or display hints. Integral numeric values are canonicalized.
+Form and model patches share the validator; null removes an incorrect parameter. Generated
+forms accept a checked scalar JSON Schema subset and a catalog layout hint.
+
+Confirmation is exposed only at the display API, never as a model tool, and draft/job tables
+are denied to the runtime role. The local stack has no production authentication, so this
+capability boundary is not a claim that arbitrary HTTP clients are authorized humans.
+Pending is the only implemented job status. Human workflow events can append after the
+originating conversation turn ends without reopening or changing that turn's lifecycle.
+
+Sessions sort by descending creation time and ID. Stable fallback names are persisted before
+any model call. One optional background title generation uses tokenized conversation through
+the same gateway, is bounded by time/output limits, and claims eligibility atomically. Automatic
+results apply only while the title remains a fallback, so a concurrent manual rename wins.
+Naming does not delay completion, block the next turn, or reorder sessions.
+
 ---
 
 ## 10. Job execution
+
+This section describes PLAN8 and later; PLAN7 creates pending records only.
 
 The queue lives in Postgres. Rows are claimed with `SKIP LOCKED`, and enqueueing happens in the
 same transaction as the job row so the two cannot diverge. A dedicated queue broker would add

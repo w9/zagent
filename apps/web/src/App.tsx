@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  ArrowUpRight,
+  Check,
   Dna,
   FlaskConical,
   Hash,
@@ -12,6 +14,7 @@ import {
   MessageSquare,
   PanelLeft,
   Plus,
+  Pencil,
   ScanEye,
   ShieldCheck,
   Table2,
@@ -28,23 +31,33 @@ import { request } from './lib/api'
 import type { RuntimeHealth, Session } from './lib/api'
 import { useSession } from './lib/use-session'
 
-function sessionName(index: number) {
-  return `Session ${String(index + 1).padStart(2, '0')}`
-}
-
 function Sidebar({
   sessions,
   selected,
   creating,
   onCreate,
   onSelect,
+  onRename,
 }: {
   sessions: Session[]
   selected?: string
   creating: boolean
   onCreate: () => void
   onSelect: () => void
+  onRename: (id: string, title: string) => Promise<void>
 }) {
+  const [editing, setEditing] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [renameError, setRenameError] = useState<string | null>(null)
+
+  async function saveTitle(id: string) {
+    if (saving || !title.trim()) return
+    setSaving(true)
+    try { await onRename(id, title.trim()); setEditing(null); setRenameError(null) }
+    catch (reason) { setRenameError(reason instanceof Error ? reason.message : 'Rename failed') }
+    finally { setSaving(false) }
+  }
   return (
     <div className="sidebar-content">
       <div className="sidebar-heading">
@@ -60,9 +73,16 @@ function Sidebar({
         {creating ? <LoaderCircle className="spin" /> : <Plus />} New session
       </Button>
       <nav aria-label="Sessions" className="session-list">
-        {sessions.map((session, index) => (
+        {sessions.map((session) => <div key={session.id} className="session-entry" data-session-id={session.id}>
+          {editing === session.id ? <form className="session-rename" onSubmit={(event) => {
+            event.preventDefault(); void saveTitle(session.id)
+          }}>
+            <input aria-label="Session title" value={title} maxLength={120} autoFocus
+              onChange={(event) => setTitle(event.target.value)} />
+            <IconButton label="Save session title" type="submit" disabled={saving || !title.trim()}><Check /></IconButton>
+            <IconButton label="Cancel rename" onClick={() => setEditing(null)}><X /></IconButton>
+          </form> : <>
           <Link
-            key={session.id}
             to="/sessions/$sessionId"
             params={{ sessionId: session.id }}
             search={{}}
@@ -72,7 +92,7 @@ function Sidebar({
           >
             <MessageSquare size={16} aria-hidden="true" />
             <span>
-              {sessionName(index)}
+              {session.title}
               <small>
                 {new Date(session.created_at).toLocaleDateString(undefined, {
                   month: 'short',
@@ -81,7 +101,11 @@ function Sidebar({
               </small>
             </span>
           </Link>
-        ))}
+          <IconButton label={`Rename ${session.title}`} className="session-rename-trigger"
+            onClick={() => { setEditing(session.id); setTitle(session.title); setRenameError(null) }}><Pencil /></IconButton>
+          </>}
+        </div>)}
+        {renameError && <p role="alert" className="surface-error">{renameError}</p>}
       </nav>
       <div className="sidebar-footer">
         <ShieldCheck size={15} /> Synthetic data <span>01</span>
@@ -129,6 +153,7 @@ function Chat({
     })),
     ...(state?.steps ?? []).map((value) => ({ kind: 'step' as const, value })),
     ...(state?.refusals ?? []).map((value) => ({ kind: 'refusal' as const, value })),
+    ...(state?.views ?? []).map((value) => ({ kind: 'view' as const, value })),
   ].sort((first, second) => first.value.seq - second.value.seq)
 
   useEffect(() => {
@@ -211,6 +236,14 @@ function Chat({
           ) : (
             <ol className="messages" aria-label="Conversation">
               {timeline.map((item) => {
+                if (item.kind === 'view') return <li key={`view:${item.value.id}`} className="view-reference-item">
+                  <Link className="view-reference" to="/sessions/$sessionId" params={{ sessionId }}
+                    search={{ view: item.value.id, panel: 'surface' }}>
+                    <Table2 size={15} aria-hidden="true" />
+                    <span>{String(item.value.spec.props.title ?? item.value.spec.kind)}</span>
+                    <ArrowUpRight size={14} aria-hidden="true" />
+                  </Link>
+                </li>
                 if (item.kind === 'refusal')
                   return (
                     <li key={`refusal:${item.value.id}`} className="message">
@@ -373,6 +406,8 @@ function SessionWorkspace({
       <WorkingSurface
         sessionId={sessionId}
         views={views}
+        drafts={session.state?.drafts}
+        jobs={session.state?.jobs}
         selectedId={search.view}
         onSelect={(view) => {
           void navigate({
@@ -416,9 +451,15 @@ export default function App() {
       }
     }
     void refresh()
+    const changes = new EventSource('/api/session-list/events')
+    changes.addEventListener('sessions', (event) => {
+      try { setSessions(JSON.parse((event as MessageEvent).data) as Session[]) }
+      catch { void refresh() }
+    })
     window.addEventListener('focus', refresh)
     return () => {
       controller.abort()
+      changes.close()
       window.removeEventListener('focus', refresh)
     }
   }, [])
@@ -446,7 +487,7 @@ export default function App() {
     setCreating(true)
     try {
       const session = await request<Session>('/sessions', { method: 'POST' })
-      setSessions((current) => [...current, session])
+      setSessions((current) => [session, ...current.filter((item) => item.id !== session.id)])
       setDrawerOpen(false)
       setError(null)
       await navigate({
@@ -472,6 +513,10 @@ export default function App() {
       creating={creating}
       onCreate={() => void createSession()}
       onSelect={() => setDrawerOpen(false)}
+      onRename={async (id, title) => {
+        const updated = await request<Session>(`/sessions/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) })
+        setSessions((current) => current.map((item) => item.id === id ? updated : item))
+      }}
     />
   )
   const selectedIndex = sessions.findIndex(
@@ -525,7 +570,7 @@ export default function App() {
                 key={sessionId}
                 sessionId={sessionId}
                 name={
-                  selectedIndex < 0 ? 'Session' : sessionName(selectedIndex)
+                  selectedIndex < 0 ? 'Session' : sessions[selectedIndex].title
                 }
               />
             ) : (

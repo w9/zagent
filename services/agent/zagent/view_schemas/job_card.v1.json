@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object", "additionalProperties": false, "required": ["kind", "version", "props"],
+  "properties": {
+    "kind": {"const": "job_card"}, "version": {"const": 1},
+    "props": {
+      "type": "object", "additionalProperties": false, "required": ["title", "job_id"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1, "maxLength": 200},
+        "job_id": {"type": "string", "pattern": "^job-[0-9]{4,}$"}
+      }
+    }
+  }
+}

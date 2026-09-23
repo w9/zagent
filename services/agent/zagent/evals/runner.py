@@ -60,15 +60,17 @@ def chaos_plan(case: Case, reference: Evidence, seed: int) -> ChaosPlan:
     turn_ids = [
         event.conversation_turn_id for event in reference.events if event.type == "user_message"
     ]
+    turn_events = []
+    for event in reference.events:
+        if event.conversation_turn_id != turn_ids[turn_index]:
+            continue
+        if event.type in {"conversation_turn_finished", "conversation_turn_failed"}:
+            break
+        turn_events.append(event)
     text_length = sum(
-        len(event.payload["text"])
-        for event in reference.events
-        if event.type == "text_delta" and event.conversation_turn_id == turn_ids[turn_index]
+        len(event.payload["text"]) for event in turn_events if event.type == "text_delta"
     )
-    view_count = sum(
-        event.type == "view_pushed" and event.conversation_turn_id == turn_ids[turn_index]
-        for event in reference.events
-    )
+    view_count = sum(event.type == "view_pushed" for event in turn_events)
     return ChaosPlan(
         conversation_turn_index=turn_index,
         disconnect_after_characters=randomizer.randint(0, max(0, text_length // 2)),
@@ -140,12 +142,27 @@ async def capture_case(
     *,
     plan: ChaosPlan | None = None,
     timeout_seconds: float = 15,
+    previous: Evidence | None = None,
 ) -> Evidence:
-    response = await client.post("/sessions")
-    response.raise_for_status()
-    session_id = UUID(response.json()["id"])
-    state = Projection(session_id=session_id)
-    events: list[Event] = []
+    if previous is None:
+        response = await client.post("/sessions")
+        response.raise_for_status()
+        session_id = UUID(response.json()["id"])
+        state = Projection(session_id=session_id)
+        events: list[Event] = []
+    else:
+        session_id, state, events = (
+            previous.projection.session_id,
+            previous.projection,
+            list(previous.events),
+        )
+    if case.session_checks:
+        sessions = (await client.get("/sessions")).json()
+        if sessions[0]["id"] != str(session_id):
+            raise AssertionError(f"{case.id}: a newly created session was not first")
+        ordered = sorted(sessions, key=lambda item: (item["created_at"], item["id"]), reverse=True)
+        if sessions != ordered or not sessions[0]["title"]:
+            raise AssertionError(f"{case.id}: session order or stable fallback is invalid")
     for turn_index, turn in enumerate(case.conversation_turns):
         async with asyncio.timeout(timeout_seconds):
             response = await client.post(
@@ -235,7 +252,101 @@ async def capture_case(
                 )
     if plan is not None and plan.disconnected_at_seq is None:
         raise AssertionError(f"{case.id}: chaos did not interrupt the event feed")
+    original = next(reversed(state.drafts.values()), None)
+    confirmed = None
+    for action in case.workflow_actions:
+        if original is None:
+            raise AssertionError(f"{case.id}: workflow action needs a draft")
+        if action == "read_draft":
+            followup = case.model_copy(
+                update={
+                    "conversation_turns": [
+                        case.conversation_turns[0].model_copy(
+                            update={
+                                "user": "What minimum coverage is currently saved "
+                                "in my readqc draft? "
+                                "Do not edit or submit it.",
+                            }
+                        )
+                    ],
+                    "workflow_actions": [],
+                    "session_checks": False,
+                }
+            )
+            reviewed = await capture_case(
+                client,
+                followup,
+                previous=Evidence(events, state),
+                timeout_seconds=timeout_seconds,
+            )
+            if reviewed.projection.drafts != state.drafts or reviewed.projection.jobs != state.jobs:
+                raise AssertionError(f"{case.id}: reading the saved draft mutated workflow state")
+            replies = [item for item in reviewed.projection.messages if item.role == "assistant"]
+            if not replies or "45" not in replies[-1].text:
+                raise AssertionError(
+                    f"{case.id}: the assistant did not acknowledge the form's saved value"
+                )
+            state, events = reviewed.projection, reviewed.events
+            continue
+        current = state.drafts[original.draft_id]
+        path = f"/sessions/{session_id}/drafts/{original.draft_id}"
+        if action == "edit":
+            response = await client.patch(
+                path,
+                json={"content_hash": current.content_hash, "parameters": {"min_coverage": 45}},
+            )
+            response.raise_for_status()
+        else:
+            response = await client.post(
+                path + "/confirm",
+                json={
+                    "content_hash": original.content_hash
+                    if action == "stale_confirm"
+                    else current.content_hash,
+                },
+            )
+            if action == "stale_confirm":
+                if response.status_code != 409 or not response.json().get("changes"):
+                    raise AssertionError(f"{case.id}: stale confirmation did not return a diff")
+            else:
+                response.raise_for_status()
+                if confirmed and response.json() != confirmed:
+                    raise AssertionError(f"{case.id}: repeated confirmation changed the job")
+                confirmed = response.json()
+        async with aconnect_sse(
+            client,
+            "GET",
+            f"/sessions/{session_id}/events",
+            params={"from": state.seq, "representation": "model"},
+        ) as stream:
+            async for frame in stream.aiter_sse():
+                if frame.event == "log":
+                    event = Event.model_validate_json(frame.data)
+                    state = reduce_event(state, event)
+                    events.append(event)
+        snapshot = Projection.model_validate(
+            (
+                await client.get(
+                    f"/sessions/{session_id}/snapshot",
+                    params={"representation": "model"},
+                )
+            ).json()
+        )
+        if state != snapshot:
+            raise AssertionError(f"{case.id}: workflow action diverged from the public snapshot")
     evidence = Evidence(events, state)
+    if case.session_checks:
+        ordered_before = [item["id"] for item in (await client.get("/sessions")).json()]
+        renamed = await client.patch(
+            f"/sessions/{session_id}", json={"title": "Reviewed analysis draft"}
+        )
+        renamed.raise_for_status()
+        sessions = (await client.get("/sessions")).json()
+        saved = next(item for item in sessions if item["id"] == str(session_id))
+        if saved["title"] != "Reviewed analysis draft" or saved["title_source"] != "manual":
+            raise AssertionError(f"{case.id}: manual session title did not persist")
+        if [item["id"] for item in sessions] != ordered_before:
+            raise AssertionError(f"{case.id}: renaming changed session order")
     if any(name in case.expect for name in ("egress", "tool_calls", "display")):
         response = await client.get(f"/sessions/{session_id}/xray")
         response.raise_for_status()
@@ -375,6 +486,9 @@ async def evaluate_case(
             reference = await capture_case(
                 environment.client, case, timeout_seconds=600 if mode != "replay" else 15
             )
+            titles = environment.app.state.runtime.titles
+            if titles is not None:
+                await asyncio.gather(*titles.tasks)
             if is_llm and mode == "record":
                 agent.gateway.mode = "replay"
             reference_executions += 1
@@ -557,6 +671,24 @@ async def evaluate_suite(
                 results.append(evaluate_detector(case, root, seed=seed, commit=commit, dirty=dirty))
             continue
         if case.agent.startswith("guard:"):
+            continue
+        if case.simulator is not None:
+            if not chaos_only:
+                from zagent.evals.simulator import evaluate_simulated_users
+
+                results.extend(
+                    await evaluate_simulated_users(
+                        case,
+                        root,
+                        database_url,
+                        mode=mode,
+                        trials=trials or 3,
+                        seed=seed,
+                        record_missing=record_missing,
+                        commit=commit,
+                        dirty=dirty,
+                    )
+                )
             continue
         case_trials = standard_trials
         if standard_trials and trials is None:

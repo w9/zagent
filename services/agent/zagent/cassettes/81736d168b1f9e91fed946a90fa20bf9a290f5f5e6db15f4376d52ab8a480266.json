@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare readqc for recent specimens from [PT_1]. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their recent specimens first.\",\"role\":\"assistant\"},{\"content\":\"I've published the specimen list and prepared the draft.\\n\\n**Specimens** \\u2014 the table \\\"Recent specimens for [PT_1] (last 7 days)\\\" shows 3 specimens received in the last week.\\n\\n**Draft** \\u2014 a readqc draft form (\\\"Read quality control\\\") is now open with:\\n- specimen_handle: the query covering those 3 recent specimens\\n- min_coverage: 30 (default)\\n- check_identity: true (default)\\n\\nStatus: editing, version 1, no validation issues. Nothing has been submitted \\u2014 only the human Confirm control can submit the exact reviewed content hash.\\n\\nLet me know your preferred parameters and I'll patch the same draft.\",\"role\":\"assistant\"},{\"content\":\"Set check_identity to false.\",\"role\":\"user\"},{\"content\":\"Updated the readqc draft (\\\"Read quality control\\\"):\\n\\n- check_identity: **false**\\n- min_coverage: 30 (unchanged)\\n- specimen_handle: the query covering the 3 recent specimens\\n\\nStatus: editing, version 2, no validation issues. The form has been republished with the new content hash. Nothing is submitted \\u2014 only the human Confirm control can submit the reviewed content.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"readqc\",\"content_hash\":\"68c859f0874a21e21a548970f0a580c41d9542613cf6c4c6fdffbd36378eea1d\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"check_identity\":false,\"min_coverage\":30},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0002\"}],\"target\":{\"app_id\":\"readqc\",\"max_turns\":5,\"parameters\":{\"check_identity\":false,\"min_coverage\":42}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "81736d168b1f9e91fed946a90fa20bf9a290f5f5e6db15f4376d52ab8a480266",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Set min_coverage to 42.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 9.795e-05,
+        "prompt_tokens": 621,
+        "total_tokens": 629
+      }
+    }
+  },
+  "version": 2
+}

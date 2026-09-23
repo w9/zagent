@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
@@ -13,12 +14,15 @@ from pydantic import BaseModel, Field, field_validator
 from zagent.agent import Agent, LlmAgent, ScriptedAgent
 from zagent.cohort import ClinicalStore, HandleError, configured_clock
 from zagent.display import SessionDisplay
+from zagent.draft_store import DraftConflict, DraftStore, InvalidDraft
+from zagent.drafts import CATALOG
 from zagent.events import Projection
 from zagent.llm import GatewayClient
 from zagent.privacy import PrivacyError, Raw, Tokenized
 from zagent.runtime import Runtime
 from zagent.store import DEFAULT_DATABASE_URL, ConversationTurnConflict, NotFound, Session, Store
 from zagent.stream import Notifications, tail_events
+from zagent.titles import SessionTitles
 from zagent.tools import McpToolClient, ToolsGateway
 
 
@@ -67,6 +71,25 @@ class TokenizedMessageInput(BaseModel):
     text: Tokenized[str]
 
 
+class DraftEditInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    app_id: str | None = None
+    specimen_handle: str | None = Field(default=None, pattern=r"^query-[0-9]{4,}$")
+    parameters: dict[str, str | int | float | bool | None] = Field(
+        default_factory=dict, max_length=20
+    )
+
+
+class ConfirmInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class RenameInput(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
 def create_app(settings: Settings | None = None, agent: Agent | None = None) -> FastAPI:
     settings = settings or Settings()
 
@@ -97,12 +120,16 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                 store,
                 selected_agent,
                 settings.coalesce_seconds,
+                titles=SessionTitles(store, selected_agent.gateway)
+                if isinstance(selected_agent, LlmAgent)
+                else None,
             )
             resources.push_async_callback(runtime.close)
             app.state.store = store
             app.state.runtime = runtime
             app.state.notifications = notifications
             app.state.clinical = ClinicalStore(store, configured_clock())
+            app.state.drafts = DraftStore(app.state.clinical)
             yield
 
     app = FastAPI(title="Zagent", version="0.1.0", lifespan=lifespan)
@@ -131,6 +158,67 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             status_code=503, content={"detail": "Privacy service unavailable or access denied"}
         )
 
+    @app.exception_handler(DraftConflict)
+    async def draft_conflict(request: Request, error: DraftConflict):
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": str(error),
+                "code": error.reason,
+                "current": error.current.model_dump(),
+                "changes": error.changes,
+            },
+        )
+
+    @app.exception_handler(InvalidDraft)
+    async def invalid_draft(request: Request, error: InvalidDraft):
+        return JSONResponse(
+            status_code=422, content={"detail": str(error), "current": error.current.model_dump()}
+        )
+
+    def display_only() -> None:
+        if not settings.display_mode:
+            raise HTTPException(403, "This operation requires the human display edge")
+
+    @app.get("/catalog")
+    async def catalog():
+        return [app.model_dump() for app in CATALOG.values()]
+
+    @app.get("/sessions/{session_id}/drafts/{draft_id}")
+    async def get_draft(session_id: UUID, draft_id: str):
+        display_only()
+        await scoped_session(session_id)
+        return await app.state.drafts.get(session_id, draft_id)
+
+    @app.patch("/sessions/{session_id}/drafts/{draft_id}")
+    async def edit_draft(session_id: UUID, draft_id: str, body: DraftEditInput):
+        display_only()
+        await scoped_session(session_id)
+        if body.app_id is not None and body.app_id not in CATALOG:
+            raise HTTPException(422, "Unknown application")
+        params = (
+            await app.state.store.privacy.tokenize(
+                session_id,
+                Raw(value=body.parameters),
+                path="view_interaction",
+                external=True,
+            )
+        ).value
+        return await app.state.drafts.update(
+            session_id,
+            draft_id=draft_id,
+            expected_hash=body.content_hash,
+            app_id=body.app_id,
+            specimen_handle=body.specimen_handle,
+            parameters=params,
+        )
+
+    @app.post("/sessions/{session_id}/drafts/{draft_id}/confirm")
+    async def confirm_draft(session_id: UUID, draft_id: str, body: ConfirmInput):
+        display_only()
+        await scoped_session(session_id)
+        return await app.state.drafts.confirm(session_id, draft_id, body.content_hash)
+
     @app.get("/health")
     async def health():
         await app.state.store.pool.fetchval("SELECT 1")
@@ -147,11 +235,60 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
 
     @app.get("/sessions", response_model=list[Session])
     async def list_sessions():
-        return [
+        sessions = [
             session
             for session in await app.state.store.list_sessions()
             if session.site_id == settings.site_id
         ]
+        if settings.display_mode:
+            for session in sessions:
+                session.title = (
+                    await app.state.store.privacy.resolve(
+                        session.id,
+                        Tokenized(value=session.title),
+                    )
+                ).value
+        return sessions
+
+    @app.patch("/sessions/{session_id}", response_model=Session)
+    async def rename_session(session_id: UUID, body: RenameInput):
+        display_only()
+        await scoped_session(session_id)
+        if not body.title.strip():
+            raise HTTPException(422, "A title cannot be blank")
+        session = await app.state.store.rename_session(session_id, body.title)
+        session.title = (
+            await app.state.store.privacy.resolve(
+                session_id,
+                Tokenized(value=session.title),
+            )
+        ).value
+        return session
+
+    @app.get("/session-list/events")
+    async def session_updates(request: Request):
+        async def updates():
+            yield "retry: 1000\n\n"
+            async with app.state.notifications.subscribe("sessions") as signal:
+                while not await request.is_disconnected():
+                    signal.clear()
+                    yield (
+                        "event: sessions\ndata: "
+                        + json.dumps(
+                            [item.model_dump(mode="json") for item in await list_sessions()]
+                        )
+                        + "\n\n"
+                    )
+                    try:
+                        await asyncio.wait_for(signal.wait(), timeout=15)
+                    except TimeoutError:
+                        pass
+
+        return StreamingResponse(
+            updates(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache, no-transform"},
+        )
 
     @app.post(
         "/sessions/{session_id}/messages", status_code=202, response_model=AcceptedConversationTurn

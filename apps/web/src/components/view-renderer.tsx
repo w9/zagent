@@ -3,10 +3,15 @@ import type { ComponentType } from 'react'
 import { validateViewSpec } from '../lib/views'
 import type { ViewSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
+import type { DraftState, JobState } from '../lib/events'
 
 export type ViewRendererProps = {
   spec: ViewSpec
   resolveHandle?: HandleResolver
+  sessionId?: string
+  drafts?: Record<string, DraftState>
+  jobs?: Record<string, JobState>
+  onConfirmed?: () => void
 }
 type ViewComponent = ComponentType<ViewRendererProps> & {
   kind: string

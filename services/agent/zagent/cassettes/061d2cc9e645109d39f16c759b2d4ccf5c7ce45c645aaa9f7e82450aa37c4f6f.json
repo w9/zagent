@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare readqc for recent specimens from [PT_1]. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their recent specimens first.I found [PT_1] and their recent specimens, and prepared a readqc draft.\n\n**Published views**\n- **Recent specimens for [PT_1] (last 24h)** \u2014 table, 3 specimens received in the last 24 hours.\n- **Read quality control** \u2014 the draft form (draft-0001, version 1).\n\n**Draft status**\n- App: readqc\n- Specimen scope: the 3 recent specimens from the table above\n- Default parameters: `min_coverage=30`, `check_identity=true`\n- Validation: no issues reported\n- Status: editing \u2014 not submitted\n\nTell me your preferred parameters and I'll apply them to this same draft. Note that only the human Confirm control can submit the exact reviewed content hash; a chat confirmation isn't authorization to submit.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "061d2cc9e645109d39f16c759b2d4ccf5c7ce45c645aaa9f7e82450aa37c4f6f",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "\n",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 2,
+        "cost": 8.13e-05,
+        "prompt_tokens": 263,
+        "total_tokens": 265
+      }
+    }
+  },
+  "version": 2
+}

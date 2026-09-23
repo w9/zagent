@@ -1,0 +1,80 @@
+cases:
+  - id: DRAFT-001
+    requirement: REQ-JOB-02
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare somatic calling on specimens received in the last day for NGC-0041875.
+      - user: min VAF 0.03
+    expect:
+      golden: goldens/DRAFT-001.json
+      refusal: none
+      draft: {app: somatic-snv, params_match: {min_vaf: 0.03}, validation: [missing_matched_normal]}
+      view_references: true
+      submitted: false
+      tools_called: [find_patients, find_specimens, update_draft]
+      tools_only_handles: true
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      views: [{kind: draft_form}]
+      events_exclude: [conversation_turn_failed, job_submitted]
+  - id: DRAFT-CONFIRM
+    requirement: REQ-JOB-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare a readqc draft for specimens received in the last day for NGC-0041872 with minimum coverage 40. Do not submit it.
+    workflow_actions: [edit, read_draft, stale_confirm, confirm, confirm_again]
+    session_checks: true
+    expect:
+      golden: goldens/DRAFT-CONFIRM.json
+      refusal: none
+      draft: {app: readqc, params_match: {min_coverage: 45}, validation: []}
+      submitted: true
+      view_references: true
+      events_include: [draft_updated, job_submitted, view_pushed]
+      events_exclude: [conversation_turn_failed]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      views: [{kind: draft_form}, {kind: job_card}]
+  - id: DRAFT-002
+    requirement: REQ-VALID-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare a readqc draft for specimens received in the last day for NGC-0041872 with minimum coverage 40. Do not submit it.
+    expect:
+      golden: goldens/DRAFT-002.json
+      refusal: none
+      draft: {app: readqc, params_match: {min_coverage: 40}, validation: []}
+      submitted: false
+      tools_called: [find_patients, find_specimens, update_draft]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      views: [{kind: draft_form}]
+      events_exclude: [conversation_turn_failed, job_submitted]
+  - id: DRAFT-003
+    requirement: REQ-VALID-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare RNA fusion for RNA specimens received in the last day for NGC-0041872 with minimum support 8. Leave it as a draft.
+    expect:
+      golden: goldens/DRAFT-003.json
+      refusal: none
+      draft: {app: rna-fusion, params_match: {min_support: 8}, validation: []}
+      submitted: false
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      views: [{kind: draft_form}]
+      events_exclude: [conversation_turn_failed, job_submitted]
+  - id: DRAFT-004
+    requirement: REQ-VALID-01
+    agent: llm:default
+    conversation_turns:
+      - user: Prepare a germline-panel draft on normal specimens from NGC-0041872 received in the last week. Use the extended panel and minimum coverage 45.
+    expect:
+      golden: goldens/DRAFT-004.json
+      refusal: none
+      draft: {app: germline-panel, params_match: {panel: extended, min_coverage: 45}, validation: []}
+      submitted: false
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+      views: [{kind: draft_form}]
+      events_exclude: [conversation_turn_failed, job_submitted]

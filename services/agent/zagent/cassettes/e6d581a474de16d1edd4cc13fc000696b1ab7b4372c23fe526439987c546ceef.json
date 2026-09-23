@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their normal specimens from the last week.\",\"role\":\"assistant\"},{\"content\":\"Draft prepared \\u2014 the **Germline panel** form is now published in the working surface.\\n\\n- **Specimen scope:** the one normal specimen for [PT_1] received in the last 7 days.\\n- **Current parameters (defaults):** `panel=predisposition`, `min_coverage=30`\\n- **Status:** editing, version 1, no validation issues.\\n\\nTell me your preferred parameters and I'll patch this same draft. Note that only the human Confirm control can submit it \\u2014 a chat message alone won't run the job.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"germline-panel\",\"content_hash\":\"4abb985c567e96550b90731b7cb53f0338a0fd32db78f90df2eff5064e4c4504\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_coverage\":30,\"panel\":\"predisposition\"},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":1,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"germline-panel\",\"max_turns\":5,\"parameters\":{\"min_coverage\":45,\"panel\":\"extended\"}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "e6d581a474de16d1edd4cc13fc000696b1ab7b4372c23fe526439987c546ceef",
+  "samples": {
+    "2": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Change `panel` to `extended`.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 9,
+        "cost": 7.77e-05,
+        "prompt_tokens": 482,
+        "total_tokens": 491
+      }
+    }
+  },
+  "version": 2
+}

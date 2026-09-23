@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zagent.drafts import DraftState, JobState
 from zagent.scope import Refusal
 from zagent.views import ViewPushed, ViewSpec
 
@@ -23,6 +24,8 @@ EventType = Literal[
     "refused",
     "draft_updated",
     "privacy_alert",
+    "job_submitted",
+    "session_updated",
 ]
 
 
@@ -98,6 +101,10 @@ class EventDraft(BaseModel):
             ToolReturned.model_validate(self.payload)
         elif self.type == "refused":
             Refusal.model_validate(self.payload)
+        elif self.type == "draft_updated" and "draft_id" in self.payload.get("draft", {}):
+            DraftState.model_validate(self.payload["draft"])
+        elif self.type == "job_submitted":
+            JobState.model_validate(self.payload["job"])
         elif self.type == "privacy_alert":
             if self.payload != {
                 "code": "egress_identifier",
@@ -179,6 +186,8 @@ class Projection(BaseModel):
     views: list[PushedView] = Field(default_factory=list)
     steps: list[StepState] = Field(default_factory=list)
     refusals: list[RefusedState] = Field(default_factory=list)
+    drafts: dict[str, DraftState] = Field(default_factory=dict)
+    jobs: dict[str, JobState] = Field(default_factory=dict)
     conversation_turn: ConversationTurnState | None = None
 
 
@@ -222,6 +231,12 @@ def reduce_event(state: Projection, event: Event) -> Projection:
         identity = str(event.conversation_turn_id)
         if not any(item.id == identity for item in result.refusals):
             result.refusals.append(RefusedState(id=identity, seq=event.seq, **payload))
+    elif event.type == "draft_updated" and "draft_id" in payload.get("draft", {}):
+        draft = DraftState.model_validate(payload["draft"])
+        result.drafts[draft.draft_id] = draft
+    elif event.type == "job_submitted":
+        job = JobState.model_validate(payload["job"])
+        result.jobs[job.job_id] = job
     elif event.type == "view_pushed":
         if not any(view.id == payload["view_id"] for view in result.views):
             result.views.append(

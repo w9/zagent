@@ -31,7 +31,7 @@
     - apps/web/src/lib/events.ts
     - apps/web/src/lib/events.test.ts
   mutations: [drop_projected_view, duplicate_projected_view]
-  cases: [VIEW-001, VIEW-002, VIEW-003, VIEW-004, REAL-001, REAL-002]
+  cases: [VIEW-001, VIEW-002, VIEW-003, VIEW-004, REAL-001, REAL-002, DRAFT-001, DRAFT-002, DRAFT-003, DRAFT-004, DRAFT-CONFIRM]
 
 - id: REQ-STREAM-02
   tier: invariant
@@ -42,7 +42,7 @@
     - services/agent/zagent/runtime.py
     - apps/web/src/lib/use-session.ts
   mutations: [skip_resume_event, duplicate_resume_event]
-  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, REAL-001, REAL-002]
+  cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, REAL-001, REAL-002, DRAFT-001, DRAFT-002, DRAFT-003, DRAFT-004, DRAFT-CONFIRM]
 
 - id: REQ-TOOL-01
   tier: invariant
@@ -129,3 +129,58 @@
   statement: The detector recognizes literal MRNs and names across all five fixture sites.
   threshold: {min_lower_bound: 0.95, trials: 1}
   cases: []
+
+- id: REQ-JOB-02
+  tier: invariant
+  statement: The model can mutate drafts but cannot submit a job.
+  enforced_by: [services/agent/zagent/tools.py, services/agent/tests/test_drafts.py]
+  mutations: [expose_submission_tool]
+  cases: [DRAFT-001, DRAFT-002, DRAFT-003, DRAFT-004]
+
+- id: REQ-VALID-01
+  tier: invariant
+  statement: Draft validation applies catalog parameter schemas and clinical application constraints.
+  enforced_by: [services/agent/zagent/drafts.py, services/agent/zagent/draft_store.py]
+  mutations: [bypass_draft_validation]
+  cases: [DRAFT-001, DRAFT-002, DRAFT-003, DRAFT-004]
+
+- id: REQ-SLOT-01
+  tier: measured
+  statement: Simulated users reach their hidden application and parameter target without submitting a job.
+  threshold: {min_lower_bound: 0.4, trials: 3}
+  cases: [SLOT-READQC, SLOT-SOMATIC, SLOT-RNA, SLOT-GERMLINE]
+
+- id: REQ-JOB-01
+  tier: invariant
+  statement: A pending job is created only after the human endpoint receives the current draft content hash.
+  enforced_by: [services/agent/zagent/draft_store.py, services/agent/zagent/app.py]
+  mutations: [bypass_confirmation_hash, duplicate_confirmation]
+  cases: [DRAFT-CONFIRM]
+
+- id: REQ-JOB-03
+  tier: invariant
+  statement: Stale confirmation is rejected with a field-level diff and does not create a job.
+  enforced_by: [services/agent/zagent/draft_store.py, services/agent/tests/test_drafts.py]
+  mutations: [accept_stale_confirmation]
+  cases: [DRAFT-CONFIRM]
+
+- id: REQ-SESSION-01
+  tier: invariant
+  statement: Sessions have persisted titles and deterministic newest-created-first ordering independent of renaming.
+  enforced_by: [services/agent/zagent/store.py, services/agent/tests/test_titles.py, apps/web/e2e/drafts.spec.ts]
+  mutations: [sort_oldest_first, use_list_index_title]
+  cases: [DRAFT-CONFIRM]
+
+- id: REQ-SESSION-02
+  tier: invariant
+  statement: Manual session titles take precedence and optional automatic naming never blocks conversation.
+  enforced_by: [services/agent/zagent/titles.py, services/agent/tests/test_titles.py, apps/web/e2e/drafts.spec.ts]
+  mutations: [overwrite_manual_title, await_title_before_finishing_turn]
+  cases: [DRAFT-CONFIRM]
+
+- id: REQ-VIEW-03
+  tier: invariant
+  statement: View receipts resolve to published session views and reference activation has no workflow side effects.
+  enforced_by: [services/agent/zagent/evals/assertions.py, apps/web/src/components/working-surface.tsx, apps/web/e2e/drafts.spec.ts]
+  mutations: [link_to_latest_view, navigate_by_querying_again]
+  cases: [REAL-001, DRAFT-001, DRAFT-CONFIRM]

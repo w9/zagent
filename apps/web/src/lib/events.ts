@@ -6,6 +6,17 @@ type MessageText = MessageRef & { text: string }
 export type RefusalCode = 'out_of_domain' | 'unsupported_capability'
   | 'requires_human_authority' | 'unsafe_request'
 export type RefusedState = { id: string; seq: number; code: RefusalCode; message: string }
+export type DraftState = {
+  draft_id: string; view_id: string; app_id: string; specimen_handle: string | null
+  parameters: Record<string, string | number | boolean>; version: number; content_hash: string
+  status: 'editing' | 'submitted'; job_id: string | null
+  validation: { code: string; field: string; message: string }[]
+}
+export type JobState = {
+  job_id: string; draft_id: string; app_id: string; specimen_handle: string | null
+  parameters: Record<string, string | number | boolean>; confirmed_version: number
+  content_hash: string; status: 'pending'
+}
 
 export type Payloads = {
   user_message: MessageText
@@ -35,7 +46,9 @@ export type Payloads = {
   }
   view_pushed: { view_id: string; spec: ViewSpec }
   refused: { code: RefusalCode; message: string }
-  draft_updated: Record<string, unknown>
+  draft_updated: { draft?: DraftState }
+  job_submitted: { job: JobState }
+  session_updated: Record<string, unknown>
   privacy_alert: { code: 'egress_identifier'; message: string }
 }
 
@@ -81,6 +94,8 @@ export type Projection = {
   views: PushedView[]
   steps: StepState[]
   refusals?: RefusedState[]
+  drafts?: Record<string, DraftState>
+  jobs?: Record<string, JobState>
   conversation_turn: {
     id: string
     status: 'running' | 'finished' | 'failed'
@@ -166,6 +181,14 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
       }
       break
     }
+    case 'draft_updated':
+      if (event.payload.draft?.draft_id) next.drafts = {
+        ...state.drafts, [event.payload.draft.draft_id]: event.payload.draft,
+      }
+      break
+    case 'job_submitted':
+      next.jobs = { ...state.jobs, [event.payload.job.job_id]: event.payload.job }
+      break
     case 'view_pushed': {
       const spec = validateViewSpec(event.payload.spec)
       if (!state.views.some((view) => view.id === event.payload.view_id)) {

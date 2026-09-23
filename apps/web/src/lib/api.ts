@@ -1,6 +1,19 @@
 import type { Projection } from './events'
 
-export type Session = { id: string; seq: number; created_at: string }
+export type Session = {
+  id: string; seq: number; created_at: string; title: string
+  title_source: 'fallback' | 'automatic' | 'manual'
+}
+
+export class ApiError extends Error {
+  status: number
+  body: Record<string, unknown>
+  constructor(message: string, status: number, body: Record<string, unknown>) {
+    super(message)
+    this.status = status
+    this.body = body
+  }
+}
 export type RuntimeHealth = {
   status: 'ok'
   mode: 'scripted' | 'replay' | 'record' | 'live'
@@ -31,10 +44,10 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!response.ok) {
     const body = await response.json().catch(() => null)
-    throw new Error(
+    throw new ApiError(
       typeof body?.detail === 'string'
         ? body.detail
-        : `Request failed (${response.status})`,
+        : `Request failed (${response.status})`, response.status, body ?? {},
     )
   }
   return response.json() as Promise<T>

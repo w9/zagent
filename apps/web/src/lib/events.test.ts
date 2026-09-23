@@ -167,6 +167,18 @@ describe('event projection', () => {
     expect(continued.conversation_turn?.status).toBe('finished')
     expect(empty.refusals).toBeUndefined()
   })
+
+  it('updates one persisted draft without replacing view history or turn lifecycle', () => {
+    const draft = { draft_id: 'draft-0001', view_id: 'view-0001', app_id: 'readqc',
+      specimen_handle: 'query-0001', parameters: { min_coverage: 30 }, version: 1,
+      content_hash: 'a'.repeat(64), status: 'editing' as const, validation: [], job_id: null }
+    const first = reduceEvent(empty, event(1, 'draft_updated', { draft }))
+    const next = reduceEvent(first, event(2, 'draft_updated', { draft: { ...draft, version: 2, parameters: { min_coverage: 40 } } }))
+    expect(next.drafts?.[draft.draft_id].parameters.min_coverage).toBe(40)
+    expect(first.drafts?.[draft.draft_id].parameters.min_coverage).toBe(30)
+    expect(next.conversation_turn).toBeNull()
+    expect(next.views).toBe(empty.views)
+  })
 })
 
 describe('view and step replay', () => {
@@ -243,7 +255,9 @@ describe('view and step replay', () => {
     expect(viewPosition(appended, pinned)).toBe(0)
     expect(viewPosition(appended, undefined)).toBe(2)
     expect(selectionAt(appended, 2)).toBeUndefined()
-    expect(viewPosition(appended, 'missing')).toBe(2)
+    expect(viewPosition(appended, 'missing')).toBe(-1)
+    expect(viewPosition(appended, views[1].id)).toBe(1)
+    expect(viewPosition([...appended, { ...views[0], id: 'fourth', seq: 30 }], 'third')).toBe(2)
   })
 
   it('shares table row, cell, and source constraints with the server', () => {

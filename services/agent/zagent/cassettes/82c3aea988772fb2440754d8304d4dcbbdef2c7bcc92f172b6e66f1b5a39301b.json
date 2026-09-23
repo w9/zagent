@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their recent normal specimens.\",\"role\":\"assistant\"},{\"content\":\"I found one normal specimen for [PT_1] in the last week and published it as the table **Normal specimens for [PT_1] (last 7 days)**.\\n\\nI also prepared a draft germline-panel job against that specimen:\\n\\n- **Draft:** draft-0001 (version 1, status: editing)\\n- **App:** germline-panel\\n- **Specimen:** the single normal specimen from the last 7 days\\n- **Current parameters:** panel = predisposition, min_coverage = 30\\n- **Validation:** no issues reported\\n\\nThe draft form is published in the working surface. Tell me your preferred parameters (e.g. panel = extended, min_coverage = \\u2026) and I'll apply them to this same draft. Note that only the human Confirm control can submit the reviewed content \\u2014 a chat message alone won't run it.\",\"role\":\"assistant\"},{\"content\":\"Change panel to extended.\",\"role\":\"user\"},{\"content\":\"Updated the draft:\\n\\n- **Draft:** draft-0001 (version 2, status: editing)\\n- **Parameters:** panel = extended, min_coverage = 30\\n- **Validation:** no issues reported\\n\\nThe updated form is published in the working surface. Let me know if you want to change anything else (e.g. min_coverage); submission still requires the human Confirm control.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"germline-panel\",\"content_hash\":\"a1459518e2fa2ae594ea4d27daa06be76487b5f6a19c4da2fa85376c6619942a\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_coverage\":30,\"panel\":\"extended\"},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0002\"}],\"target\":{\"app_id\":\"germline-panel\",\"max_turns\":5,\"parameters\":{\"min_coverage\":45,\"panel\":\"extended\"}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "82c3aea988772fb2440754d8304d4dcbbdef2c7bcc92f172b6e66f1b5a39301b",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Change min_coverage to 45.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 9,
+        "cost": 8.22e-05,
+        "prompt_tokens": 649,
+        "total_tokens": 658
+      }
+    }
+  },
+  "version": 2
+}

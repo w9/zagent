@@ -19,10 +19,14 @@ PLAN6 captures token-only model SSE/snapshots and separately reads resolved disp
 evidence. Goldens contain tokens; assertions verify actual execution arguments and displayed
 fixture values without writing those values into model requests or golden transcripts.
 
+PLAN7 adds versioned drafts, human edit/stale-confirm/idempotent-confirm actions, session metadata
+checks, and receipt-to-view assertions. Four simulated users have hidden parameter targets,
+three independent recorded conversations per application, and separately pinned model routes.
+
 ## Commands
 
 ```bash
-make evals                    # 3,000 guard samples, 100 detector cases, 25 HTTP standard + 190 chaos.
+make evals                    # 3,000 guard, 100 detector, 30 HTTP standard, 240 chaos, 12 simulator trials.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -38,6 +42,10 @@ uv run zagent evals --filter 'SCOPE-*' --no-chaos --mutation disable_scope_guard
 uv run zagent evals --filter 'PRIVACY-*' --no-chaos
 uv run zagent evals --filter 'DETECT-*' --no-chaos
 uv run zagent evals --filter 'SCOPE-*' --mode record --record-missing --no-chaos
+uv run zagent evals --filter 'DRAFT-*' --no-chaos
+uv run zagent evals --filter DRAFT-CONFIRM --chaos
+uv run zagent evals --filter 'SLOT-*' --no-chaos
+ZAGENT_SIMULATOR_MODEL=deepseek/deepseek-v4.1-flash uv run zagent evals --filter 'SLOT-*' --mode record --record-missing --no-chaos
 ```
 
 `make evals EVAL_ARGS='--filter REQ-STREAM-02 --trials 2'` passes options to the CLI.
@@ -47,7 +55,7 @@ trial and ten chaos trials per case, raised to the registered minimum for measur
 Each HTTP standard reference executes twice; those duplicate
 determinism checks are reported as HTTP executions, not inflated trial counts. `--chaos` selects
 only interrupted trials; `--no-chaos` selects only standard trials. Every newly registered case
-automatically participates in chaos mode unless it is a guard-only or detector-only case.
+automatically participates in chaos mode unless it is a guard-only, detector-only, or simulated-user case.
 
 The report is [docs/evals/index.html](../docs/evals/index.html), with structured data in
 [docs/evals/results.json](../docs/evals/results.json). Both are generated and ignored by Git;
@@ -90,7 +98,7 @@ uses `agent: llm:<route>`. `ZAGENT_CASSETTE_DIR` can select a separate cassette 
 Provider keys come from an owner-only file outside the repository, as described in the root
 [README](../README.md#live-openrouter-access). No key is needed to replay the checked-in cases.
 
-The clock is frozen at `2026-01-15T12:00:00Z`, with seed 41872 and no simulator. Handles are
+The clinical clock is frozen at `2026-01-15T12:00:00Z`, with cohort seed 41872. Handles are
 session-local deterministic names, expire after 24 hours of the fixture clock, and never expose
 rows in model context. The HTTP renderer resolves their data separately.
 
@@ -106,8 +114,11 @@ excluded from hashes and is never sent to the provider.
 The corpus is the executable scope definition: 50 clearly off-topic, 100 clearly in-scope,
 50 contextual continuations, 50 near-boundary in-scope, 30 near-boundary off-topic, and 20
 wrapper requests. Each example has an explicit `none` or closed-code label. Context includes
-clarifying questions, query references, and pending draft parameters. Draft examples exercise
-classification only; they do not claim the PLAN7 editing/submission workflow exists.
+clarifying questions, query references, and pending draft parameters. Guard-only draft examples
+exercise classification; DRAFT-* and SLOT-* exercise the actual editing/confirmation workflow.
+PLAN7 allows ordinary analysis requests as draft preparation. Explicit attempts to bypass the
+human Confirm control remain `requires_human_authority`; two boundary texts were clarified to
+request that bypass explicitly, without changing their labels.
 
 The guard and main agent share `SCOPE_POLICY` and record its SHA-256 in provenance. The guard
 makes one forced tool-choice call, with temperature 0, a 256-token cap, and optional reasoning
@@ -123,10 +134,11 @@ bucket results, and every case with mixed outcomes appear in the terminal and HT
 Code mismatches remain failed exact-label trials without conflating them with binary recall;
 provider/parse errors count against the relevant behavior gate.
 
-After tokenization the retained measurement has 1,000/1,000 refusals and 1,925/2,000 accepted
-in-scope samples. Its 75 failed trials remain: 74 over-refusals and one original provider
-connection failure, with seven mixed-outcome cases. Scope precision is 93.1% [91.4%, 94.5%],
-recall 100% [99.6%, 100%], and acceptance 96.2% [95.3%, 97.0%]. An earlier 120-token configuration
+After the PLAN7 policy update, the measurement has 993/1,000 refusals and 1,930/2,000 accepted
+in-scope samples. Its 77 failed trials remain: 54 over-refusals, seven inappropriate allowances,
+and 16 recorded provider errors, with eleven mixed-outcome cases. Scope precision is 94.8%
+[93.3%, 96.0%], recall 99.3% [98.6%, 99.7%], and acceptance 96.5% [95.6%, 97.2%].
+Changed request hashes were recorded once; existing errors were not rerolled. An earlier 120-token configuration
 truncated responses and failed acceptance; the whole corpus was rerecorded after fixing that
 configuration. Labels were not changed to make the gates pass. This is a development corpus,
 not a held-out generalization claim, and repeated prompts are clustered by case.
@@ -169,8 +181,46 @@ clinical data intentionally contain synthetic identifiers; they are not agent-zo
 
 Tests attempt resolution using runtime capabilities and query clinical/vault tables under
 `zagent_runtime`. Display property tests split tokens arbitrarily and resume at every boundary.
-The event-ingress registry fails if a new event type has no explicit privacy role. PLAN7
-interactions and PLAN8 logs/retrieval have reserved roles but no implemented workflows yet.
+The event-ingress registry fails if a new event type has no explicit privacy role. PLAN7 draft
+edits, pending jobs, and manual/automatic titles use this boundary too. PLAN8 logs/retrieval
+still have reserved roles without implemented workflows.
+
+## Draft And Session Evidence
+
+DRAFT-001 covers a missing matched normal and a chat correction. DRAFT-002 through DRAFT-004
+cover valid readqc, RNA, and germline drafts. DRAFT-CONFIRM uses the public API to edit, ask the
+model to read the saved value without mutation, reject an old confirmation hash with a field
+diff, confirm the current hash, and repeat confirmation
+without creating another job. `session_checks: true` verifies newest-first order, stable names,
+and manual rename persistence without reordering. Backend tests cover the delayed automatic
+title race, non-blocking generation, empty/refused exchanges, missing recordings, and tokenized
+title storage. Representative title outputs are recorded alongside the conversations.
+The readback regression follows a live stale-answer failure: newer persisted state now explicitly
+supersedes historical receipts. This prompt/context clarification is measured behavior, with no
+runtime response filtering or correction retries.
+
+`view_references: true` binds a successful tool receipt to a previously published view. Browser
+tests additionally check keyboard focus, pinned head views, later view pushes, back/forward,
+refresh, cross-session unavailable states, and unchanged sequence/draft/job state on navigation.
+These browser and direct concurrency checks complement the linked HTTP cases; the report's
+trial counts do not pretend they are additional model samples.
+
+SLOT-* hides two target parameters from the agent. The user simulator reveals one correction
+at a time, using tokenized conversation and persisted draft state, for at most five turns. Its
+output crosses the normal user/display ingress before the next turn. The final persisted draft
+must match the target, have no validation issues, and have no submitted job. The simulator is
+pinned separately with `ZAGENT_SIMULATOR_MODEL` (default `deepseek/deepseek-v4.1-flash`), even when
+it uses the same inexpensive model as the agent. Request hashes record the agent prompt/tool
+contract and simulator prompt separately; each trial has its own indexed agent and simulator
+recordings. There is no retry-until-success or live fallback in replay.
+
+The current result is 3/3 for each of readqc, somatic-snv, rna-fusion, and germline-panel, all
+in three turns. Each per-app 95% Wilson interval is [43.9%, 100%]; pooled convergence is 12/12
+[75.8%, 100%]. The earlier contract reached 8/12: missing selection binding and invented
+matched-normal parameters exposed a missing removal operation. Null-to-remove patches and
+explicit paired-specimen selection corrected that contract. Earlier recordings remain under
+their old hashes; new responses belong to changed requests. These are small development
+samples, not held-out evidence or independent new observations on replay.
 
 ## Cases And Goldens
 
@@ -196,6 +246,9 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | SCOPE-* | 300 labeled guard-only examples, ten independent samples each | REQ-SCOPE-01, REQ-SCOPE-02, REQ-SCOPE-03 |
 | PRIVACY-001 | Token-only metadata/specimen conversation with resolved execution/display | REQ-PHI-01, REQ-PHI-02, REQ-PHI-03 |
 | DETECT-* | Literal MRN/name mentions across five sites | REQ-PHI-04 |
+| DRAFT-001 through DRAFT-004 | Generated forms, shared edits, deterministic validation, no submission | REQ-JOB-02, REQ-VALID-01, stream/view recovery |
+| DRAFT-CONFIRM | Form edit, stale rejection, exact-hash confirmation, idempotency, session metadata | REQ-JOB-01, REQ-JOB-03, REQ-SESSION-01/02, REQ-VIEW-03 |
+| SLOT-* | Four hidden-goal simulated users, three independent samples per app | REQ-SLOT-01 |
 
 Stream and view requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: view validation is checked across the entire
 corpus, including cases that legitimately push no views. Requirement rows may share trials;
@@ -209,7 +262,8 @@ script; other names load `scripts/<name>.yaml`. Case and script structure is val
 execution; event payloads are validated at emission so malformed views become failed turns.
 
 Goldens contain normalized events **and the projected messages, views, steps, and final
-conversation-turn state**, so a reducer bug is visible even when event bytes remain correct. IDs,
+conversation-turn state**, plus nonempty draft/job projections, so a reducer bug is visible even
+when event bytes remain correct. IDs,
 sequence positions, timestamps, and
 durations are excluded; adjacent text deltas for the same message are joined so timer scheduling
 does not churn fixtures. Both uninterrupted executions must agree; a leaked changing value is a
@@ -257,7 +311,8 @@ and is not a universal semantic judge: alternate formats and paraphrases can esc
 checks. `REQ-PRESENT-01` links REAL-001, REAL-002, and ALLOW-001, with three replay trials each
 and an initial Wilson lower-bound gate of 0.40, matching the small regression corpus convention.
 Those repetitions test stable behavior, not independent model quality. The affected conversations
-are rerecorded when the receipt/prompt changes; the 3,000 scope samples are unaffected.
+are rerecorded when the receipt/prompt changes. PLAN7's shared scope-policy change separately
+required refreshing the guard requests.
 
 Legacy goldens intentionally remain scripted: their literal canned text, inline synthetic rows,
 `/fail`, and `/invalid-view` commands are not the real agent's contract. None were rewritten to
@@ -268,7 +323,8 @@ and reconnect assertions with handle-bound output and their own provider recordi
 
 Each seed selects a conversation turn, a disconnect boundary, a disconnected interval, and
 an execution pause duration. For turns with views, the boundary follows a seeded complete view
-push; for other turns it uses text progress. The client closes the HTTP response, waits, then reconnects with
+push before the terminal turn event; later human confirmation views are not model interruption
+targets. For other turns it uses text progress. The client closes the HTTP response, waits, then reconnects with
 `Last-Event-ID`. It verifies contiguous IDs, all terminal events, the public snapshot, the golden,
 and the uninterrupted reference. The report records the selected plan and actual sequence at
 disconnect, allowing a single seed to reproduce failures.
@@ -281,9 +337,9 @@ a resume event, then require named diffs and a failed REQ-STREAM-02 gate.
 
 Replay omits scripted presentation delays and uses 8 ms coalescing. Chaos trials reuse the
 HTTP service for each case but create fresh sessions and retain distinct seeds and interruptions.
-The original 125-trial PLAN4 suite was verified in under a minute. PLAN5 expands this to
-3,315 trials, including 190 HTTP interruptions, 100 detector cases, and 3,000 sampled
-classifications. Provenance records timing,
+The original 125-trial PLAN4 suite was verified in under a minute. PLAN7 has 3,382 trials,
+including 240 HTTP interruptions, 100 detector cases, 3,000 sampled classifications, and twelve
+simulated-user trials. Provenance records timing,
 clock, commit, dirty worktree, implementation, seed, and either script digest or model, normalized
 prompt hash, and tool-schema hash. No production-latency claim is made.
 

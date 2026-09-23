@@ -91,6 +91,27 @@ def scope_metrics(report: Report) -> dict | None:
     }
 
 
+def slot_rows(report: Report) -> list[dict]:
+    results = [result for result in report.results if result.slot_app]
+    rows = []
+    for app in sorted({result.slot_app for result in results}):
+        trials = [result for result in results if result.slot_app == app]
+        successes = sum(result.passed for result in trials)
+        lower, upper = wilson_interval(successes, len(trials))
+        rows.append(
+            {
+                "app": app,
+                "successes": successes,
+                "trials": len(trials),
+                "lower": lower,
+                "upper": upper,
+                "mean_turns": sum(result.slot_turns for result in trials) / len(trials),
+                "simulator_model": trials[0].provenance.simulator_model,
+            }
+        )
+    return rows
+
+
 def requirement_rows(report: Report) -> list[dict]:
     selected = {case.id for case in report.cases}
     rows = []
@@ -200,6 +221,14 @@ def terminal_report(report: Report, baseline: Report | None = None) -> str:
         f"in {report.duration_seconds:.2f}s."
     )
     scope = scope_metrics(report)
+    slots = slot_rows(report)
+    if slots:
+        lines.append("\nSimulated-user convergence by application (95% Wilson CI)")
+        for row in slots:
+            lines.append(
+                f"  {row['app']}: {row['successes']}/{row['trials']} "
+                f"[{percentage(row['lower'])}, {percentage(row['upper'])}]"
+            )
     if report.privacy_scan is not None:
         scan = report.privacy_scan
         requests = sum(result.privacy_requests for result in report.results)
@@ -298,6 +327,7 @@ def write_report(report: Report, output: Path, baseline: Report | None = None) -
         gate=report_passes(report),
         success_share=100 * passed / len(report.results) if report.results else 0,
         scope=scope_metrics(report),
+        slots=slot_rows(report),
         privacy_requests=captured_requests,
         privacy_hits=privacy_hits,
         privacy_upper=privacy_upper,

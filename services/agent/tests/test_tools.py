@@ -4,6 +4,7 @@ import pytest
 from hypothesis import given, strategies
 from jsonschema import Draft202012Validator
 from zagent.cohort import FROZEN_NOW, ClinicalStore
+from zagent.drafts import DraftContent, content_hash, default_parameters
 from zagent.tools import (
     COLUMNS,
     INPUTS,
@@ -23,7 +24,26 @@ from zagent.tools import (
 def test_no_tool_response_schema_permits_row_data(name, rows, field):
     validator = Draft202012Validator(RESPONSE_SCHEMAS[name])
     valid = (
-        {"ok": True, "view_id": "view-0001", "kind": "table", "title": "Specimens"}
+        {
+            "ok": True,
+            "draft": {
+                "draft_id": "draft-0001",
+                "view_id": "view-0001",
+                "version": 1,
+                "app_id": "readqc",
+                "specimen_handle": "query-0001",
+                "parameters": default_parameters("readqc"),
+                "validation": [],
+                "status": "editing",
+                "job_id": None,
+                "content_hash": content_hash(DraftContent(app_id="readqc")),
+            },
+            "view_id": "view-0001",
+            "kind": "draft_form",
+            "title": "Read quality control",
+        }
+        if name == "update_draft"
+        else {"ok": True, "view_id": "view-0001", "kind": "table", "title": "Specimens"}
         if name == "push_view"
         else {"handle": "query-0001", "count": 1, "schema": COLUMNS["patients"]}
     )

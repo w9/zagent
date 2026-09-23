@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I've published the specimen list and created the draft.\\n\\n**Specimens for [PT_1] \\u2014 last 7 days** (table, 3 records) is now in the working surface.\\n\\n**Draft: Somatic variant calling** (`draft-0001`, version 1, status: editing) \\u2014 form published.\\n- Defaults in place: `min_vaf=0.05`, `min_depth=20`\\n- Validation issue: **missing_selection** \\u2014 no specimen query is bound yet. The draft takes a single specimen, and there are 3 candidates in the last week, so I need you to tell me which one to use.\\n\\nOnce you pick the specimen and give me your preferred parameters, I'll patch the same draft. Note that only the human Confirm control can submit the reviewed content hash \\u2014 a chat \\\"yes\\\" isn't authorization.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"somatic-snv\",\"content_hash\":\"f34ae3ed3f85f4f9239423be1c96f4e2e13e54b57b6e0c48b54e75ce391f7b75\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_depth\":20,\"min_vaf\":0.05},\"specimen_handle\":null,\"status\":\"editing\",\"validation\":[{\"code\":\"missing_selection\",\"field\":\"specimen_handle\",\"message\":\"Select a specimen query before confirmation.\"}],\"version\":1,\"view_id\":\"view-0002\"}],\"target\":{\"app_id\":\"somatic-snv\",\"max_turns\":5,\"parameters\":{\"min_depth\":35,\"min_vaf\":0.03}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "5adbf132a6928ccbf1e58fffd42864c14e84e62570968baa211ac91ae607b4b7",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Set min_vaf=0.03.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 10,
+        "cost": 0.0001174,
+        "prompt_tokens": 557,
+        "total_tokens": 567
+      }
+    }
+  },
+  "version": 2
+}

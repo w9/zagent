@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I've prepared the draft and published two views.\n\n**Draft: Somatic variant calling** (`draft-0001`, version 1, status: editing)\n- Specimen: the tumor specimen from the \"Tumor specimens for [PT_1] (last 7 days)\" view\n- Default parameters currently in the draft: `min_vaf=0.05`, `min_depth=20`\n- Validation issue: **missing matched normal** \u2014 the draft has no matched normal specimen attached.\n\n**Views published**\n- \"Tumor specimens for [PT_1] (last 7 days)\" \u2014 1 tumor specimen\n- \"Normal specimens for [PT_1] (last 7 days)\" \u2014 1 normal specimen\n\nTwo things to resolve:\n1. Your preferred parameters (e.g. `min_vaf`, `min_depth`) \u2014 I'll patch them into the same draft.\n2. Whether to attach the normal specimen from the last-7-days view as the matched normal, which should clear the validation issue.\n\nNote the draft is only a pending form; nothing is submitted until you use the human Confirm control on the exact reviewed content hash.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "fd0d7633770f055b5a0b6cffd1165c1bcec6881cdfe1166eb12a1dec36d7bce4",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Somatic SNV draft for tumor specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 0.000108,
+        "prompt_tokens": 328,
+        "total_tokens": 336
+      }
+    }
+  },
+  "version": 2
+}

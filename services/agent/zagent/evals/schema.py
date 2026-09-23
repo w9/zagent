@@ -78,6 +78,12 @@ class ScopeCorpus(StrictModel):
     buckets: dict[ScopeBucket, list[ScopeExample]]
 
 
+class SimulatorGoal(StrictModel):
+    app_id: str
+    parameters: dict[str, Any]
+    max_turns: int = Field(default=5, ge=2, le=8)
+
+
 class Case(StrictModel):
     id: str = Field(pattern=r"^[A-Z][A-Z0-9-]+$")
     requirement: str
@@ -87,6 +93,11 @@ class Case(StrictModel):
     bucket: ScopeBucket | None = None
     context: list[ContextMessage] = Field(default_factory=list)
     draft: dict[str, Any] | None = None
+    simulator: SimulatorGoal | None = None
+    workflow_actions: list[
+        Literal["edit", "read_draft", "stale_confirm", "confirm", "confirm_again"]
+    ] = Field(default_factory=list)
+    session_checks: bool = False
 
 
 class CaseGroup(StrictModel):
@@ -193,6 +204,8 @@ class Provenance(StrictModel):
     scope_hash: str | None = None
     independent_sample: int | None = None
     mutation: Literal["disable_scope_guard"] | None = None
+    simulator_model: str | None = None
+    simulator_prompt_hash: str | None = None
 
 
 class ScopeOutcome(StrictModel):
@@ -220,6 +233,8 @@ class TrialResult(StrictModel):
     requirement_outcomes: dict[str, bool] = Field(default_factory=dict)
     privacy_requests: int = Field(default=0, ge=0)
     tripwire_hits: int = Field(default=0, ge=0)
+    slot_app: str | None = None
+    slot_turns: int = 0
 
     @model_validator(mode="after")
     def outcome_matches_failures(self) -> "TrialResult":

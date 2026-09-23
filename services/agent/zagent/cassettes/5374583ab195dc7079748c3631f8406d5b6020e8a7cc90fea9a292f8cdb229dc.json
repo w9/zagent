@@ -1,0 +1,42 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare a germline-panel draft on normal specimens from [PT_1] received in the last week. Use the extended panel and minimum coverage 45.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their normal specimens from the last week.Draft prepared \u2014 the **Germline panel** form is published in the working surface.\n\n- **Specimen:** the one normal specimen from [PT_1] received in the last 7 days\n- **Panel:** extended\n- **Minimum coverage:** 45\n- **Status:** editing, version 1, no validation issues\n\nNothing has been submitted. Review the form and use the human **Confirm** control to submit this exact content hash if it looks right. Let me know if you'd like any parameters changed.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "5374583ab195dc7079748c3631f8406d5b6020e8a7cc90fea9a292f8cdb229dc",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Draft germline panel for recent normal specimen",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 10,
+      "cost": 7.44e-05,
+      "prompt_tokens": 208,
+      "total_tokens": 218
+    }
+  },
+  "version": 1
+}

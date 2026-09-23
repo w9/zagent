@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "Draft prepared \u2014 nothing has been submitted.\n\n- **Specimen scope:** one normal specimen for [PT_1] received in the last 7 days; it's shown in the published table view \"Normal specimens for [PT_1] (last 7 days)\".\n- **Draft:** germline-panel, status *editing*, version 1, with defaults `panel=predisposition`, `min_coverage=30`. Validation returned no issues.\n- The draft form is published in the working surface.\n\nSend your preferred parameters (e.g. `panel=extended`, `min_coverage=\u2026`) and I'll patch this same draft. Only the human Confirm control can submit the exact reviewed content hash.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "fba6fbcb8fdd36f558c79f0fd84349696bb003837855bbda430c53601fc69f1d",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "# Germline panel draft for normal specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 9,
+        "cost": 3.696e-05,
+        "prompt_tokens": 237,
+        "total_tokens": 246
+      }
+    }
+  },
+  "version": 2
+}

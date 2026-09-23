@@ -1,0 +1,51 @@
+[
+  {
+    "id": "readqc",
+    "title": "Read quality control",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["min_coverage", "check_identity"],
+      "properties": {
+        "min_coverage": {"type": "number", "title": "Minimum coverage", "minimum": 1, "maximum": 500, "default": 30},
+        "check_identity": {"type": "boolean", "title": "Check specimen identity", "default": true}
+      }
+    },
+    "layout": ["min_coverage", "check_identity"]
+  },
+  {
+    "id": "somatic-snv",
+    "title": "Somatic variant calling",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["min_vaf", "min_depth"],
+      "properties": {
+        "min_vaf": {"type": "number", "title": "Minimum VAF", "minimum": 0.001, "maximum": 1, "default": 0.05},
+        "min_depth": {"type": "integer", "title": "Minimum depth", "minimum": 1, "maximum": 1000, "default": 20}
+      }
+    },
+    "layout": ["min_vaf", "min_depth"]
+  },
+  {
+    "id": "rna-fusion",
+    "title": "RNA fusion analysis",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["min_support", "filter_artifacts"],
+      "properties": {
+        "min_support": {"type": "integer", "title": "Minimum supporting reads", "minimum": 1, "maximum": 1000, "default": 5},
+        "filter_artifacts": {"type": "boolean", "title": "Filter artifacts", "default": true}
+      }
+    },
+    "layout": ["min_support", "filter_artifacts"]
+  },
+  {
+    "id": "germline-panel",
+    "title": "Germline panel",
+    "required_prep": "PCR-free WGS",
+    "parameters": {
+      "type": "object", "additionalProperties": false, "required": ["panel", "min_coverage"],
+      "properties": {
+        "panel": {"type": "string", "title": "Panel", "enum": ["predisposition", "extended"], "default": "predisposition"},
+        "min_coverage": {"type": "number", "title": "Minimum coverage", "minimum": 10, "maximum": 500, "default": 30}
+      }
+    },
+    "layout": ["panel", "min_coverage"]
+  }
+]

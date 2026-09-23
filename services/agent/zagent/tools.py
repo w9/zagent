@@ -14,6 +14,8 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
+from zagent.draft_store import DraftConflict, DraftStore
+from zagent.drafts import AppId, DraftState
 from zagent.privacy import PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
@@ -38,6 +40,7 @@ class FindPatients(StrictModel):
 class FindSpecimens(StrictModel):
     patient_handle: Handle | None = None
     received_within: Literal["P1D", "P7D", "P30D"] = "P1D"
+    kind: Literal["tumor", "normal", "RNA"] | None = None
 
 
 class FindLibraries(StrictModel):
@@ -47,6 +50,23 @@ class FindLibraries(StrictModel):
 
 class PushView(StrictModel):
     spec: ViewSpec
+
+
+class UpdateDraft(StrictModel):
+    draft_id: str | None = Field(default=None, pattern=r"^draft-[0-9]{4,}$")
+    app_id: AppId | None = None
+    specimen_handle: Handle | None = None
+    parameters: dict[str, float | int | bool | str | None] = Field(
+        default_factory=dict, max_length=20
+    )
+
+
+class DraftResult(StrictModel):
+    ok: Literal[True] = True
+    draft: DraftState
+    view_id: str
+    kind: Literal["draft_form"] = "draft_form"
+    title: str
 
 
 class Column(StrictModel):
@@ -89,6 +109,7 @@ INPUTS = {
     "find_specimens": FindSpecimens,
     "find_libraries": FindLibraries,
     "push_view": PushView,
+    "update_draft": UpdateDraft,
 }
 DESCRIPTIONS = {
     "find_patients": (
@@ -96,7 +117,8 @@ DESCRIPTIONS = {
     ),
     "find_specimens": (
         "Find specimens for a patient handle, optionally all patients, within P1D, P7D or P30D. "
-        "P1D means the last 24 hours. Returns a handle, count and columns, never rows."
+        "P1D means the last 24 hours. Optional kind selects tumor, normal, or RNA specimens. "
+        "Returns a handle, count and columns, never rows."
     ),
     "find_libraries": "Find libraries for a specimen handle, optionally filtered by QC status.",
     "push_view": (
@@ -110,10 +132,29 @@ DESCRIPTIONS = {
         "each channel has field, type (nominal/ordinal/quantitative/temporal), optional aggregate "
         "(count/sum/mean/min/max). Use only columns from the handle schema."
     ),
+    "update_draft": (
+        "Create or edit a pending job draft, never submit it. New drafts require app_id; "
+        "use specimen_handle from find_specimens. Existing drafts require draft_id; patch only "
+        "the fields the user changes. Set a parameter to null to remove an incorrect parameter. "
+        "specimen_handle is a top-level query handle, not a parameter or individual specimen ID. "
+        "Somatic drafts need one query containing both tumor and normal specimens from the same "
+        "patient: omit kind in find_specimens. There is no matched_normal parameter. "
+        "Publishes a form automatically, returns version/hash and "
+        "deterministic validation. Apps: readqc(min_coverage=30, check_identity=true); "
+        "somatic-snv(min_vaf=0.05, min_depth=20); "
+        "rna-fusion(min_support=5, filter_artifacts=true); "
+        "germline-panel(panel=predisposition|extended, min_coverage=30). "
+        "Missing/invalid fields stay in the draft for clarification. Only the human Confirm "
+        "control can submit. Do not call push_view for the draft form."
+    ),
 }
 RESPONSE_SCHEMAS = {
     name: TypeAdapter(
-        (ViewReceipt | ToolFailure) if name == "push_view" else (QueryResult | ToolFailure)
+        (DraftResult | ToolFailure)
+        if name == "update_draft"
+        else (ViewReceipt | ToolFailure)
+        if name == "push_view"
+        else (QueryResult | ToolFailure)
     ).json_schema()
     for name in INPUTS
 }
@@ -212,6 +253,19 @@ class ClinicalTools:
         try:
             params = INPUTS[name].model_validate(arguments)
             session = await self.clinical.store.get_session(session_id)
+            if name == "update_draft":
+                if conversation_turn_id is None:
+                    return failure("invalid_arguments", "Draft updates require an active turn")
+                from zagent.drafts import CATALOG
+
+                draft = await DraftStore(self.clinical).update(
+                    session_id,
+                    conversation_turn_id=conversation_turn_id,
+                    **params.model_dump(),
+                )
+                return DraftResult(
+                    draft=draft, view_id=draft.view_id, title=CATALOG[draft.app_id].title
+                ).model_dump()
             if name == "push_view":
                 if conversation_turn_id is None:
                     return failure("invalid_view", "Publishing a view requires a conversation turn")
@@ -241,10 +295,12 @@ class ClinicalTools:
                         """SELECT * FROM specimens
                            WHERE ($1::text[] IS NULL OR patient_id = ANY($1))
                            AND received_at >= $2 AND received_at <= $3
+                           AND ($4::text IS NULL OR kind = $4)
                            ORDER BY received_at DESC, id LIMIT 201""",
                         identifiers,
                         now - timedelta(days=days),
                         now,
+                        params.kind,
                     )
                 else:
                     entity = "libraries"
@@ -263,8 +319,15 @@ class ClinicalTools:
             return failure("invalid_handle", str(error))
         except ConversationTurnConflict as error:
             return failure("invalid_view", str(error))
+        except (DraftConflict, ValueError):
+            return failure(
+                "invalid_arguments",
+                "The draft cannot be updated; use an editable draft and catalog values",
+            )
 
     async def push_view(self, session_id: UUID, conversation_turn_id: UUID, spec: ViewSpec) -> dict:
+        if spec.kind not in {"table", "chart"}:
+            return failure("invalid_view", "Workflow views are published by their owning operation")
         handle = spec.props.get("handle")
         if not handle or "rows" in spec.props:
             return failure("invalid_view", "Views must bind data by handle, never inline rows")

@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from importlib.resources import files
+from typing import Literal
 from uuid import UUID, uuid4
 
 import asyncpg
@@ -28,6 +29,8 @@ EVENT_INGRESS = {
     "refused": "assistant_output",
     "conversation_turn_failed": "assistant_output",
     "privacy_alert": "assistant_output",
+    "job_submitted": "draft_updated",
+    "session_updated": "view_interaction",
 }
 LIFECYCLE_EVENTS = frozenset(
     {
@@ -52,6 +55,8 @@ class Session(BaseModel):
     seq: int
     created_at: datetime
     site_id: str = "northgate"
+    title: str = "Session"
+    title_source: Literal["fallback", "automatic", "manual"] = "fallback"
 
 
 class AgentSession(BaseModel):
@@ -127,17 +132,21 @@ class Store:
         return EventDraft(type=event.type, payload=payload)
 
     async def create_session(self, site_id: str = "northgate") -> Session:
+        session_id = uuid4()
         row = await self.pool.fetchrow(
-            """INSERT INTO sessions (id, site_id) VALUES ($1, $2)
-               RETURNING id, last_seq AS seq, created_at, site_id""",
-            uuid4(),
+            """INSERT INTO sessions (id, site_id, title) VALUES ($1, $2, $3)
+               RETURNING id, last_seq AS seq, created_at, site_id, title, title_source""",
+            session_id,
             site_id,
+            f"Session {session_id.hex[:8]}",
         )
+        await self.pool.execute("SELECT pg_notify($1, 'sessions')", NOTIFY_CHANNEL)
         return Session.model_validate(dict(row))
 
     async def get_session(self, session_id: UUID) -> Session:
         row = await self.pool.fetchrow(
-            "SELECT id, last_seq AS seq, created_at, site_id FROM sessions WHERE id = $1",
+            "SELECT id, last_seq AS seq, created_at, site_id, title, title_source "
+            "FROM sessions WHERE id = $1",
             session_id,
         )
         if row is None:
@@ -146,9 +155,50 @@ class Store:
 
     async def list_sessions(self) -> list[Session]:
         rows = await self.pool.fetch(
-            "SELECT id, last_seq AS seq, created_at, site_id FROM sessions ORDER BY created_at, id"
+            """SELECT id, last_seq AS seq, created_at, site_id, title, title_source FROM sessions
+                    ORDER BY created_at DESC, id DESC"""
         )
         return [Session.model_validate(dict(row)) for row in rows]
+
+    async def claim_title(self, session_id: UUID) -> bool:
+        return bool(
+            await self.pool.fetchval(
+                """UPDATE sessions SET title_attempted = true
+                         WHERE id=$1 AND title_source='fallback'
+               AND NOT title_attempted RETURNING id""",
+                session_id,
+            )
+        )
+
+    async def rename_session(
+        self, session_id: UUID, title: str, *, automatic: bool = False
+    ) -> Session:
+        if not title.strip() or len(title) > 120:
+            raise ValueError("Session title must contain 1 to 120 characters")
+        safe = (
+            await self.privacy.tokenize(
+                session_id,
+                Raw(value=title.strip()),
+                path="view_interaction",
+                external=not automatic,
+            )
+        ).value
+        async with self.pool.acquire() as connection, connection.transaction():
+            exists = await connection.fetchval(
+                "SELECT id FROM sessions WHERE id=$1 FOR UPDATE", session_id
+            )
+            if exists is None:
+                raise NotFound("Session not found")
+            await connection.execute(
+                """UPDATE sessions SET title=$2, title_source=$3 WHERE id=$1
+                   AND (NOT $4 OR title_source='fallback')""",
+                session_id,
+                safe,
+                "automatic" if automatic else "manual",
+                automatic,
+            )
+            await connection.execute("SELECT pg_notify($1, 'sessions')", NOTIFY_CHANNEL)
+        return await self.get_session(session_id)
 
     async def begin_conversation_turn(self, session_id: UUID, text: str) -> AgentSession:
         text = (
@@ -198,6 +248,8 @@ class Store:
         session_id: UUID,
         conversation_turn_id: UUID,
         event: EventDraft,
+        *,
+        allow_finished: bool = False,
     ) -> Event:
         event = EventDraft.model_validate(event.model_dump())
         seq = await connection.fetchval(
@@ -211,7 +263,11 @@ class Store:
             conversation_turn_id,
             session_id,
         )
-        if status != "running":
+        if status != "running" and not (
+            allow_finished
+            and status in {"finished", "failed"}
+            and event.type in {"draft_updated", "view_pushed", "job_submitted", "session_updated"}
+        ):
             raise ConversationTurnConflict("Conversation turn is not active")
         row = await connection.fetchrow(
             """INSERT INTO events (session_id, seq, conversation_turn_id, type, payload)

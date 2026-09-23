@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their normal specimens from the last week.\",\"role\":\"assistant\"},{\"content\":\"Draft prepared \\u2014 the **Germline panel** form is now published in the working surface.\\n\\n- **Scope:** 1 normal specimen from [PT_1], received within the last week.\\n- **Defaults applied:** panel = `predisposition`, min_coverage = `30`.\\n- **Status:** editing, version 1, no validation issues.\\n\\nTell me your preferred parameters (e.g. `panel=extended`, `min_coverage=\\u2026`) and I'll patch this same draft. Note that only the human Confirm control can submit it \\u2014 a chat confirmation isn't sufficient.\",\"role\":\"assistant\"},{\"content\":\"panel=extended\",\"role\":\"user\"},{\"content\":\"Updated the **Germline panel** draft (version 2).\\n\\n- **panel:** `extended`\\n- **min_coverage:** `30` (unchanged)\\n- **Scope:** 1 normal specimen from [PT_1], last week\\n- **Status:** editing, no validation issues\\n\\nThe form in the working surface reflects this. Any further parameter changes, or is this ready for you to review and Confirm?\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"germline-panel\",\"content_hash\":\"a1459518e2fa2ae594ea4d27daa06be76487b5f6a19c4da2fa85376c6619942a\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_coverage\":30,\"panel\":\"extended\"},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"germline-panel\",\"max_turns\":5,\"parameters\":{\"min_coverage\":45,\"panel\":\"extended\"}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "a500eefb55d96c0cfda30eec0d20ecc8f2855bbfc5ce665dc9397896c896aea8",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "min_coverage=45",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 5,
+        "cost": 0.00017784,
+        "prompt_tokens": 604,
+        "total_tokens": 609
+      }
+    }
+  },
+  "version": 2
+}

@@ -285,6 +285,38 @@ async def test_record_missing_preserves_existing_errors_and_calls_only_for_missi
     assert len(calls) == 2
 
 
+async def test_concurrent_record_missing_samples_do_not_race_with_atomic_writes(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    gateway = LlmGateway(
+        tmp_path,
+        mode="record",
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": "Recorded sample",
+                            }
+                        }
+                    ]
+                },
+            )
+        ),
+    )
+    gateway.record_missing = True
+    await asyncio.gather(*(gateway.complete(request(sample=index)) for index in range(24)))
+    gateway.mode = "replay"
+    results = await asyncio.gather(
+        *(gateway.complete(request(sample=index)) for index in range(24))
+    )
+    assert all(result.message.content == "Recorded sample" for result in results)
+
+
 async def test_corrupt_cassette_and_unknown_route_fail_closed(tmp_path):
     gateway = LlmGateway(tmp_path)
     with pytest.raises(GatewayError, match="Unknown model route"):

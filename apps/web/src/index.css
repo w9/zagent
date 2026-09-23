@@ -249,6 +249,38 @@ a:focus-visible {
   background: #f6f8f6;
   min-height: 0;
 }
+.session-entry { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.session-entry .session-link { flex: 1; min-width: 0; }
+.session-entry .session-link > span { min-width: 0; overflow-wrap: anywhere; }
+.session-rename-trigger { flex-shrink: 0; width: 28px; height: 28px; }
+.session-rename-trigger svg { width: 13px; height: 13px; }
+.session-rename { display: flex; gap: 2px; width: 100%; padding: 5px 0; }
+.session-rename input { min-width: 0; width: 100%; border: 1px solid var(--border); border-radius: 4px; padding: 6px; font-size: 12px; }
+.view-reference-item { min-width: 0; margin-top: -14px; }
+.view-reference { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: #315b48; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.view-reference span { overflow-wrap: anywhere; min-width: 0; }
+.view-reference svg { flex-shrink: 0; }
+.view-reference:focus-visible { outline: 2px solid var(--primary); outline-offset: 5px; }
+.draft-view, .job-view { min-width: 0; font-size: 12px; }
+.draft-fields { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; }
+.draft-fields label { display: flex; flex-direction: column; gap: 7px; min-width: 0; color: #52665b; font-size: 12px; }
+.draft-fields select, .draft-fields input:not([type='checkbox']) { width: 100%; min-width: 0; height: 36px; border: 1px solid #cbd8cf; border-radius: 4px; padding: 6px 9px; color: #2e4739; background: #fff; font: inherit; }
+.draft-fields label.draft-checkbox { flex-direction: row; align-items: center; min-height: 36px; }
+.draft-checkbox input { accent-color: #527c62; width: 16px; height: 16px; }
+.draft-validation { list-style: none; padding: 16px 0; margin: 18px 0 0; border-block: 1px solid #e8d9ae; color: #7b6022; }
+.draft-validation li { display: flex; align-items: start; gap: 8px; padding: 5px 0; overflow-wrap: anywhere; }
+.draft-validation svg { flex-shrink: 0; margin-top: 2px; }
+.draft-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.draft-actions button { white-space: normal; height: auto; min-height: 36px; }
+.draft-conflict { border-block: 1px solid #dfb6a3; background: #fbf1eb; padding: 14px 10px; margin: 0 0 20px; color: #854d33; overflow-wrap: anywhere; }
+.draft-conflict h4 { display: flex; align-items: center; gap: 7px; font-size: 13px; margin: 0 0 8px; }
+.draft-conflict p { margin: 6px 0 12px; }
+.draft-submitted, .job-status { display: flex; align-items: center; gap: 8px; color: #476b55; margin: 16px 0; }
+.job-status { color: #80652d; }
+.job-details, .job-parameter { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+.job-details dt { color: #6b7b71; }.job-details dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+.job-parameter { grid-column: 1 / -1; }
+@media (max-width: 760px) { .draft-fields { grid-template-columns: minmax(0, 1fr); gap: 14px; } }
 .sidebar-content {
   display: flex;
   flex-direction: column;

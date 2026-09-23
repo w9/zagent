@@ -14,12 +14,13 @@ and libraries, follow up on previous results, and display tables or charts. Tool
 handles and counts, not rows. A context-aware scope guard emits structured refusals for unrelated
 or unavailable work. A privacy service tokenizes registered identifiers before they enter the
 agent log, and X-ray shows the displayed conversation beside actual token-only model requests.
-Analysis jobs remain roadmap capabilities.
+Chat and generated forms edit the same versioned analysis draft. Only a human confirmation of
+the displayed content hash creates a pending job; execution remains PLAN8.
 
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN6](docs/PLAN6.md).**
+**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN7](docs/PLAN7.md).**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
@@ -32,6 +33,10 @@ the report also shows refusal precision, per-reason results, and disagreeing cas
 refer to that title in the working surface without receiving row data. The prompt separates
 result presentation from explanations and clarification; narration quality is measured in evals,
 not enforced by filtering prose or substituting canned responses.
+
+Host-owned references in chat open the exact published table, chart, draft, or job view, including
+on mobile. New sessions appear first with stable fallback names. One optional background model
+call names the first completed in-scope exchange; a manual rename always takes precedence.
 
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
@@ -126,9 +131,22 @@ contains `[PT_1]`, while Display and tool-execution arguments show the resolved 
 Select a highlighted value to highlight its token across both panes. Follow up with
 `Show the specimens received in the last day for that patient.`
 
+For a recorded draft workflow, start a fresh session with
+`Prepare somatic calling on specimens received in the last day for NGC-0041875.`, then
+`min VAF 0.03`. The form updates in place, but missing-normal validation disables confirmation.
+For a valid draft, start another session with
+`Prepare a readqc draft for specimens received in the last day for NGC-0041872 with minimum coverage 40. Do not submit it.`
+Edit and save a field in the form, then press **Confirm submission** to create one pending job.
+A concurrent edit produces a field-level diff and requires review before confirmation can succeed.
+The next conversation turn receives authoritative persisted state, including saved form edits.
+There is no dispatcher, execution, or live job monitor yet.
+
 Previous/next controls and the history menu let you revisit earlier views. Navigating back pins
 that view while new ones arrive; selecting the latest resumes following. Refresh keeps the
 chosen view through the session URL. On smaller screens, tabs switch between chat and the surface.
+Titled chat references pin their exact target even when it was the latest view when clicked.
+Opening a reference never reruns a query, edits a draft, or confirms a job. Use the pencil beside
+a session to rename it; naming and new activity do not change its creation-time ordering.
 
 Step markers start collapsed and expand to show tool names, arguments, results, and validation
 errors. Reopening `/` restores the last session in that browser. The old `/fail` and
@@ -154,8 +172,9 @@ Compose environment values, cassettes, browser code, or git. Set `ZAGENT_OPENROU
 to use a different external file. Rotate any key shared in chat or logs. Live mode permits
 unrecorded questions through the scope guard and incurs provider charges. The default is the
 inexpensive Flash model: one nonreasoning guard call with a 256-token cap, then up to eight
-main-agent iterations at 1,200 output tokens each for allowed requests. A guard refusal stops
-before any main-agent or clinical tool call.
+main-agent iterations at 1,200 output tokens each for allowed requests. One optional title call
+uses at most 80 output tokens and a 15-second timeout after the first meaningful exchange.
+A guard refusal stops before any main-agent, title, or clinical tool call.
 
 Only the gateway joins the internet-facing network. The web, BFF, privacy service, agent, MCP
 service, and database stay on an internal network. Fixed TCP forwards on the gateway publish
@@ -165,7 +184,7 @@ private capability files in Docker volumes and exits; it does not contain the pr
 ```bash
 make test          # Python tests, client/component tests, build, lint.
 make evals         # The shared evidence harness; writes docs/evals/index.html.
-make chaos         # 190 interruptions across HTTP cases; checks normal references too.
+make chaos         # 240 interruptions across HTTP cases; checks normal references too.
 make report        # Render stored results; evaluates first if none exist.
 make install       # Local Python and JavaScript dependencies.
 cd apps/web && npx playwright install chromium && cd ../..
@@ -176,6 +195,8 @@ uv run zagent evals --filter 'SCOPE-*' --no-chaos
 uv run zagent evals --filter 'SCOPE-*' --no-chaos --mutation disable_scope_guard
 uv run zagent evals --filter 'PRIVACY-*' --no-chaos
 uv run zagent evals --filter 'DETECT-*' --no-chaos
+uv run zagent evals --filter 'DRAFT-*' --no-chaos
+uv run zagent evals --filter 'SLOT-*' --no-chaos
 make down          # Stops containers; keeps the Postgres volume.
 ```
 
@@ -219,6 +240,10 @@ The API now returns `conversation_turn_id`, snapshots expose `conversation_turn`
 events are `conversation_turn_started`, `conversation_turn_finished`, and
 `conversation_turn_failed` in event schema v2. Historical v1 events are translated on read.
 PLAN3 adds `views` and `steps` to the snapshot projection without a database migration.
+PLAN7 adds `drafts`, immutable draft revisions, and pending `jobs`, plus stable session titles.
+Draft updates and confirmation append events even after their originating conversation turn has
+finished. Draft/job tables are inaccessible to the runtime database role. Human edit and confirm
+endpoints are display-only; this is a local capability boundary, not production authentication.
 View payloads have their own `{kind, version, props}` schema. Legacy scripted tables support
 inline snapshots; real tools accept only handle-backed tables and charts. Handles are bound to
 one session and site, expire after 24 hours, and contain at most 200 rows. Expired handles return
@@ -226,7 +251,8 @@ HTTP 410 rather than an empty table. Relative windows are `P1D`, `P7D`, and `P30
 meaning the last 24 hours.
 
 The harness uses a separate test database and an ephemeral HTTP server, so `make evals` needs
-Postgres but not the web app. Its clock is frozen and the simulator is paused.
+Postgres but not the web app. Clinical time is frozen; simulated-user conversations replay
+individually recorded agent and user calls with separately pinned model routes.
 Commands, golden review, seed reproduction, and statistics are in [evals/README.md](evals/README.md).
 
 ### Privacy Boundary
@@ -256,26 +282,27 @@ Historical Git commits still contain synthetic pre-PLAN6 recordings; history was
 
 ## Things to try
 
-The table below is the planned full demo. Queries, tables, charts, follow-ups, and stream
-durability, structured scope refusals, tokenization, and X-ray are available. Job workflows remain
-deferred.
+Queries, tables, charts, follow-ups, stream durability, structured scope refusals, tokenization,
+X-ray, draft editing, and human confirmation are available. Execution and live monitoring remain
+deferred to PLAN8.
 Each workflow exercises a specific row in the guarantee table.
 
 | Ask it | What happens | Guarantee |
 |---|---|---|
 | `What came in yesterday for patient NGC-0041872?` | A sample table appears on the right. The identifier is tokenized before the model sees it. | Privacy boundary |
 | `What's 2+2?` | Refused as out of scope, as a structured event rather than improvised prose. | Scope control |
-| `Run somatic calling on those samples` | A pre-filled submission form appears. The agent flags that a matched normal is missing. | Slot filling, validation |
+| `Prepare somatic calling on specimens received in the last day for NGC-0041875.` | A pre-filled form appears with missing-normal validation. | Slot filling, validation |
 | `min VAF 0.03` | The form updates live. Chat and form are editing one object. | Draft state |
-| *(press Confirm)* | The job is submitted, and a live monitor replaces the form. | Confirmation invariant |
-| `Show me the running jobs from today` | A grid of live job cards, each tailing its own log. | Dynamic views |
+| *(press Confirm on a valid draft)* | One pending job is created and a static job card appears. | Confirmation invariant |
+| `Show me the running jobs from today` | Planned for PLAN8: live job cards and logs. | Dynamic views |
 | *(refresh mid-stream)* | The stream picks up exactly where it left off. | Stream durability |
 | *(toggle X-ray)* | The model's view of the conversation, side by side with yours. | Privacy boundary |
 
-The somatic job on the seeded cohort fails on genotype concordance, because the fixtures
+The planned somatic job on the seeded cohort fails on genotype concordance, because the fixtures
 contain a deliberate tumor/normal swap. Watching the agent diagnose that from the job log and
 a retrieved SOP, then draft a corrected re-run, is the most interesting ninety seconds in the
-demo.
+demo. Patient NGC-0041872 has the swap fixture and a matched normal; NGC-0041875 is the
+missing-normal fixture. Neither job executes in PLAN7.
 
 ---
 
@@ -310,10 +337,11 @@ low library coverage, and a missing matched normal. Evals use a frozen clock and
 
 ## Running the evidence suite
 
-The suite covers sixteen requirements with 419 cases. Nineteen HTTP cases cover streams, views,
-tools, RLS, real conversations, refusals, and contextual continuation. The 300 labeled guard
+The suite covers 24 requirements with 428 cases. Twenty-four HTTP cases cover streams, views,
+tools, RLS, real conversations, refusals, drafts, confirmation, and session metadata. The 300 labeled guard
 cases span obvious requests, short continuations, near-boundary questions, and scope wrappers.
-Another 100 detector cases cover literal MRNs and names across all five sites. Full runs scan
+Another 100 detector cases cover literal MRNs and names across all five sites. Four hidden-goal
+simulated-user cases contribute three independent recordings per application. Full runs scan
 active events, gateway request records, cassettes, and goldens for known identifiers.
 The same evaluator serves pytest and `zagent evals`.
 
@@ -330,30 +358,45 @@ $ make evals
 Requirement          Tier       Gate          Trials     95% Wilson CI
 REQ-STREAM-01        invariant  PASS          11/11      [74.1%, 100.0%]
 REQ-VIEW-01          invariant  PASS          15/15      [79.6%, 100.0%]
-REQ-VIEW-02          invariant  PASS          60/60      [94.0%, 100.0%]
-REQ-STREAM-02        invariant  PASS          70/70      [94.8%, 100.0%]
+REQ-VIEW-02          invariant  PASS          110/110    [96.6%, 100.0%]
+REQ-STREAM-02        invariant  PASS          120/120    [96.9%, 100.0%]
 REQ-TOOL-01          invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-ISO-01           invariant  PASS          6/6        [61.0%, 100.0%]
 REQ-GROUND-01        measured   PASS          6/6        [61.0%, 100.0%]
 REQ-CTX-01           measured   PASS          3/3        [43.9%, 100.0%]
 REQ-PRESENT-01       measured   PASS          9/9        [70.1%, 100.0%]
-REQ-SCOPE-01         measured   PASS          1000/1000  [99.6%, 100.0%]
-REQ-SCOPE-02         measured   PASS          1925/2000  [95.3%, 97.0%]
+REQ-SCOPE-01         measured   PASS          993/1000   [98.6%, 99.7%]
+REQ-SCOPE-02         measured   PASS          1930/2000  [95.6%, 97.2%]
 REQ-SCOPE-03         invariant  PASS          3009/3009  [99.9%, 100.0%]
 REQ-PHI-01           invariant  PASS          10/10      [72.2%, 100.0%]
 REQ-PHI-02           invariant  PASS          10/10      [72.2%, 100.0%]
 REQ-PHI-03           invariant  PASS          1/1        [20.7%, 100.0%]
 REQ-PHI-04           measured   PASS          100/100    [96.3%, 100.0%]
+REQ-JOB-02           invariant  PASS          4/4        [51.0%, 100.0%]
+REQ-VALID-01         invariant  PASS          4/4        [51.0%, 100.0%]
+REQ-SLOT-01          measured   PASS          12/12      [75.8%, 100.0%]
+REQ-JOB-01           invariant  PASS          1/1        [20.7%, 100.0%]
+REQ-JOB-03           invariant  PASS          1/1        [20.7%, 100.0%]
+REQ-SESSION-01       invariant  PASS          1/1        [20.7%, 100.0%]
+REQ-SESSION-02       invariant  PASS          1/1        [20.7%, 100.0%]
+REQ-VIEW-03          invariant  PASS          5/5        [56.6%, 100.0%]
 
-16 requirements, 3315 trials, 75 failed trials; 234 HTTP case executions.
+24 requirements, 3382 trials, 77 failed trials; 306 HTTP case executions.
 Report: docs/evals/index.html
 ```
 
-The scope gates pass without hiding failures: 74 in-scope samples were over-refused and one
-provider connection failed. Refusal precision is 93.1% [91.4%, 94.5%]; recall is 100%
-[99.6%, 100%]. In-scope acceptance is 96.2% [95.3%, 97.0%]. Seven cases have differing trial
+The scope gates pass without hiding failures: 54 in-scope samples were over-refused, seven
+unsupported requests were allowed, and 16 recorded provider errors remain. Refusal precision is
+94.8% [93.3%, 96.0%]; recall is 99.3% [98.6%, 99.7%]. In-scope acceptance is 96.5%
+[95.6%, 97.2%]. Eleven cases have differing trial
 outcomes and are listed for review. These figures describe this curated corpus, not a held-out
 estimate of production accuracy or prompt-injection resistance.
+
+Each application reached its hidden parameter target in 3/3 simulated conversations, with a
+95% Wilson interval of [43.9%, 100%] per application. All took three turns and submitted no jobs.
+This small, curated development sample is not a production convergence estimate. Earlier
+recordings exposed missing selection binding and unremovable invented parameters; those recordings
+were retained, the contract was corrected, and changed requests were recorded under new hashes.
 
 Each golden reference executes twice to expose hidden nondeterminism without inflating trial
 counts. `--filter`, `--seed`, and `--trials` reproduce a single case; `--update-golden` explicitly
@@ -379,6 +422,8 @@ that cannot detect a broken build is not evidence.
 Replay makes the suite free and deterministic, with no provider key in CI. HTTP-case repetitions
 measure runtime regressions. Scope cases instead replay ten distinct provider draws recorded at
 production guard settings; rerunning replay does not create additional statistical evidence.
+The simulated-user route is independently pinned by `ZAGENT_SIMULATOR_MODEL`; its recorded
+samples also do not become fresh draws when replayed.
 Grounding currently checks explicit numeric patient/specimen/library counts against preceding
 tool results. Broader factual checks and the model matrix remain PLAN10. Execution-layer chaos
 pauses and resumes both agent implementations; process-crash recovery belongs to PLAN8.
@@ -419,7 +464,7 @@ green, so correctness is visible at every step rather than at the end.
 | [PLAN4](docs/PLAN4.md) | The real agent: LLM gateway, record/replay, tool loop | Complete |
 | [PLAN5](docs/PLAN5.md) | Scope control: the guard and its labeled case set | Complete |
 | [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | Complete |
-| [PLAN7](docs/PLAN7.md) | Job drafts and version-bound confirmation | ☐ |
+| [PLAN7](docs/PLAN7.md) | Drafts, confirmation, view references, session titles | Complete |
 | [PLAN8](docs/PLAN8.md) | Execution: dispatcher, OTel job logs, live views | ☐ |
 | [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | ☐ |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | ☐ |

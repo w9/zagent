@@ -1,0 +1,40 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"I'll look up the patient and their specimens from the past week.\",\"role\":\"assistant\"},{\"content\":\"I found [PT_1] and 3 specimens received in the past 7 days, published as the table **Specimens for [PT_1] \\u2014 past 7 days** in the working surface.\\n\\nI've prepared a **Somatic variant calling** draft (draft-0001, version 1) using that specimen query, which includes all specimen kinds so tumor and normal are both selected. Current defaults:\\n\\n- min_vaf = 0.05\\n- min_depth = 20\\n\\nValidation is clean, and the draft is in **editing** status \\u2014 nothing has been submitted. Let me know your preferred parameters and I'll patch the same draft. Note that only the human Confirm control can submit the exact reviewed content hash.\",\"role\":\"assistant\"},{\"content\":\"Set min_vaf to 0.03.\",\"role\":\"user\"},{\"content\":\"Updated draft-0001 to version 2 with min_vaf = 0.03 (min_depth remains 20). Validation is clean and the draft is still in **editing** status \\u2014 the form in the working surface reflects the new values. Nothing is submitted; only the human Confirm control can submit the reviewed content hash.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"somatic-snv\",\"content_hash\":\"84aa3b80a66e5af16d49b5d082ca8ccefd14b3acba7d78672da615f9633fc275\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_depth\":20,\"min_vaf\":0.03},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"somatic-snv\",\"max_turns\":5,\"parameters\":{\"min_depth\":35,\"min_vaf\":0.03}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "6f4bb7caaf89f445c9bd4b45ccfcfd05597b9314f6beab376d435cd5de08aad6",
+  "samples": {
+    "2": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Set min_depth to 35.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 0.0001941,
+        "prompt_tokens": 615,
+        "total_tokens": 623
+      }
+    }
+  },
+  "version": 2
+}

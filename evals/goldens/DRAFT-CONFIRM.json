@@ -1,0 +1,490 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "drafts": {
+    "draft-0001": {
+      "app_id": "readqc",
+      "content_hash": "8607867d198550fffb9e1852e95251691db6c5f693fd3a8c5e2aa873ae2d3977",
+      "draft_id": "draft-0001",
+      "job_id": "job-0001",
+      "parameters": {
+        "check_identity": true,
+        "min_coverage": 45
+      },
+      "specimen_handle": "query-0002",
+      "status": "submitted",
+      "validation": [],
+      "version": 2,
+      "view_id": "view-0001"
+    }
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Prepare a readqc draft for specimens received in the last day for [PT_1] with minimum coverage 40. Do not submit it."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "name": "find_patients"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "find_patients",
+        "result": {
+          "count": 1,
+          "handle": "query-0001",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Patient",
+              "type": "string"
+            },
+            {
+              "key": "mrn",
+              "label": "MRN",
+              "type": "string"
+            },
+            {
+              "key": "display_name",
+              "label": "Name",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_patients"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+        "name": "find_specimens"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "find_specimens",
+        "result": {
+          "count": 3,
+          "handle": "query-0002",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Specimen",
+              "type": "string"
+            },
+            {
+              "key": "kind",
+              "label": "Type",
+              "type": "string"
+            },
+            {
+              "key": "purity",
+              "label": "Purity",
+              "type": "number"
+            },
+            {
+              "key": "received_at",
+              "label": "Received",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_specimens"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_coverage\": 40}}",
+        "name": "update_draft"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "draft": {
+          "content_hash": "8e4706d6805f69aa69eba7d77aacdfc00bc4a8b349104d294c50b4ba17ca5177",
+          "parameters": {
+            "check_identity": true,
+            "min_coverage": 40
+          },
+          "specimen_handle": "query-0002",
+          "status": "editing",
+          "validation": [],
+          "version": 1
+        }
+      },
+      "type": "draft_updated"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "draft_form",
+          "props": {
+            "title": "Read quality control"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "update_draft",
+        "result": {
+          "draft": {
+            "content_hash": "8e4706d6805f69aa69eba7d77aacdfc00bc4a8b349104d294c50b4ba17ca5177",
+            "parameters": {
+              "check_identity": true,
+              "min_coverage": 40
+            },
+            "specimen_handle": "query-0002",
+            "status": "editing",
+            "validation": [],
+            "version": 1
+          },
+          "kind": "draft_form",
+          "ok": true,
+          "title": "Read quality control"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "update_draft"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 4"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "Draft prepared \u2014 not submitted.\n\n- **Draft:** Read quality control (readqc), `draft-0001`, version 1, status **editing**\n- **Scope:** the 3 specimens received in the last 24 hours for [PT_1]\n- **Parameters:** min_coverage = 40, check_identity = true\n- **Validation:** no issues reported\n\nThe draft form is published in the working surface as **Read quality control**. Review it there; only the human Confirm control can submit this exact content hash. Let me know if you'd like any parameter changed."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    },
+    {
+      "payload": {
+        "draft": {
+          "content_hash": "8607867d198550fffb9e1852e95251691db6c5f693fd3a8c5e2aa873ae2d3977",
+          "parameters": {
+            "check_identity": true,
+            "min_coverage": 45
+          },
+          "specimen_handle": "query-0002",
+          "status": "editing",
+          "validation": [],
+          "version": 2
+        }
+      },
+      "type": "draft_updated"
+    },
+    {
+      "payload": {
+        "text": "What minimum coverage is currently saved in my readqc draft? Do not edit or submit it."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "The saved value in your readqc draft (`draft-0001`) is **min_coverage = 45** (version 2, status editing, check_identity = true). No edits or submission were made."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    },
+    {
+      "payload": {
+        "draft": {
+          "content_hash": "8607867d198550fffb9e1852e95251691db6c5f693fd3a8c5e2aa873ae2d3977",
+          "parameters": {
+            "check_identity": true,
+            "min_coverage": 45
+          },
+          "specimen_handle": "query-0002",
+          "status": "submitted",
+          "validation": [],
+          "version": 2
+        }
+      },
+      "type": "draft_updated"
+    },
+    {
+      "payload": {
+        "job": {
+          "confirmed_version": 2,
+          "content_hash": "8607867d198550fffb9e1852e95251691db6c5f693fd3a8c5e2aa873ae2d3977",
+          "parameters": {
+            "check_identity": true,
+            "min_coverage": 45
+          },
+          "specimen_handle": "query-0002",
+          "status": "pending"
+        }
+      },
+      "type": "job_submitted"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "job_card",
+          "props": {
+            "title": "Read quality control"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    }
+  ],
+  "jobs": {
+    "job-0001": {
+      "app_id": "readqc",
+      "confirmed_version": 2,
+      "content_hash": "8607867d198550fffb9e1852e95251691db6c5f693fd3a8c5e2aa873ae2d3977",
+      "draft_id": "draft-0001",
+      "job_id": "job-0001",
+      "parameters": {
+        "check_identity": true,
+        "min_coverage": 45
+      },
+      "specimen_handle": "query-0002",
+      "status": "pending"
+    }
+  },
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Prepare a readqc draft for specimens received in the last day for [PT_1] with minimum coverage 40. Do not submit it."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Draft prepared \u2014 not submitted.\n\n- **Draft:** Read quality control (readqc), `draft-0001`, version 1, status **editing**\n- **Scope:** the 3 specimens received in the last 24 hours for [PT_1]\n- **Parameters:** min_coverage = 40, check_identity = true\n- **Validation:** no issues reported\n\nThe draft form is published in the working surface as **Read quality control**. Review it there; only the human Confirm control can submit this exact content hash. Let me know if you'd like any parameter changed."
+    },
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "What minimum coverage is currently saved in my readqc draft? Do not edit or submit it."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "The saved value in your readqc draft (`draft-0001`) is **min_coverage = 45** (version 2, status editing, check_identity = true). No edits or submission were made."
+    }
+  ],
+  "steps": [
+    {
+      "detail": "find_patients",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "name": "find_patients",
+          "result": {
+            "count": 1,
+            "handle": "query-0001",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Patient",
+                "type": "string"
+              },
+              {
+                "key": "mrn",
+                "label": "MRN",
+                "type": "string"
+              },
+              {
+                "key": "display_name",
+                "label": "Name",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "find_specimens",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+          "name": "find_specimens",
+          "result": {
+            "count": 3,
+            "handle": "query-0002",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "kind",
+                "label": "Type",
+                "type": "string"
+              },
+              {
+                "key": "purity",
+                "label": "Purity",
+                "type": "number"
+              },
+              {
+                "key": "received_at",
+                "label": "Received",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "update_draft",
+      "status": "complete",
+      "title": "Agent step 3",
+      "tools": [
+        {
+          "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_coverage\": 40}}",
+          "name": "update_draft",
+          "result": {
+            "draft": {
+              "app_id": "readqc",
+              "content_hash": "8e4706d6805f69aa69eba7d77aacdfc00bc4a8b349104d294c50b4ba17ca5177",
+              "draft_id": "draft-0001",
+              "job_id": null,
+              "parameters": {
+                "check_identity": true,
+                "min_coverage": 40
+              },
+              "specimen_handle": "query-0002",
+              "status": "editing",
+              "validation": [],
+              "version": 1,
+              "view_id": "view-0001"
+            },
+            "kind": "draft_form",
+            "ok": true,
+            "title": "Read quality control",
+            "view_id": "view-0001"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 4"
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 1"
+    }
+  ],
+  "views": [
+    {
+      "kind": "draft_form",
+      "props": {
+        "draft_id": "draft-0001",
+        "title": "Read quality control"
+      },
+      "version": 1
+    },
+    {
+      "kind": "job_card",
+      "props": {
+        "job_id": "job-0001",
+        "title": "Read quality control"
+      },
+      "version": 1
+    }
+  ]
+}

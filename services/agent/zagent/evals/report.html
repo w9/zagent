@@ -104,6 +104,15 @@
       </details>
       {% endfor %}
     </section>
+    {% if slots %}
+    <section aria-labelledby="slot-filling"><h2 id="slot-filling">Simulated-user convergence</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Application</th><th>Target reached</th><th>95% Wilson CI</th><th>Mean turns</th><th>Simulator model</th></tr></thead>
+        <tbody>{% for row in slots %}<tr><td>{{ row.app }}</td><td>{{ row.successes }}/{{ row.trials }}</td><td>{{ row.lower|percentage }} &ndash; {{ row.upper|percentage }}</td><td>{{ '%.1f'|format(row.mean_turns) }}</td><td>{{ row.simulator_model }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="meta">The simulated user reveals a hidden target across bounded turns. The final persisted draft is scored; no job is submitted. Agent and simulator routes are pinned separately. Small, curated samples do not establish production convergence, and replay does not add fresh model samples.</p>
+    </section>
+    {% endif %}
     {% if report.privacy_scan %}
     <section aria-labelledby="privacy"><h2 id="privacy">Privacy boundary</h2>
       <div class="table-scroll"><table>
@@ -181,6 +190,7 @@
             <dt>Session</dt><dd><code>{{ result.session_id or 'Unavailable' }}</code></dd>
             <dt>Model / Prompt hash</dt><dd>{{ result.provenance.model or 'Not applicable' }} / {{ result.provenance.prompt_hash or 'Not applicable' }}</dd>
             <dt>Tool schema / KB</dt><dd>{{ result.provenance.tool_schema_hash or 'Not applicable' }} / {{ result.provenance.kb_version or 'Not applicable' }}</dd>
+            {% if result.slot_app %}<dt>Target application / Turns</dt><dd>{{ result.slot_app }} / {{ result.slot_turns }}</dd><dt>Simulator model / Prompt</dt><dd>{{ result.provenance.simulator_model }} / {{ result.provenance.simulator_prompt_hash }}</dd>{% endif %}
             {% if result.provenance.scope_hash %}<dt>Scope policy SHA-256</dt><dd><code>{{ result.provenance.scope_hash }}</code></dd>{% endif %}
             {% if result.scope %}<dt>Scope label / Outcome</dt><dd>{{ result.scope.expected or 'allow' }} / {{ 'error' if result.scope.error else result.scope.actual or 'allow' }}</dd><dt>Independent sample</dt><dd>{{ result.provenance.independent_sample }}</dd><dt>Gateway / Provider calls</dt><dd>{{ result.scope.gateway_calls }} / {{ result.scope.provider_calls }}</dd>{% endif %}
             {% if result.provenance.mutation %}<dt>Negative control</dt><dd>{{ result.provenance.mutation }}</dd>{% endif %}

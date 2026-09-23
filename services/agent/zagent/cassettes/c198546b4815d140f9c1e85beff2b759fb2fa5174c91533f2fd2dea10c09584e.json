@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare rna-fusion for RNA specimens from [PT_1] in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their RNA specimens from the past week.Draft prepared \u2014 the **RNA fusion analysis** form is now published in the working surface.\n\n- **Scope:** 1 RNA specimen from [PT_1] received in the past week\n- **Draft ID:** draft-0001 (version 1)\n- **Current parameters:** `min_support=5`, `filter_artifacts=true`\n- **Validation:** no issues\n- **Status:** editing \u2014 not submitted\n\nTell me your preferred parameters and I'll patch this same draft. Note that only the human Confirm control can submit the reviewed content hash.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "c198546b4815d140f9c1e85beff2b759fb2fa5174c91533f2fd2dea10c09584e",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "\nPrepare rna-fusion for RNA specimens from [PT_1] in the past week. I want to see the draft first, then I'll give you my preferred parameters.\n\nPrepare RNA fusion draft for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 45,
+        "cost": 4.956e-05,
+        "prompt_tokens": 219,
+        "total_tokens": 264
+      }
+    }
+  },
+  "version": 2
+}

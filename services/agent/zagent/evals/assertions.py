@@ -53,6 +53,14 @@ def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
         normalized["refusals"] = [
             item.model_dump(exclude={"id", "seq"}) for item in evidence.projection.refusals
         ]
+    if evidence.projection.drafts:
+        normalized["drafts"] = {
+            key: value.model_dump() for key, value in evidence.projection.drafts.items()
+        }
+    if evidence.projection.jobs:
+        normalized["jobs"] = {
+            key: value.model_dump() for key, value in evidence.projection.jobs.items()
+        }
     return normalized
 
 
@@ -168,7 +176,10 @@ def tools_only_handles(evidence: Evidence, expected: Any, root: Path, case_id: s
         schema = RESPONSE_SCHEMAS.get(event.payload["name"])
         if schema is None or not Draft202012Validator(schema).is_valid(event.payload["result"]):
             return f"{case_id}: REQ-TOOL-01 invalid tool result at seq {event.seq}"
-    if any("handle" not in view.spec.props for view in evidence.projection.views):
+    if any(
+        view.spec.kind in {"table", "chart"} and "handle" not in view.spec.props
+        for view in evidence.projection.views
+    ):
         return f"{case_id}: REQ-TOOL-01 a view used inline data"
     return None
 
@@ -238,6 +249,54 @@ def tools_called(evidence: Evidence, expected: Any, root: Path, case_id: str) ->
     called = {event.payload["name"] for event in evidence.events if event.type == "tool_call"}
     missing = set(expected) - called
     return f"{case_id}: expected tools were not exercised: {sorted(missing)}" if missing else None
+
+
+@assertion("view_references")
+def view_references(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    if not expected:
+        return None
+    published = {}
+    receipts = 0
+    for event in evidence.events:
+        if event.type == "view_pushed":
+            published[event.payload["view_id"]] = event.payload["spec"]
+        elif event.type == "tool_result":
+            result = event.payload["result"]
+            if result.get("ok") and "view_id" in result:
+                receipts += 1
+                target = published.get(result["view_id"])
+                if target is None or target["kind"] != result["kind"]:
+                    return f"{case_id}: REQ-VIEW-03 receipt has no matching prior published view"
+    return None if receipts else f"{case_id}: REQ-VIEW-03 no view receipt was exercised"
+
+
+@assertion("draft")
+def draft_matches(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    drafts = list(evidence.projection.drafts.values())
+    if not drafts:
+        return f"{case_id}: no draft was produced"
+    draft = drafts[-1]
+    if draft.app_id != expected["app"]:
+        return f"{case_id}: draft application does not match the target"
+    if any(
+        draft.parameters.get(key) != value
+        for key, value in expected.get("params_match", {}).items()
+    ):
+        return f"{case_id}: draft parameters do not match the target"
+    if "validation" in expected and sorted(issue.code for issue in draft.validation) != sorted(
+        expected["validation"]
+    ):
+        return f"{case_id}: draft validation differs from the expected issues"
+    return None
+
+
+@assertion("submitted")
+def submitted(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    return (
+        None
+        if bool(evidence.projection.jobs) == expected
+        else f"{case_id}: unexpected job submission state"
+    )
 
 
 @assertion("egress")
@@ -437,6 +496,9 @@ def validate_expectations(case: Case, root: Path) -> None:
     if case.agent.startswith("detector:"):
         if "detected" not in case.expect or not isinstance(case.expect["detected"], list):
             raise ValueError(f"{case.id}: detector cases require explicit identifier labels")
+    elif case.simulator is not None:
+        if "draft" not in case.expect or case.expect.get("submitted") is not False:
+            raise ValueError(f"{case.id}: simulated users require a draft target and no submission")
     elif case.agent.startswith("guard:"):
         if "refusal" not in case.expect:
             raise ValueError(f"{case.id}: a guard case requires a refusal label")
@@ -459,6 +521,14 @@ def validate_expectations(case: Case, root: Path) -> None:
             raise ValueError(f"{case.id}: tool_calls requires named resolved-argument expectations")
     if "display" in case.expect and not isinstance(case.expect["display"], dict):
         raise ValueError(f"{case.id}: display must be an object")
+    if "draft" in case.expect:
+        from zagent.drafts import CATALOG
+
+        expectation = case.expect["draft"]
+        if not isinstance(expectation, dict) or expectation.get("app") not in CATALOG:
+            raise ValueError(f"{case.id}: draft requires a catalog app")
+    if "submitted" in case.expect and type(case.expect["submitted"]) is not bool:
+        raise ValueError(f"{case.id}: submitted must be boolean")
     if "tools_called" in case.expect and (
         not isinstance(case.expect["tools_called"], list)
         or any(tool not in RESPONSE_SCHEMAS for tool in case.expect["tools_called"])
@@ -492,6 +562,7 @@ def validate_expectations(case: Case, root: Path) -> None:
         "numeric_claims_grounded",
         "references_resolve",
         "view_narration",
+        "view_references",
     ):
         if name in case.expect and type(case.expect[name]) is not bool:
             raise ValueError(f"{case.id}: {name} must be a boolean")

@@ -306,15 +306,20 @@ class LlmGateway:
                 await checked
         audit["model_request"] = body
         recorded = None
-        if self.mode == "record" and self.record_missing and path.exists():
-            recorded = json.loads(await asyncio.to_thread(path.read_text))
-            existing = (
-                recorded.get("response")
-                if request.sample is None
-                else recorded.get("samples", {}).get(str(request.sample))
-            )
-            if existing is None:
-                recorded = None
+        if self.mode == "record" and self.record_missing:
+            async with self.record_locks.setdefault(digest, asyncio.Lock()):
+                try:
+                    recorded = json.loads(await asyncio.to_thread(path.read_text))
+                except FileNotFoundError:
+                    recorded = None
+                if recorded is not None:
+                    existing = (
+                        recorded.get("response")
+                        if request.sample is None
+                        else recorded.get("samples", {}).get(str(request.sample))
+                    )
+                    if existing is None:
+                        recorded = None
         if self.mode == "replay" or recorded is not None:
             try:
                 cassette = recorded or json.loads(await asyncio.to_thread(path.read_text))
@@ -393,15 +398,18 @@ class LlmGateway:
             "response": response,
         }
         async with self.record_locks.setdefault(digest, asyncio.Lock()):
-            if path.exists():
+            try:
                 previous = json.loads(await asyncio.to_thread(path.read_text))
+            except FileNotFoundError:
+                previous = None
+            if previous is not None:
                 if previous.get("request") != normalized:
                     raise GatewayError(f"Invalid cassette: {digest}; cannot merge samples")
                 cassette = previous
             if request.sample is None:
                 cassette["response"] = response
             else:
-                if not path.exists():
+                if previous is None:
                     cassette.pop("response")
                 cassette["version"] = 2
                 cassette.setdefault("samples", {})[str(request.sample)] = response

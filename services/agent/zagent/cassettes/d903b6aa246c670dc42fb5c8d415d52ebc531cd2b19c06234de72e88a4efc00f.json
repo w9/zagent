@@ -1,0 +1,44 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "I'll look up the patient and their specimens from the past week.I found [PT_1] and 3 specimens received in the past 7 days, published as the table **Specimens for [PT_1] \u2014 past 7 days** in the working surface.\n\nI've prepared a **Somatic variant calling** draft (draft-0001, version 1) using that specimen query, which includes all specimen kinds so tumor and normal are both selected. Current defaults:\n\n- min_vaf = 0.05\n- min_depth = 20\n\nValidation is clean, and the draft is in **editing** status \u2014 nothing has been submitted. Let me know your preferred parameters and I'll patch the same draft. Note that only the human Confirm control can submit the exact reviewed content hash.",
+        "role": "assistant"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "d903b6aa246c670dc42fb5c8d415d52ebc531cd2b19c06234de72e88a4efc00f",
+  "samples": {
+    "2": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Somatic SNV draft for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 4.29e-05,
+        "prompt_tokens": 254,
+        "total_tokens": 262
+      }
+    }
+  },
+  "version": 2
+}

@@ -4,13 +4,14 @@ import {
   ChevronRight,
   Table2,
 } from 'lucide-react'
-import { Component } from 'react'
+import { Component, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { request } from '../lib/api'
 import { selectionAt, viewPosition } from '../lib/views'
 import type { PushedView, TableData } from '../lib/views'
 import { IconButton } from './ui/icon-button'
 import { ViewRenderer } from './view-renderer'
+import type { DraftState, JobState } from '../lib/events'
 
 class ViewBoundary extends Component<
   { children: ReactNode },
@@ -39,15 +40,23 @@ export function WorkingSurface({
   views,
   selectedId,
   onSelect,
+  drafts,
+  jobs,
 }: {
   sessionId?: string
   views: PushedView[]
   selectedId?: string
   onSelect: (id: string | undefined) => void
+  drafts?: Record<string, DraftState>
+  jobs?: Record<string, JobState>
 }) {
   const position = viewPosition(views, selectedId)
   const active = views[position]
   const atHead = position === views.length - 1
+  const content = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (selectedId) content.current?.focus({ preventScroll: true })
+  }, [selectedId, active?.id])
 
   function select(index: number) {
     onSelect(selectionAt(views, index))
@@ -113,7 +122,7 @@ export function WorkingSurface({
             </IconButton>
             <IconButton
               label="Latest view"
-              disabled={atHead}
+              disabled={atHead && selectedId === undefined}
               onClick={() => select(views.length - 1)}
             >
               <ArrowRightToLine />
@@ -121,6 +130,8 @@ export function WorkingSurface({
           </nav>
           <div
             className="surface-content"
+            ref={content}
+            tabIndex={-1}
             key={active.id}
             data-testid="active-view"
             data-view-id={active.id}
@@ -128,6 +139,8 @@ export function WorkingSurface({
             <ViewBoundary>
               <ViewRenderer
                 spec={active.spec}
+                sessionId={sessionId} drafts={drafts} jobs={jobs}
+                onConfirmed={() => onSelect(undefined)}
                 resolveHandle={sessionId ? (handle, signal) => request<TableData>(
                   `/sessions/${sessionId}/handles/${encodeURIComponent(handle)}`, { signal },
                 ) : undefined}
@@ -135,6 +148,11 @@ export function WorkingSurface({
             </ViewBoundary>
           </div>
         </>
+      ) : selectedId ? (
+        <div className="surface-content surface-error" ref={content} tabIndex={-1} role="alert">
+          <h3>View unavailable</h3><p>This view is not available in this session.</p>
+          <IconButton label="Latest view" onClick={() => onSelect(undefined)}><ArrowRightToLine /></IconButton>
+        </div>
       ) : (
         <div className="empty-surface">
           <Table2 size={28} strokeWidth={1.3} aria-hidden="true" />

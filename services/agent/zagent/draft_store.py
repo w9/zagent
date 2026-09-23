@@ -332,6 +332,10 @@ class DraftStore:
                 content.model_dump(),
             )
             snapshot = await JobStore(self.clinical).freeze_input(session_id, job_id, content)
+            snapshot["trace_context"] = await connection.fetchval(
+                "SELECT trace_context FROM conversation_turns WHERE id=$1",
+                row["conversation_turn_id"],
+            )
             await connection.execute(
                 "INSERT INTO privacy.job_inputs VALUES ($1, $2, $3, $4)",
                 session_id,

@@ -1,0 +1,1 @@
+ALTER TABLE conversation_turns ADD COLUMN trace_context jsonb NOT NULL DEFAULT '{}';

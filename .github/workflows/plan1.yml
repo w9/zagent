@@ -84,9 +84,46 @@ jobs:
       - if: always()
         run: make down
 
+  cluster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ZAGENT_AGENT: llm
+      ZAGENT_WEB_URL: http://127.0.0.1:5185
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bring up isolated k3d and Tilt
+        run: make cluster
+      - name: Verify network policies and database roles
+        run: make cluster-test
+      - name: Replay unchanged evidence and deployed workflows
+        run: make cluster-evals
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - run: npm --prefix apps/web ci
+      - run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - run: make browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cluster-evidence
+          path: |
+            .cluster/policy-results.json
+            .cluster/reports
+            apps/web/test-results
+          include-hidden-files: true
+          retention-days: 14
+      - if: failure()
+        run: docker logs --tail=100 zagent-plan9-tilt
+      - if: always()
+        run: make cluster-stop
+
   publish:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [spine, browser]
+    needs: [spine, browser, cluster]
     runs-on: ubuntu-latest
     permissions:
       pages: write

@@ -422,13 +422,19 @@ class ToolCaller(Protocol):
 
 class McpToolClient:
     def __init__(
-        self, *, url: str | None = None, server: FastMCP | None = None, jobs_url: str | None = None
+        self,
+        *,
+        url: str | None = None,
+        server: FastMCP | None = None,
+        jobs_url: str | None = None,
+        kb_url: str | None = None,
     ):
         if (url is None) == (server is None):
             raise ValueError("Provide either an MCP URL or an in-process MCP server")
         self.url = url
         self.server = server
         self.jobs_url = jobs_url
+        self.kb_url = kb_url
 
     @asynccontextmanager
     async def connection(self) -> AsyncIterator[ClientSession]:
@@ -449,6 +455,10 @@ class McpToolClient:
     async def call(
         self, session: AgentSession, name: str, arguments: dict, *, operation_id: str | None = None
     ) -> dict:
+        if name in {"search_knowledge", "read_document"} and self.kb_url:
+            return await McpToolClient(url=self.kb_url).call(
+                session, name, arguments, operation_id=operation_id
+            )
         if name in JOB_INPUTS and self.jobs_url:
             return await McpToolClient(url=self.jobs_url).call(
                 session, name, arguments, operation_id=operation_id

@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from opentelemetry import trace
+from opentelemetry.propagate import extract
 from pydantic import ValidationError
 
 from zagent.agent import Agent, Emit
@@ -102,6 +104,31 @@ class Runtime:
             )
 
     async def _run_turn(self, session: AgentSession) -> None:
+        from zagent.telemetry import carrier
+
+        saved = await self.store.pool.fetchval(
+            "SELECT trace_context FROM conversation_turns WHERE id=$1", session.conversation_turn_id
+        )
+        with trace.get_tracer("zagent.runtime").start_as_current_span(
+            "conversation.turn",
+            context=extract(saved) if saved else None,
+            attributes={
+                "session.id": str(session.id),
+                "conversation_turn.id": str(session.conversation_turn_id),
+            },
+            record_exception=False,
+            set_status_on_exception=False,
+        ):
+            context = carrier()
+            if context:
+                await self.store.pool.execute(
+                    "UPDATE conversation_turns SET trace_context=$2 WHERE id=$1",
+                    session.conversation_turn_id,
+                    context,
+                )
+            await self._execute_turn(session)
+
+    async def _execute_turn(self, session: AgentSession) -> None:
         async def append(event: EventDraft) -> None:
             await self.store.append(session.id, session.conversation_turn_id, event)
 

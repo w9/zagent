@@ -4,16 +4,14 @@ import os
 from uuid import UUID, uuid4
 
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.propagate import extract
 
 from zagent.cohort import ClinicalStore, configured_clock
 from zagent.executors import DockerExecutor, Executor
 from zagent.job_worker import JobRecord
 from zagent.jobs import JobLease, JobStore, LeaseLost
 from zagent.store import DEFAULT_DATABASE_URL, Store
+from zagent.telemetry import configure_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +26,19 @@ class Dispatcher:
         self.tracer = trace.get_tracer("zagent.dispatcher")
 
     async def execute(self, lease: JobLease) -> None:
+        with self.tracer.start_as_current_span(
+            "job.execute",
+            context=extract(lease.snapshot.get("trace_context", {})),
+            attributes={"session.id": str(lease.session_id), "job.id": lease.job_id},
+            record_exception=False,
+            set_status_on_exception=False,
+        ):
+            await self._execute(lease)
+
+    async def _execute(self, lease: JobLease) -> None:
+        if lease.terminal_exit_code is not None:
+            await self._complete(lease, lease.terminal_exit_code)
+            return
         await self.executor.ensure(lease)
         cursor = 0
         while True:
@@ -36,7 +47,11 @@ class Dispatcher:
             for line in lines:
                 if len(line) > 16384:
                     raise ValueError("Execution log line exceeds the ingestion limit")
-                record = await self.jobs.ingest(lease, JobRecord.model_validate_json(line))
+                record = await self.jobs.ingest(
+                    lease,
+                    JobRecord.model_validate_json(line),
+                    platform_retries=bool(getattr(self.executor, "platform_retries", False)),
+                )
                 cursor += 1
                 if record is not None:
                     with self.tracer.start_as_current_span(
@@ -44,9 +59,19 @@ class Dispatcher:
                     ) as span:
                         span.add_event(record.body)
             if exit_code is not None:
-                await self.jobs.finish(lease, exit_code)
+                await self._complete(lease, exit_code)
                 return
             await asyncio.sleep(self.interval)
+
+    async def _complete(self, lease: JobLease, exit_code: int) -> None:
+        if hasattr(self.executor, "finalize"):
+            await self.jobs.record_terminal(lease, exit_code)
+            await self.executor.finalize(lease)
+        await self.jobs.finish(
+            lease,
+            exit_code,
+            platform_retries=bool(getattr(self.executor, "platform_retries", False)),
+        )
 
     async def once(self, session_id: UUID | None = None) -> bool:
         lease = await self.jobs.claim(self.owner, session_id=session_id)
@@ -86,10 +111,19 @@ class Dispatcher:
 
 async def serve() -> None:
     store = await Store.open(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
-    executor = DockerExecutor(
-        project=os.environ.get("COMPOSE_PROJECT_NAME", "zagent-plan4"),
-        step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
-    )
+    if os.environ.get("ZAGENT_EXECUTOR") == "kubernetes":
+        from zagent.kubernetes_executor import KubernetesExecutor
+
+        executor = KubernetesExecutor(
+            namespace=os.environ.get("ZAGENT_JOB_NAMESPACE", "zagent-clinical"),
+            image=os.environ.get("ZAGENT_JOB_IMAGE", "zagent-backend:plan9"),
+            step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
+        )
+    else:
+        executor = DockerExecutor(
+            project=os.environ.get("COMPOSE_PROJECT_NAME", "zagent-plan4"),
+            step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
+        )
     try:
         await Dispatcher(JobStore(ClinicalStore(store, configured_clock())), executor).run()
     finally:
@@ -99,14 +133,13 @@ async def serve() -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    provider = TracerProvider(resource=Resource.create({"service.name": "zagent-dispatcher"}))
-    if os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"):
-        provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
-    trace.set_tracer_provider(provider)
+    configure_telemetry("zagent-dispatcher")
     try:
         asyncio.run(serve())
     finally:
-        provider.shutdown()
+        shutdown = getattr(trace.get_tracer_provider(), "shutdown", None)
+        if shutdown:
+            shutdown()
 
 
 if __name__ == "__main__":

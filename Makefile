@@ -18,6 +18,22 @@ export DATABASE_URL ZAGENT_TEST_DATABASE_URL ZAGENT_WEB_PORT ZAGENT_AGENT_PORT Z
 export ZAGENT_AGENT ZAGENT_LLM_MODE ZAGENT_MODEL
 
 .PHONY: up live down db install test evals chaos report lint browser transcript logs
+.PHONY: cluster cluster-stop cluster-live cluster-test cluster-evals
+
+cluster:
+	bash deploy/cluster/cluster.sh up
+
+cluster-live:
+	ZAGENT_CLUSTER_MODE=live bash deploy/cluster/cluster.sh up
+
+cluster-stop:
+	bash deploy/cluster/cluster.sh stop
+
+cluster-test:
+	bash deploy/cluster/cluster.sh test
+
+cluster-evals:
+	bash deploy/cluster/cluster.sh evals $(EVAL_ARGS)
 
 up:
 	$(COMPOSE) up --build -d --wait
@@ -58,8 +74,8 @@ report: docs/evals/results.json
 	uv run --frozen zagent report $(EVAL_ARGS)
 
 lint:
-	uv run --frozen ruff check services/agent evals conftest.py
-	uv run --frozen ruff format --check services/agent evals conftest.py
+	uv run --frozen ruff check services/agent evals deploy/cluster conftest.py
+	uv run --frozen ruff format --check services/agent evals deploy/cluster conftest.py
 	npm --prefix apps/web run lint
 
 browser:

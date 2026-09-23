@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime
 from uuid import UUID
 
@@ -25,6 +26,7 @@ class JobLease(BaseModel):
     attempt: int
     execution_name: str
     snapshot: dict
+    terminal_exit_code: int | None = None
 
 
 def json_row(row) -> dict:
@@ -65,6 +67,7 @@ class JobStore:
             specimen["kind"] = selection["selection_roles"].get(specimen["id"], specimen["kind"])
         return {
             "execution_id": f"{session_id}:{job_id}",
+            "worker_token": secrets.token_urlsafe(32),
             "job_id": job_id,
             "app_id": content.app_id,
             "parameters": content.parameters,
@@ -193,6 +196,7 @@ class JobStore:
                 attempt=job["attempt"],
                 execution_name=name,
                 snapshot=snapshot,
+                terminal_exit_code=queue["terminal_exit_code"],
             )
 
     async def fence(self, connection, lease: JobLease) -> None:
@@ -219,7 +223,9 @@ class JobStore:
                 seconds,
             )
 
-    async def ingest(self, lease: JobLease, source: JobRecord) -> JobRecord | None:
+    async def ingest(
+        self, lease: JobLease, source: JobRecord, *, platform_retries: bool = False
+    ) -> JobRecord | None:
         protected = await self.store.privacy.tokenize(
             lease.session_id,
             Raw(value=source.model_dump()),
@@ -233,14 +239,26 @@ class JobStore:
             raise ValueError("Unknown execution state")
         if not isinstance(progress, (float, int)) or not 0 <= progress <= 1:
             raise ValueError("Invalid execution progress")
+        attempt = record.attributes.get("job.attempt") if platform_retries else lease.attempt
+        if type(attempt) is not int or not 1 <= attempt <= 2:
+            raise ValueError("Invalid execution attempt")
         async with self.store.pool.acquire() as connection, connection.transaction():
             await self.fence(connection, lease)
+            if platform_retries:
+                await connection.execute(
+                    """INSERT INTO job_attempts (session_id,job_id,attempt,execution_name)
+                       VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING""",
+                    lease.session_id,
+                    lease.job_id,
+                    attempt,
+                    f"zagent-job-{lease.session_id.hex}-{lease.job_id}-{attempt}",
+                )
             duplicate = await connection.fetchval(
                 """SELECT 1 FROM job_logs WHERE session_id=$1 AND job_id=$2
                    AND attempt=$3 AND worker_sequence=$4""",
                 lease.session_id,
                 lease.job_id,
-                lease.attempt,
+                attempt,
                 record.sequence,
             )
             if duplicate:
@@ -250,40 +268,64 @@ class JobStore:
                    WHERE session_id=$1 AND job_id=$2 AND attempt=$3""",
                 lease.session_id,
                 lease.job_id,
-                lease.attempt,
+                attempt,
             )
             if record.sequence != previous + 1:
                 raise ValueError("Noncontiguous worker log")
             sequence = await connection.fetchval(
                 """UPDATE jobs SET log_seq=log_seq+1, version=version+1, status=$3,
-                   progress=$4, detail=$5 WHERE session_id=$1 AND id=$2 RETURNING log_seq""",
+                   progress=$4, detail=$5, attempt=$6
+                   WHERE session_id=$1 AND id=$2 RETURNING log_seq""",
                 lease.session_id,
                 lease.job_id,
                 state,
                 progress,
                 record.body,
+                attempt,
             )
             await connection.execute(
                 "INSERT INTO job_logs VALUES ($1,$2,$3,$4,$5,$6)",
                 lease.session_id,
                 lease.job_id,
                 sequence,
-                lease.attempt,
+                attempt,
                 record.sequence,
                 record.model_dump(),
             )
             await connection.execute(
-                """UPDATE job_attempts SET status=$4
+                """UPDATE job_attempts SET status=$4,
+                         finished_at=CASE WHEN $4 IN ('completed','failed','evicted')
+                              THEN clock_timestamp() ELSE finished_at END,
+                         exit_code=CASE WHEN $4='evicted' THEN 75 ELSE exit_code END
                    WHERE session_id=$1 AND job_id=$2 AND attempt=$3""",
                 lease.session_id,
                 lease.job_id,
-                lease.attempt,
-                state,
+                attempt,
+                "evicted" if platform_retries and state == "retrying" else state,
             )
             await self.notify(connection, lease.session_id)
             return record
 
-    async def finish(self, lease: JobLease, exit_code: int) -> None:
+    async def record_terminal(self, lease: JobLease, exit_code: int) -> None:
+        async with self.store.pool.acquire() as connection, connection.transaction():
+            await self.fence(connection, lease)
+            previous = await connection.fetchval(
+                "SELECT terminal_exit_code FROM job_queue WHERE session_id=$1 AND job_id=$2",
+                lease.session_id,
+                lease.job_id,
+            )
+            if previous is not None and previous != exit_code:
+                raise ValueError("Execution terminal result changed")
+            await connection.execute(
+                "UPDATE job_queue SET terminal_exit_code=$3 WHERE session_id=$1 AND job_id=$2",
+                lease.session_id,
+                lease.job_id,
+                exit_code,
+            )
+
+    async def finish(
+        self, lease: JobLease, exit_code: int, *, platform_retries: bool = False
+    ) -> None:
         async with self.store.pool.acquire() as connection, connection.transaction():
             await self.fence(connection, lease)
             state = await connection.fetchval(
@@ -291,7 +333,12 @@ class JobStore:
                 lease.session_id,
                 lease.job_id,
             )
-            retry = exit_code in {75, 137} and lease.attempt < 2
+            attempt = await connection.fetchval(
+                "SELECT attempt FROM jobs WHERE session_id=$1 AND id=$2",
+                lease.session_id,
+                lease.job_id,
+            )
+            retry = not platform_retries and exit_code in {75, 137} and attempt < 2
             final = (
                 "retrying"
                 if retry
@@ -304,7 +351,7 @@ class JobStore:
                    WHERE session_id=$1 AND job_id=$2 AND attempt=$3""",
                 lease.session_id,
                 lease.job_id,
-                lease.attempt,
+                attempt,
                 "evicted" if retry else final,
                 exit_code,
             )

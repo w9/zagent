@@ -34,7 +34,12 @@ class SessionInput(BaseModel):
     session_id: UUID
 
 
-def create_privacy_app(master: bytes | None = None, backend: PrivacyStore | None = None) -> FastAPI:
+def create_privacy_app(
+    master: bytes | None = None,
+    backend: PrivacyStore | None = None,
+    *,
+    allow_resolution: bool = True,
+) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         key_path = Path(os.environ.get("ZAGENT_PRIVACY_MASTER_FILE", "/run/privacy/master.key"))
@@ -56,6 +61,9 @@ def create_privacy_app(master: bytes | None = None, backend: PrivacyStore | None
                 await store.close()
 
     app = FastAPI(title="Zagent privacy service", lifespan=lifespan)
+    from zagent.telemetry import configure_telemetry
+
+    configure_telemetry("zagent-privacy" if allow_resolution else "zagent-tokenizer", app)
     if master is not None:
         app.state.master = master
     if backend is not None:
@@ -115,7 +123,17 @@ def create_privacy_app(master: bytes | None = None, backend: PrivacyStore | None
             ).model_dump(),
         }
 
+    if not allow_resolution:
+        app.router.routes = [
+            route
+            for route in app.router.routes
+            if getattr(route, "path", "") not in {"/resolve", "/bindings"}
+        ]
     return app
+
+
+def create_tokenizer_app() -> FastAPI:
+    return create_privacy_app(allow_resolution=False)
 
 
 app = create_privacy_app()

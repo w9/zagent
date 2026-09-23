@@ -122,6 +122,9 @@ def create_gateway_app(gateway: LlmGateway | None = None) -> FastAPI:
                 await asyncio.gather(*pending, return_exceptions=True)
 
     app = FastAPI(title="Zagent model gateway", lifespan=lifespan)
+    from zagent.telemetry import configure_telemetry
+
+    configure_telemetry("zagent-llm-gateway", app)
 
     @app.exception_handler(PrivacyError)
     async def privacy_error(_request: Request, error: PrivacyError):

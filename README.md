@@ -21,7 +21,7 @@ and the agent can diagnose fixture failures using versioned SOP citations and pr
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN8](docs/PLAN8.md).**
+**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN9](docs/PLAN9.md).**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
@@ -194,13 +194,50 @@ service, and database stay on an internal network. Fixed TCP forwards on the gat
 loopback-only web, BFF API, and database ports. A one-shot `privacy-init` container generates
 private capability files in Docker volumes and exits; it does not contain the provider key.
 
+### Local Kubernetes
+
+```bash
+make cluster       # Replay, no provider key; app at http://localhost:5185.
+make cluster-test  # Enforced network policies, positive controls, and database roles.
+make cluster-evals EVAL_ARGS=--workflow-only  # Existing goldens through deployed services.
+make cluster-evals # Full keyless regression harness plus deployed workflows.
+make cluster-stop  # Stops Tilt and k3d; preserves database, audit, and evidence volumes.
+```
+
+The bootstrap packages pinned k3d, kubectl, and Tilt in a Docker tools image; no host Python,
+Node, or Kubernetes installation is needed. It requires Docker, Git, Make, and Bash on Linux
+(including a Lima Linux VM), with access to the Docker socket. First startup downloads images
+and dependencies. The cluster is named `zagent-plan9`, separate from Compose, with its own storage
+and kubeconfig. It does not switch the default Kubernetes context or prune Docker images.
+
+Tilt forwards the web app on **5185**, API on **8109**, Tempo on **3284**, and its dashboard on
+**10359**, all on loopback. VS Code may assign a different browser-side port when forwarding a
+remote workspace. Python edits reload in place; frontend edits use Vite HMR. Worker code,
+dependencies, schemas, migrations, and MCP App bundles rebuild their images. Local images are
+imported directly and checked on both nodes, never pushed to a public registry.
+
+Clinical, agent, and neutral namespaces use default-deny NetworkPolicies enforced by Calico.
+The runtime reaches only a role-pinned event database proxy, never clinical Postgres directly.
+Privacy resolution is on a separate, blocked listener; the agent-facing listener has no resolve
+routes. Only the LLM gateway has public HTTPS egress. Workers can reach Postgres and cluster DNS,
+not privacy, the display API, the Kubernetes API, or public hosts. Cluster infrastructure and DNS
+are trusted prerequisites, not application workloads covered by the gateway-only egress claim.
+
+`make cluster-live` mounts the same external OpenRouter key file used by Compose. Only the gateway
+receives it as a Kubernetes Secret. Generated passwords, privacy capabilities, and the admin
+kubeconfig live under owner-only, ignored `.cluster/`; keep that directory when stopping the
+cluster. Do not publish it. Reports are under `.cluster/reports/`, and the policy report is
+`.cluster/policy-results.json`. See [PLAN9](docs/PLAN9.md) for measured evidence and limits.
+
 The Compose dispatcher mounts the Docker socket, which grants host-level Docker control. It is
 a trusted local development service, not a production isolation boundary. Workers run as a
 non-root user with no network, no mounted secrets, a read-only root filesystem, and resource
 limits. Their raw synthetic inputs/stdout remain in the clinical execution environment; logs
 are tokenized before database ingestion or telemetry export. Completed containers are retained
 for restart reconciliation and audit. Do not delete active execution containers manually.
-Kubernetes Jobs, platform-managed cleanup, and tighter dispatcher privileges arrive in PLAN9.
+The cluster dispatcher instead has namespace-scoped Job/log RBAC and no Docker socket. Kubernetes
+owns retry/backoff; cleanup starts after logs have been durably ingested. Both execution adapters
+share the same confirmation, queue fencing, privacy, and visible attempt-history contracts.
 
 ```bash
 make test          # Python tests, client/component tests, build, lint.
@@ -482,7 +519,8 @@ the browser resolves data through a session-scoped endpoint. MCP dispatch valida
 allowlists tools, bounds results, and writes an audit log. Clinical queries run under fixed
 per-site Postgres roles. The privacy service owns detection and the vault; the BFF and clinical
 tools resolve at their respective edges. The gateway owns provider routing, record/replay,
-token-only request recording, and the keyed-hash tripwire. Kubernetes NetworkPolicy is PLAN9.
+token-only request recording, and the keyed-hash tripwire. The optional k3d deployment adds
+enforced namespace NetworkPolicies, a role-pinned event database endpoint, and Tempo tracing.
 
 Before the tool loop, the scope guard reads recent conversation and the latest draft state.
 It and the main agent share one hashed scope-policy fragment. Refusals have a closed reason code
@@ -508,7 +546,7 @@ green, so correctness is visible at every step rather than at the end.
 | [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | Complete |
 | [PLAN7](docs/PLAN7.md) | Drafts, confirmation, view references, session titles | Complete |
 | [PLAN8](docs/PLAN8.md) | Execution, MCP Apps, SOP retrieval, turn recovery | Complete |
-| [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | ☐ |
+| [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | Implemented; full-replay latency target open |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | ☐ |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
 

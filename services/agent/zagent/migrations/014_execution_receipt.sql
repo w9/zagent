@@ -1,0 +1,1 @@
+ALTER TABLE job_queue ADD COLUMN terminal_exit_code integer;

@@ -98,6 +98,9 @@ def create_jobs_app() -> FastAPI:
             await store.close()
 
     app = FastAPI(title="Zagent jobs MCP", lifespan=lifespan)
+    from zagent.telemetry import configure_telemetry
+
+    configure_telemetry("zagent-jobs", app)
 
     @app.get("/health")
     async def health():

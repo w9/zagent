@@ -1,4 +1,8 @@
 .git
+.cluster
+docs/evals
+*.key
+*.pem
 .venv
 **/node_modules
 **/dist

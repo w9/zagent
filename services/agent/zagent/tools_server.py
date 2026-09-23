@@ -34,6 +34,9 @@ def create_tools_app() -> FastAPI:
             await store.close()
 
     app = FastAPI(title="Zagent clinical MCP tools", lifespan=lifespan)
+    from zagent.telemetry import configure_telemetry
+
+    configure_telemetry("zagent-tools", app)
 
     @app.get("/health")
     async def health():

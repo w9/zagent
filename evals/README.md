@@ -275,6 +275,47 @@ sandbox mutation denial, refresh/history, mobile layout, and unchanged submissio
 
 ## Cases And Goldens
 
+### Cluster Verification
+
+```bash
+make cluster
+make cluster-test
+make cluster-evals EVAL_ARGS=--workflow-only
+make cluster-evals
+ZAGENT_WEB_URL=http://127.0.0.1:5185 ZAGENT_AGENT=llm make browser
+```
+
+These commands preserve existing Compose data and use the persistent `zagent-plan9` cluster.
+The policy gate probes actual pod network namespaces, using ephemeral containers for images
+without Python and fresh Jobs for worker/eval identities. It checks both Service and Pod IP
+denials, positive service/DNS controls, dispatcher API access, and runtime-role rejection of
+clinical tables, role escalation, and owner login through the proxy. Only the LLM gateway can
+reach the public HTTPS control. Workers retain the explicit cluster-DNS exception.
+
+The four deployment requirements (`REQ-PHI-05`, `REQ-PHI-06`, `REQ-ISO-02`, `REQ-META-01`) are
+reported in `.cluster/policy-results.json` and gated independently of the unchanged 29-requirement
+behavioral report. A missing positive control fails the deployment gate rather than counting as
+successful isolation. The initial fresh-pod probe detected kube-router's startup exposure;
+Calico policy setup now precedes ordinary workload startup.
+
+`cluster-evals` first runs only the 3,000 database-free `SCOPE-*` samples in an agent-zone Job
+without owner credentials or internet access. A clinical test Job then runs the original tests
+and full harness against `zagent_test`, including controlled local HTTP apps and ProcessExecutor.
+No application policy is widened to let an agent-zone evaluator seed clinical data. Finally,
+the deployed workflow gate runs all 16 ordinary real-agent cases against the real cluster
+services with their unchanged goldens/assertions, plus actual Kubernetes success, domain-failure,
+two-pod retry, log-deduplication, and Tempo trace checks. `--workflow-only` selects that last gate.
+
+Retained artifacts are copied from evidence PVCs into `.cluster/reports/<zone>/<run-id>/`.
+The full run recorded 499 passing backend tests and all 29 behavioral gates passing over 3,405
+trials, with the original 24 scope/provider failures retained. Replay duration was 328.48 seconds;
+the final deployed workflow gate took 46.92 seconds, and the policy gate took 11.36 seconds.
+The full-suite tens-of-seconds goal is still open. These timings do not imply fresh model sampling.
+The CI cluster job starts from a clean checkout, requires these gates and browser checks, and
+uploads only report/test paths, never the credentials or admin kubeconfig in `.cluster/`.
+
+### Register And Fixtures
+
 [requirements.yaml](requirements.yaml) is the requirement register. Invariants name enforcement
 sites, linked cases, and detecting mutations; measured requirements name a lower-bound threshold
 and a minimum trial count. Mutation names are traceability entries, not production fault switches.

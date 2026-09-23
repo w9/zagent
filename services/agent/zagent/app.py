@@ -45,6 +45,7 @@ class Settings(BaseModel):
         default_factory=lambda: os.environ.get("ZAGENT_TOOLS_URL", "http://127.0.0.1:8002/mcp")
     )
     jobs_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_JOBS_URL"))
+    kb_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_KB_URL"))
     site_id: str = "northgate"
     display_mode: bool = Field(
         default_factory=lambda: os.environ.get("ZAGENT_DISPLAY_MODE", "1") == "1"
@@ -116,7 +117,12 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                         store,
                         GatewayClient(settings.gateway_url),
                         ToolsGateway(
-                            store, McpToolClient(url=settings.tools_url, jobs_url=settings.jobs_url)
+                            store,
+                            McpToolClient(
+                                url=settings.tools_url,
+                                jobs_url=settings.jobs_url,
+                                kb_url=settings.kb_url,
+                            ),
                         ),
                     )
                 )
@@ -152,6 +158,9 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             yield
 
     app = FastAPI(title="Zagent", version="0.1.0", lifespan=lifespan)
+    from zagent.telemetry import configure_telemetry
+
+    configure_telemetry("zagent-bff" if settings.runtime_url else "zagent-runtime", app)
 
     async def scoped_session(session_id: UUID) -> Session:
         session = await app.state.store.get_session(session_id)

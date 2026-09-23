@@ -205,7 +205,8 @@ model routes, and the resulting drift is a reviewable diff.
 
 ## 6. Zones and the privacy boundary
 
-The system is split into two zones, and the split is the primary security control.
+The application has clinical, agent, and neutral zones. PLAN9 maps each to its own namespace,
+with default-deny ingress/egress and explicit NetworkPolicy allows enforced by Calico.
 
 ```mermaid
 graph TB
@@ -216,25 +217,36 @@ graph TB
         DB[(Postgres<br/>clinical tables, RLS)]
         DISP[Dispatcher]
         JOBS[Job pods]
+        JMCP[Jobs MCP server]
     end
     subgraph agent["Agent zone (holds no identifiers)"]
         RT[Agent runtime]
         LLM[LLM gateway<br/>+ egress tripwire]
         EV[Eval runner]
-        LOG[(Postgres<br/>event log)]
     end
-    KB[Knowledge base<br/>read-only index]
+      subgraph neutral["Neutral zone"]
+        LOG[Event database endpoint<br/>role-pinned PgBouncer]
+        KB[Knowledge base<br/>read-only MCP index]
+        OTEL[OTLP collector and Tempo]
+      end
     EXT((Model provider))
     WEB <--> RT
     WEB <--> PRIV
     RT <--> LLM
     RT <--> TOOLS
+    RT <--> JMCP
+    RT <--> LOG
+    LOG <--> DB
+    RT <--> KB
+    RT -->|tokenize only| PRIV
     TOOLS <--> PRIV
     TOOLS <--> DB
-    TOOLS <--> KB
+    JMCP <--> PRIV
+    JMCP <--> DB
     DISP --> JOBS
     DISP <--> DB
     LLM --> EXT
+    DISP --> OTEL
 ```
 
 **Identifiers are tokenized at ingress and resolved only at the edges that need real values:**
@@ -269,6 +281,22 @@ Two supporting decisions reduce how often identifiers are needed at all. Tools a
 time windows rather than dates, because dates are quasi-identifiers and a relative window is
 what the user meant anyway. And cross-site isolation is enforced by Postgres row-level security
 rather than by query construction, so it holds regardless of what the agent asks for.
+
+The physical database remains in the clinical namespace. The neutral endpoint has one forced
+`zagent_runtime` backend mapping, no owner credential, and session pooling; the runtime cannot
+connect to the database Pod/Service directly or read clinical/vault/workflow tables through the
+proxy. Privacy uses separate listeners: 8003 resolves, while 8006 has only tokenization/tripwire
+routes. Agent-zone pods cannot connect to 8003, including by Pod IP, or to the display BFF.
+
+Only the LLM gateway has public TCP/443 egress among application workloads. Worker policies allow
+clinical Postgres and cluster DNS only. CNI, control-plane services, DNS, and the host's Docker/Tilt
+tooling are trusted infrastructure outside that application claim. Tests pair denials with working
+DNS and explicit allowed routes, including immediate probes from fresh worker/eval pods. Local
+human access uses loopback Tilt port forwards, not an internet-exposed ingress controller.
+
+Calico replaces the initial Flannel/kube-router path after a fresh-pod probe found a pre-policy
+egress window. Its CNI waits for policy setup before normal container startup. This is separate
+from PLAN10's broader policy-mutation and adversarial fault-injection work.
 
 ---
 
@@ -384,12 +412,19 @@ The queue lives in Postgres. Rows are claimed with `SKIP LOCKED`, and enqueueing
 same transaction as the job row so the two cannot diverge. A dedicated queue broker would add
 an operational component and a consistency boundary for no benefit at this scale.
 
-The dispatcher targets an `Executor` protocol, with Docker execution under Compose and a native
-process implementation for tests. The catalog supplies image/command and parameter schema.
+The dispatcher targets an `Executor` protocol, with Docker execution under Compose, Kubernetes
+Jobs in the cluster, and a native process implementation for controlled tests. The catalog supplies
+command and parameter schema; deployment selects the worker image.
 Lease revisions fence stale monitors; deterministic container names and input fingerprints make
 reconciliation idempotent. Attempt/log sequence uniqueness prevents duplicate ingestion after
 a crash. Synthetic eviction retries once with a distinct attempt name; ordinary failures do not.
-Kubernetes Jobs, Job-spec retry policy, and platform cleanup replace this local adapter in PLAN9.
+Kubernetes uses a stable Job name across both attempts, platform backoff, and a pod failure rule
+that does not retry domain exit code 2. A database function assigns worker admission identities;
+the monitor reconciles complete per-pod log records and synthesizes an error if a pod dies before
+its terminal log. A one-hour TTL is applied only after durable log ingestion and a terminal
+receipt; recovery uses that receipt if cleanup has already deleted the Job. Clinical worker
+credentials grant that admission function, not arbitrary table access. The cluster dispatcher
+uses scoped API RBAC rather than host-level Docker access.
 
 The worker reads confirmed fixture facts, not mutable query results. Role disagreement causes
 somatic failure; verified-role selection fixes the input without editing clinical records.
@@ -416,6 +451,13 @@ transaction. Recovery uses saved responses/results, finishes incomplete steps, a
 log additionally preserves the interruption/retraction. One database advisory lock owns the
 runtime. Token allocation has its own per-session advisory lock, while tool session writes use
 non-key row locks so remote privacy inserts do not deadlock against mutation receipts.
+
+Trace context is persisted with conversation turns, propagated over HTTP/MCP, and copied into the
+private confirmed input. Dispatcher execution and tokenized log spans join that conversation's
+Tempo trace. Workers emit the same trace ID but do not need network access to the collector.
+Ordinary service edits use Tilt sync and Uvicorn reload with a bounded development shutdown for
+open SSE connections. A separately tracked immutable worker image avoids rebuilding every service
+for the dispatcher's image reference. Compose remains available as an independent development path.
 
 ---
 

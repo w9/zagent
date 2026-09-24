@@ -216,7 +216,7 @@ a:focus-visible {
   cursor: pointer;
   overflow-wrap: anywhere;
 }
-.privacy-token[aria-pressed='true'] {
+.privacy-token[aria-pressed='true'], .privacy-token[data-selected='true'] {
   background: #cfecd9;
   color: #195638;
   outline: 1px solid #498662;
@@ -514,6 +514,70 @@ a:focus-visible {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.assistant-markdown {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+.assistant-markdown p { white-space: normal; margin: 0 0 12px; }
+.assistant-markdown > :first-child { margin-top: 0; }
+.assistant-markdown > :last-child { margin-bottom: 0; }
+.assistant-markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin: 20px 0 8px;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  color: inherit;
+}
+.assistant-markdown h1 { font-size: 20px; }
+.assistant-markdown h2 { font-size: 18px; }
+.assistant-markdown :is(h3, h4, h5, h6) { font-size: 15px; }
+.assistant-markdown :is(ul, ol) { margin: 10px 0 14px; padding-left: 24px; }
+.assistant-markdown ul { list-style: disc; }
+.assistant-markdown ol { list-style: decimal; }
+.assistant-markdown li { margin: 3px 0; }
+.assistant-markdown li > p { margin: 0; }
+.assistant-markdown blockquote {
+  margin: 14px 0;
+  padding: 2px 0 2px 14px;
+  border-left: 3px solid #b8cabc;
+  color: #65756b;
+}
+.assistant-markdown code {
+  font: 12px/1.65 var(--mono);
+  background: #edf2ee;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.assistant-markdown pre {
+  min-width: 0;
+  max-width: 100%;
+  max-height: 360px;
+  overflow: auto;
+  margin: 14px 0;
+  padding: 14px;
+  white-space: pre;
+  overflow-wrap: normal;
+  border: 1px solid #e0e7e1;
+  border-radius: 6px;
+  background: #f1f5f2;
+}
+.assistant-markdown pre code { padding: 0; background: none; white-space: inherit; }
+.markdown-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+  margin: 14px 0;
+  border: 1px solid #e0e7e1;
+  border-radius: 6px;
+}
+.markdown-table table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 12px; }
+.markdown-table :is(th, td) { padding: 8px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid #e0e7e1; }
+.markdown-table th { background: #f1f5f2; font-weight: 600; }
+.markdown-table tbody tr:last-child td { border-bottom: 0; }
+.assistant-markdown a { color: #267359; text-decoration: underline; text-underline-offset: 3px; }
+.assistant-markdown :is(a, pre, .markdown-table):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.xray-display .assistant-markdown { font-size: 12px; line-height: 1.75; }
 .message.user {
   align-self: flex-end;
   max-width: 90%;

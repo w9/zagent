@@ -1,6 +1,6 @@
 # PLAN11: The Gallery
 
-**Status:** not started
+**Status:** gallery not started; shared assistant Markdown prerequisite implemented
 **Depends on:** [PLAN10](PLAN10.md)
 **Prerequisite:** land shared assistant Markdown rendering before building the gallery stories.
 **Shippable outcome:** a guarantee gallery where each claim has a demo that cannot flake, a link to
@@ -133,11 +133,11 @@ doing so would have produced a showcase of things that did not work yet.
 
 ## Definition of done
 
-- [ ] Shared assistant Markdown rendering is implemented in the product before gallery stories,
+- [x] Shared assistant Markdown rendering is implemented in the product before gallery stories,
   with readable streaming, completed, refreshed, and replayed responses on desktop and mobile.
-- [ ] Renderer tests cover split delimiters/code fences, lists, code, links, tables, malicious
+- [x] Renderer tests cover split delimiters/code fences, lists, code, links, tables, malicious
   HTML and URL schemes, and bounded layout at 320 pixels.
-- [ ] Original response/event text is unchanged; privacy highlights and host-owned view references
+- [x] Original response/event text is unchanged; privacy highlights and host-owned view references
   still work, and rendering or activating a Markdown link cannot trigger workflow mutations.
 - [ ] Every requirement in the register has a story.
 - [ ] Every story has all four parts, with the mechanism linking to real code.

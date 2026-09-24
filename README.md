@@ -41,6 +41,13 @@ Host-owned references in chat open the exact published table, chart, draft, or j
 on mobile. New sessions appear first with stable fallback names. One optional background model
 call names the first completed in-scope exchange; a manual rename always takes precedence.
 
+Assistant messages use shared, streaming Markdown rendering in chat and X-ray's display pane;
+user messages and model-visible requests stay plain text. Code and GFM tables scroll within the
+transcript. Raw HTML is inert, images do not load, and only protected external HTTP(S) links are
+enabled. Privacy values are inserted into visible text after parsing, never into destinations.
+Stored responses, model context, cassettes, and exports are unchanged. Query results still belong
+in validated published views, and model-authored links cannot act as working-surface references.
+
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
 

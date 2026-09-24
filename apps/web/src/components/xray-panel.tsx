@@ -1,39 +1,14 @@
 import { ArrowRightLeft, RefreshCw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { request } from '../lib/api'
-import type { PrivacyBinding, XrayData } from '../lib/api'
+import type { XrayData } from '../lib/api'
 import { Button } from './ui/button'
-
-function TokenText({ text, bindings, model = false, selected, onSelect }: {
-  text: string
-  bindings: PrivacyBinding[]
-  model?: boolean
-  selected: string | null
-  onSelect: (token: string) => void
-}) {
-  const values = [...bindings].sort((first, second) =>
-    (model ? second.token.length - first.token.length : second.value.length - first.value.length),
-  )
-  if (!values.length) return <>{text}</>
-  const pattern = new RegExp(`(${values.map((item) =>
-    (model ? item.token : item.value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
-  ).join('|')})`, 'g')
-  return <>{text.split(pattern).map((part, index) => {
-    const binding = values.find((item) => (model ? item.token : item.value) === part)
-    return binding ? <button
-      type="button" key={index} className="privacy-token"
-      data-token={binding.token} aria-pressed={selected === binding.token}
-      aria-label={`Highlight ${binding.token}`} title={binding.token}
-      onClick={() => onSelect(binding.token)} onMouseEnter={() => onSelect(binding.token)}
-      onFocus={() => onSelect(binding.token)}
-    >{part}</button> : part
-  })}</>
-}
+import { PrivacyText, TranscriptText } from './transcript-text'
 
 export function XrayContent({ data }: { data: XrayData }) {
   const [selected, setSelected] = useState<string | null>(null)
   const [mobilePane, setMobilePane] = useState<'display' | 'model'>('display')
-  const highlight = (text: string, model = false) => <TokenText
+  const highlight = (text: string, model = false) => <PrivacyText
     text={text} bindings={data.bindings} model={model} selected={selected} onSelect={setSelected}
   />
 
@@ -51,10 +26,15 @@ export function XrayContent({ data }: { data: XrayData }) {
     <div className="xray-panes" data-mobile-pane={mobilePane}>
       <section className="xray-pane xray-display" id="xray-display" aria-label="Displayed conversation">
         <h3>Display</h3>
-        {data.display.messages.map((message) => <article className="xray-message" key={message.id}>
+        {data.display.messages.map((message) => {
+          const source = data.model.messages.find((item) => item.id === message.id)
+          return <article className="xray-message" key={message.id}>
           <h4>{message.role === 'user' ? 'You' : 'Zagent'}</h4>
-          <p>{highlight(message.text)}</p>
-        </article>)}
+          <TranscriptText role={source ? message.role : 'user'}
+            text={source?.text ?? message.text}
+            streaming={message.status === 'streaming'} bindings={data.bindings}
+            selected={selected} onSelect={setSelected} />
+        </article>})}
         {data.display.refusals?.map((item) => <article className="xray-message" key={item.id}>
           <h4>Refused</h4><p>{item.message}</p>
         </article>)}

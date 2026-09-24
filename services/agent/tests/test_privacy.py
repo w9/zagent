@@ -400,6 +400,10 @@ async def test_public_display_resolves_but_model_snapshot_stays_tokenized(databa
         model = (await client.get(f"/sessions/{session}/snapshot?representation=model")).json()
         assert display["messages"][0]["text"] == f"Find {MRNS[0]}"
         assert model["messages"][0]["text"] == "Find [PT_1]"
+        bindings = (await client.get(f"/sessions/{session}/bindings")).json()
+        assert any(item["token"] == "[PT_1]" and item["value"] == MRNS[0] for item in bindings)
+        foreign = await environment.app.state.store.create_session("lakeside")
+        assert (await client.get(f"/sessions/{foreign.id}/bindings")).status_code == 404
 
 
 @pytest.mark.integration
@@ -424,6 +428,7 @@ async def test_runtime_api_rejects_raw_messages_and_cannot_resolve_handles(datab
             assert mislabeled.status_code == 422
             assert (await client.get(f"/sessions/{session}/handles/query-0001")).status_code == 403
             assert (await client.get(f"/sessions/{session}/xray")).status_code == 403
+            assert (await client.get(f"/sessions/{session}/bindings")).status_code == 403
             snapshot = (await client.get(f"/sessions/{session}/snapshot")).json()
             assert snapshot["messages"] == []
 

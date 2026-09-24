@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react'
 import { request } from './api'
+import type { PrivacyBinding } from './api'
 import { reduceEvent } from './events'
 import type { LogEvent, Projection } from './events'
 
+function resolveDisplayText(text: string, bindings: PrivacyBinding[]) {
+  return text.replace(/\[[A-Z][A-Z0-9]*_\d+\]/g, (token) =>
+    bindings.find((binding) => binding.token === token)?.value ?? token,
+  )
+}
+
 export function useSession(sessionId: string) {
   const [state, setState] = useState<Projection | null>(null)
+  const [bindingState, setBindingState] = useState<{ sessionId: string; values: PrivacyBinding[] }>({
+    sessionId: '', values: [],
+  })
+  const bindings = bindingState.sessionId === sessionId ? bindingState.values : []
   const [connection, setConnection] = useState<
     'connecting' | 'live' | 'reconnecting'
   >('connecting')
@@ -17,6 +28,29 @@ export function useSession(sessionId: string) {
     let current: Projection | null = null
     let recovery: ReturnType<typeof setTimeout> | undefined
     let loading = false
+    let knownBindings: PrivacyBinding[] = []
+    let refreshingBindings = false
+    let bindingsPending = false
+
+    async function refreshBindings() {
+      if (disposed) return
+      if (refreshingBindings) { bindingsPending = true; return }
+      refreshingBindings = true
+      try {
+        const result = await request<PrivacyBinding[]>(`/sessions/${sessionId}/bindings`, {
+          signal: controller.signal,
+        })
+        if (!disposed) { knownBindings = result; setBindingState({ sessionId, values: result }) }
+      } catch (reason) {
+        if (!disposed) setError(reason instanceof Error ? reason.message : 'Display bindings unavailable')
+      } finally {
+        refreshingBindings = false
+        if (bindingsPending && !disposed) {
+          bindingsPending = false
+          void refreshBindings()
+        }
+      }
+    }
 
     function retry() {
       if (recovery === undefined && !disposed) {
@@ -33,17 +67,19 @@ export function useSession(sessionId: string) {
       source?.close()
       try {
         const snapshot = await request<Projection>(
-          `/sessions/${sessionId}/snapshot`,
+          `/sessions/${sessionId}/snapshot?representation=model`,
           {
             signal: controller.signal,
           },
         )
         if (disposed) return
+        setError(null)
+        await refreshBindings()
+        if (disposed) return
         current = snapshot
         setState(snapshot)
-        setError(null)
         const stream = new EventSource(
-          `/api/sessions/${sessionId}/events?from=${snapshot.seq}&follow=true`,
+          `/api/sessions/${sessionId}/events?from=${snapshot.seq}&follow=true&representation=model`,
         )
         source = stream
         stream.onopen = () => {
@@ -60,6 +96,10 @@ export function useSession(sessionId: string) {
               throw new Error('Event cursor mismatch')
             current = reduceEvent(current, event)
             setState(current)
+            const tokens = JSON.stringify(current).match(/\[[A-Z][A-Z0-9]*_\d+\]/g) ?? []
+            if (tokens.some((token) => !knownBindings.some((binding) => binding.token === token))) {
+              void refreshBindings()
+            }
           } catch {
             stream.close()
             setConnection('reconnecting')
@@ -92,8 +132,16 @@ export function useSession(sessionId: string) {
     }
   }, [sessionId])
 
+  let displayed: Projection | null = null
+  if (state?.session_id === sessionId) {
+    const { messages, ...metadata } = state
+    displayed = { ...JSON.parse(JSON.stringify(metadata, (_key, value) =>
+      typeof value === 'string' ? resolveDisplayText(value, bindings) : value,
+    )), messages }
+  }
   return {
-    state: state?.session_id === sessionId ? state : null,
+    state: displayed,
+    bindings,
     connection,
     error,
   }

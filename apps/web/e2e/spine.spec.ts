@@ -41,6 +41,14 @@ function answer(page: Page) {
     .getByTestId('message-text')
 }
 
+async function assertAnswer(page: Page, request: APIRequestContext) {
+  await expect(answer(page).locator('p')).toHaveText(expected.split('\n\n'))
+  const path = new URL(page.url()).pathname
+  const snapshot = await (await request.get(`/api${path}/snapshot?representation=model`)).json()
+  const assistant = snapshot.messages.filter((message: { role: string }) => message.role === 'assistant')
+  expect(assistant.at(-1).text).toBe(expected)
+}
+
 async function interruptibleProxy(target: string) {
   const streams = new Set<ServerResponse>()
   const resumeCursors: string[] = []
@@ -152,8 +160,8 @@ test('refresh, two tabs, socket reconnect, and a second conversation turn agree'
     await expect(second.getByTestId('conversation-turn-status')).toHaveText(
       'Complete',
     )
-    expect(await answer(page).textContent()).toBe(expected)
-    expect(await answer(second).textContent()).toBe(expected)
+    await assertAnswer(page, request)
+    await assertAnswer(second, request)
     expect(proxy.resumeCursors.length).toBeGreaterThan(0)
     await send(page, 'Again')
     await expect(page.getByTestId('assistant-message')).toHaveCount(2)
@@ -164,7 +172,7 @@ test('refresh, two tabs, socket reconnect, and a second conversation turn agree'
     await expect(second.getByTestId('conversation-turn-status')).toHaveText(
       'Complete',
     )
-    expect(await answer(second).textContent()).toBe(expected)
+    await assertAnswer(second, request)
     await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
     await expect(second.getByTestId('view-position')).toHaveText('View 4 of 4')
     expect(
@@ -201,7 +209,7 @@ test('closing the only tab does not cancel a conversation turn', async ({
   await expect(reopened.getByTestId('conversation-turn-status')).toHaveText(
     'Complete',
   )
-  expect(await answer(reopened).textContent()).toBe(expected)
+  await assertAnswer(reopened, request)
 })
 
 test('failed conversation turns are visible and accept a new message', async ({
@@ -251,7 +259,7 @@ test('mobile sessions, streaming, refresh, and compact viewports', async ({
   await expect(page.getByTestId('conversation-turn-status')).toHaveText(
     'Complete',
   )
-  expect(await answer(page).textContent()).toBe(expected)
+  await assertAnswer(page, request)
   await assertLayout(page)
   await page.screenshot({ path: testInfo.outputPath('mobile-complete.png') })
   await page.setViewportSize({ width: 320, height: 568 })

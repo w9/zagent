@@ -497,6 +497,14 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             "executions": [dict(row) for row in executions],
         }
 
+    @app.get("/sessions/{session_id}/bindings")
+    async def display_bindings(session_id: UUID):
+        await scoped_session(session_id)
+        display_only()
+        return [
+            binding.model_dump() for binding in await app.state.store.privacy.bindings(session_id)
+        ]
+
     @app.get("/sessions/{session_id}/events")
     async def events(
         request: Request,

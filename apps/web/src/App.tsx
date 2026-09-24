@@ -27,6 +27,7 @@ import { StepMarker } from './components/step-marker'
 import { RefusalChip } from './components/refusal-chip'
 import { WorkingSurface } from './components/working-surface'
 import { XrayPanel } from './components/xray-panel'
+import { TranscriptText } from './components/transcript-text'
 import { request } from './lib/api'
 import type { RuntimeHealth, Session } from './lib/api'
 import { useSession } from './lib/use-session'
@@ -118,6 +119,7 @@ function Chat({
   sessionId,
   name,
   state,
+  bindings,
   connection,
   error,
 }: {
@@ -270,12 +272,8 @@ function Chat({
                         <span className="interrupted">Interrupted</span>
                       )}
                     </div>
-                    <p className="message-text" data-testid="message-text">
-                      {message.text}
-                      {message.status === 'streaming' && (
-                        <span className="stream-cursor" aria-hidden="true" />
-                      )}
-                    </p>
+                    <TranscriptText text={message.text} role={message.role} bindings={bindings}
+                      streaming={message.status === 'streaming'} />
                   </li>
                 )
               })}

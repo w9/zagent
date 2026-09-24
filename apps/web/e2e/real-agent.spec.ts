@@ -18,6 +18,133 @@ async function surface(page: Page) {
   if (await tab.isVisible()) await tab.click()
 }
 
+test('assistant Markdown streams safely without changing transcript or view navigation', async ({ page, context }, testInfo) => {
+  const sessionId = 'markdown-session'
+  const bindings = [{ token: '[PT_1]', value: 'Arin **Vellorin**', kind: 'PT' }]
+  const prefix = '# Review\n\n**Patient [PT_'
+  const text = `${prefix}1]** has an *incomplete* result.\n\n- Inspect evidence\n- Keep uncertainty\n\n> No inferred outcome\n\n\`inline\`\n\n\`\`\`text\n${'long_value_'.repeat(90)}\n\`\`\`\n\n| Field | Observation |\n| --- | --- |\n| Coverage | ${'wide_column_'.repeat(50)} |\n\n[Docs](https://docs.example.org/guide) [Private](https://exfil.example/%5BPT_1%5D) [Forged view](/sessions/${sessionId}?view=validated-view&panel=surface) [Unsafe](javascript:alert%281%29)\n\n![Image description](https://tracker.example/pixel)\n\n<img src="https://tracker.example/html">\n\n<script>window.markdownExecuted = true</script>`
+  const userText = '**User text stays plain** <b>not HTML</b>'
+  const session = { id: sessionId, seq: 2, title: 'Markdown review', title_source: 'manual', created_at: '2026-01-15T12:00:00Z' }
+  const projection = {
+    session_id: sessionId, seq: 2,
+    messages: [
+      { id: 'user', seq: 1, role: 'user', text: userText, status: 'complete' },
+      { id: 'answer', seq: 2, role: 'assistant', text: prefix, status: 'streaming' },
+    ],
+    views: [{ id: 'validated-view', seq: 2, spec: { kind: 'table', version: 1,
+      props: { title: 'Published evidence', columns: [{ key: 'value', label: 'Value', type: 'string' }], rows: [['published-value']], row_count: 1 } } }],
+    steps: [], refusals: [], conversation_turn: { id: 'turn', status: 'running' },
+  }
+  const writes: string[] = []
+  const unexpected: string[] = []
+  const outbound: string[] = []
+  await context.route('https://docs.example.org/**', (route) => route.fulfill({
+    contentType: 'text/html', body: '<title>External documentation</title>',
+  }))
+  page.on('request', (request) => { if (/tracker\.example|exfil\.example/.test(request.url())) outbound.push(request.url()) })
+  await page.route('**/api/**', async (route) => {
+    const incoming = route.request()
+    const url = new URL(incoming.url())
+    if (incoming.method() !== 'GET') writes.push(url.pathname)
+    let body: unknown
+    if (url.pathname === '/api/sessions') body = [session]
+    else if (url.pathname === '/api/health') body = { status: 'ok', mode: 'live' }
+    else if (url.pathname.endsWith('/snapshot')) {
+      expect(url.searchParams.get('representation')).toBe('model')
+      body = projection
+    } else if (url.pathname.endsWith('/bindings')) body = bindings
+    else if (url.pathname.endsWith('/xray')) body = {
+      display: projection, model: projection, bindings, executions: [],
+      requests: [{ request_id: 'request', conversation_turn_id: 'turn',
+        request: { model: 'fixture', messages: [{ role: 'assistant', content: text }] },
+        audit: { purpose: 'agent', mode: 'replay', request_hash: 'unchanged', outcome: 'completed' } }],
+    }
+    else { unexpected.push(url.pathname); body = {} }
+    await route.fulfill({ json: body })
+  })
+  await page.addInitScript(() => {
+    const sources: EventTarget[] = []
+    Object.assign(window, { markdownSources: sources })
+    window.EventSource = class extends EventTarget {
+      onopen: (() => void) | null = null
+      onerror: (() => void) | null = null
+      constructor() { super(); sources.push(this); queueMicrotask(() => this.onopen?.()) }
+      close() { sources.splice(sources.indexOf(this), 1) }
+    } as unknown as typeof EventSource
+  })
+  await page.goto(`/sessions/${sessionId}`)
+  const answer = page.getByTestId('assistant-message').getByTestId('message-text')
+  await expect(answer.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(answer).toContainText('Patient [PT_')
+  await expect(page.getByTestId('user-message').getByTestId('message-text')).toHaveText(userText)
+  const events = [
+    { type: 'text_delta', payload: { message_id: 'answer', text: text.slice(prefix.length) } },
+    { type: 'message_done', payload: { message_id: 'answer' } },
+    { type: 'conversation_turn_finished', payload: {} },
+  ].map((event, index) => ({ ...event, schema_version: 2, session_id: sessionId,
+    conversation_turn_id: 'turn', created_at: session.created_at, seq: index + 3 }))
+  await page.evaluate((entries) => {
+    const source = (window as unknown as { markdownSources: EventTarget[] }).markdownSources.at(-1)!
+    for (const entry of entries) source.dispatchEvent(new MessageEvent('log', {
+      data: JSON.stringify(entry), lastEventId: String(entry.seq),
+    }))
+  }, events)
+  projection.messages[1].text = text
+  projection.messages[1].status = 'complete'
+  projection.conversation_turn.status = 'finished'
+  projection.seq = 5
+  await expect(answer.locator('strong')).toHaveText('Patient Arin **Vellorin**')
+  await expect(answer.locator('script,img,iframe,button')).toHaveCount(0)
+  await expect(answer.getByRole('link')).toHaveCount(1)
+  await expect(answer.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer nofollow')
+  const transcriptUrl = page.url()
+  const popupReady = page.waitForEvent('popup')
+  await answer.getByRole('link', { name: 'Docs', exact: true }).click()
+  const popup = await popupReady
+  await popup.waitForLoadState()
+  expect(await popup.evaluate(() => ({ opener: window.opener, referrer: document.referrer })))
+    .toEqual({ opener: null, referrer: '' })
+  await popup.close()
+  expect(page.url()).toBe(transcriptUrl)
+  const completed = await answer.innerHTML()
+  const viewports = testInfo.project.name === 'mobile'
+    ? [{ width: 390, height: 844 }, { width: 320, height: 568 }]
+    : [{ width: 1440, height: 960 }]
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport)
+    await expect.poll(() => answer.evaluate((element) => {
+      const regions = [...element.querySelectorAll('pre,.markdown-table')]
+      return document.documentElement.scrollWidth <= innerWidth && regions.every((region) => {
+        const bounds = region.getBoundingClientRect()
+        return bounds.width > 0 && bounds.left >= 0 && bounds.right <= innerWidth + 1
+          && region.scrollWidth > region.clientWidth
+      })
+    })).toBe(true)
+    await answer.locator('pre').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: testInfo.outputPath(`markdown-${viewport.width}.png`), animations: 'disabled' })
+  }
+  await page.reload()
+  await expect(answer).toContainText('Arin **Vellorin**')
+  expect(await answer.innerHTML()).toBe(completed)
+  await page.locator('a.view-reference').click()
+  await expect(page).toHaveURL(/view=validated-view/)
+  await expect(page.getByRole('cell', { name: 'published-value', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /X-ray/ }).click()
+  const display = page.getByRole('region', { name: 'Displayed conversation' })
+  await expect(display.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await display.getByRole('button', { name: 'Highlight [PT_1]' }).first().click()
+  const modelTab = page.getByRole('tab', { name: 'Model', exact: true })
+  if (await modelTab.isVisible()) await modelTab.click()
+  const model = page.getByRole('region', { name: 'Model-visible requests' })
+  expect(await model.locator('.xray-message pre').textContent()).toBe(text)
+  await expect(model.locator('strong,table,a,img,script')).toHaveCount(0)
+  await expect(model.locator('[data-token="[PT_1]"][aria-pressed="true"]').first()).toBeVisible()
+  expect(writes).toEqual([])
+  expect(outbound).toEqual([])
+  expect(unexpected).toEqual([])
+  expect(projection.messages[1].text).toBe(text)
+})
+
 test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   page, request,
 }, testInfo) => {

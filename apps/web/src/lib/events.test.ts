@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { useSession } from './use-session'
+import type { PrivacyBinding } from './api'
 import { reduceEvent } from './events'
 import type { EventType, LogEvent, Payloads, Projection } from './events'
 import fixture from '../../../../evals/fixtures/view-replay.json'
 import { selectionAt, validateViewSpec, viewPosition } from './views'
+
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 const empty: Projection = {
   session_id: 'session',
@@ -28,6 +33,57 @@ function event<Kind extends EventType>(
     payload,
   } as LogEvent
 }
+
+it('streams unchanged model text and fetches display bindings when a token crosses deltas', async () => {
+  const streams: FakeEventSource[] = []
+  class FakeEventSource extends EventTarget {
+    url: string
+    onopen: (() => void) | null = null
+    onerror: (() => void) | null = null
+    close = vi.fn()
+    constructor(url: string) { super(); this.url = url; streams.push(this) }
+  }
+  let bindings: PrivacyBinding[] = []
+  let activeSession = 'session'
+  let failBindings = false
+  const fetcher = vi.fn(async (path: string) => ({
+    ok: !failBindings || !path.endsWith('/bindings'), status: 503,
+    json: async () => path.endsWith('/bindings')
+      ? failBindings ? { detail: 'Display bindings unavailable' } : bindings
+      : { ...empty, session_id: activeSession },
+  }))
+  vi.stubGlobal('fetch', fetcher)
+  vi.stubGlobal('EventSource', FakeEventSource)
+  const { result, rerender } = renderHook(({ sessionId }) => useSession(sessionId), {
+    initialProps: { sessionId: 'session' },
+  })
+  await waitFor(() => expect(streams.length).toBe(1))
+  expect(fetcher.mock.calls[0][0]).toContain('representation=model')
+  expect(streams[0].url).toContain('representation=model')
+  act(() => {
+    streams[0].onopen?.()
+    streams[0].dispatchEvent(new MessageEvent('log', {
+      data: JSON.stringify(event(1, 'text_delta', { message_id: 'answer', text: '**Patient [PT_' })),
+      lastEventId: '1',
+    }))
+  })
+  expect(result.current.state?.messages[0].text).toBe('**Patient [PT_')
+  bindings = [{ token: '[PT_1]', value: 'Arin Vellorin', kind: 'PT' }]
+  act(() => streams[0].dispatchEvent(new MessageEvent('log', {
+    data: JSON.stringify(event(2, 'text_delta', { message_id: 'answer', text: '1]** [link](https://example.org/[PT_1])' })),
+    lastEventId: '2',
+  })))
+  await waitFor(() => expect(result.current.bindings).toEqual(bindings))
+  expect(result.current.state?.messages[0].text).toBe('**Patient [PT_1]** [link](https://example.org/[PT_1])')
+  expect(empty.messages).toEqual([])
+  activeSession = 'other-session'
+  failBindings = true
+  rerender({ sessionId: activeSession })
+  expect(result.current.bindings).toEqual([])
+  await waitFor(() => expect(result.current.state?.session_id).toBe(activeSession))
+  expect(result.current.bindings).toEqual([])
+  expect(result.current.error).toBe('Display bindings unavailable')
+})
 
 describe('event projection', () => {
   it('ignores duplicate replay without mutating the previous state', () => {

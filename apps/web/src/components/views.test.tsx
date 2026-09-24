@@ -6,6 +6,7 @@ import { ViewRenderer } from './view-renderer'
 import { StepMarker } from './step-marker'
 import { RefusalChip } from './refusal-chip'
 import { XrayContent } from './xray-panel'
+import { TranscriptText } from './transcript-text'
 import type { XrayData } from '../lib/api'
 import { DraftEditor } from './views/draft_form.view'
 import type { CatalogApp } from './views/draft_form.view'
@@ -16,6 +17,103 @@ import type { ChartSpec, TableData, TableSpec } from '../lib/views'
 import type { HandleResolver } from './views/table.view'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+describe('assistant Markdown', () => {
+  it('renders Markdown and GFM without interpreting user messages', () => {
+    const text = '# Summary\n\nA **strong** and *careful* answer with `inline code`.\n\n- First\n- Second\n\n1. Ordered\n\n> Evidence only\n\n```ts\nconst answer = 42\n```\n\n| Metric | Value |\n| --- | --- |\n| Coverage | 8x |'
+    const { container, rerender } = render(<TranscriptText role="assistant" text={text} />)
+    expect(screen.getByRole('heading', { name: 'Summary' })).toBeTruthy()
+    expect(container.querySelector('strong')?.textContent).toBe('strong')
+    expect(container.querySelector('em')?.textContent).toBe('careful')
+    expect(container.querySelectorAll('li').length).toBe(3)
+    expect(container.querySelector('blockquote')?.textContent).toContain('Evidence only')
+    expect(container.querySelector('pre code')?.textContent).toBe('const answer = 42\n')
+    expect(screen.getByRole('table').textContent).toContain('Coverage')
+    rerender(<TranscriptText role="user" text={text} />)
+    expect(container.querySelector('h1,strong,em,table,pre,a')).toBeNull()
+    expect(container.textContent).toBe(text)
+  })
+
+  it('keeps every streaming prefix legible and renders the same completed text on remount', () => {
+    const text = '## Result\n\n**Evidence** and [guide](https://docs.example.org).\n\n```text\npartial <tag>\n```\n\n| A | B |\n| - | - |\n| 1 | 2 |'
+    const { container, rerender, unmount } = render(<TranscriptText role="assistant" text="" streaming />)
+    for (let length = 1; length <= text.length; length += 1) {
+      rerender(<TranscriptText role="assistant" text={text.slice(0, length)} streaming />)
+      expect(container.querySelector('.stream-cursor')).toBeTruthy()
+      expect(container.querySelector('script,img')).toBeNull()
+      if (/[a-z0-9]/i.test(text.slice(0, length))) expect(container.textContent?.length).toBeGreaterThan(0)
+    }
+    rerender(<TranscriptText role="assistant" text={text} />)
+    const completed = container.innerHTML
+    unmount()
+    const refreshed = render(<TranscriptText role="assistant" text={text} />)
+    expect(refreshed.container.innerHTML).toBe(completed)
+    const replay = new DOMParser().parseFromString(
+      renderToStaticMarkup(<TranscriptText role="assistant" text={text} />), 'text/html',
+    )
+    expect(replay.body.innerHTML).toBe(completed)
+  })
+
+  it('escapes HTML, removes image requests, and blocks unsafe or host-owned navigation', () => {
+    const text = '<script>alert(1)</script>\n\n<img src="https://tracker.example/pixel">\n\n![Visible alt](https://tracker.example/image)\n\n[safe](https://docs.example.org/guide) [http](http://docs.example.org) [script](javascript:alert%281%29) [data](data:text/html,hello) [file](file:///etc/passwd) [relative](/api/sessions/test/confirm) [view](?view=view-0001&panel=surface) [internal](http://localhost:8000/sessions/test) [protocol relative](//docs.example.org)'
+    const { container } = render(<TranscriptText role="assistant" text={text} />)
+    expect(container.querySelector('script,img,iframe,form')).toBeNull()
+    expect(container.textContent).toContain('<script>alert(1)</script>')
+    expect(container.textContent).toContain('Visible alt')
+    const links = screen.getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual(['safe', 'http'])
+    for (const link of links) {
+      expect(link.getAttribute('target')).toBe('_blank')
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer nofollow')
+      expect(link.getAttribute('referrerpolicy')).toBe('no-referrer')
+    }
+  })
+
+  it('resolves privacy only in text nodes, including code and tables, never destinations', () => {
+    const bindings = [{ token: '[PT_1]', value: 'NGC-0041872', kind: 'PT' }]
+    const text = '**[PT_1]** ` [PT_1] `\n\n| Patient |\n| --- |\n| [PT_1] |\n\n[private](https://docs.example.org/[PT_1]) [encoded](https://docs.example.org/%255BPT_1%255D) [resolved](https://docs.example.org/NGC-0041872) [[PT_1]](https://docs.example.org/guide)'
+    const { container } = render(<TranscriptText role="assistant" text={text} bindings={bindings}
+      selected="[PT_1]" onSelect={vi.fn()} />)
+    expect(container.querySelector('strong')?.textContent).toBe('NGC-0041872')
+    expect(container.querySelector('code')?.textContent).toContain('NGC-0041872')
+    expect(screen.getByRole('cell').textContent).toBe('NGC-0041872')
+    const links = screen.getAllByRole('link')
+    expect(links.length).toBe(1)
+    expect(links[0].getAttribute('href')).toBe('https://docs.example.org/guide')
+    expect(links[0].querySelector('button')).toBeNull()
+    expect(links[0].textContent).toBe('NGC-0041872')
+    expect(links[0].querySelector('[data-selected="true"]')).toBeTruthy()
+    expect(text).toContain('https://docs.example.org/[PT_1]')
+  })
+
+  it('keeps resolved X-ray fallback text inert when the source message is unavailable', () => {
+    const empty = { session_id: 'session', seq: 1, messages: [], views: [], steps: [], conversation_turn: null }
+    const text = '[private note](https://untrusted.example/visit) **literal text**'
+    const { container } = render(<XrayContent data={{
+      display: { ...empty, messages: [{ id: 'answer', seq: 1, role: 'assistant', text, status: 'complete' }] },
+      model: empty, bindings: [], requests: [], executions: [],
+    }} />)
+    expect(container.querySelector('a,strong')).toBeNull()
+    expect(screen.getByTestId('message-text').textContent).toBe(text)
+  })
+
+  it('rejects encoded private and local destinations without changing their labels', () => {
+    const destinations = [
+      'https://docs.example.org/?patient=Arin+Vellorin',
+      'https://docs.example.org/%252525255BPT_1%252525255D',
+      'http://localhost./sessions/private', 'http://127.1/api', 'http://[::1]/api',
+      'http://10.0.0.1/api', 'https://user:password@docs.example.org/',
+      'mailto:someone@example.org', 'vbscript:alert%281%29',
+    ]
+    const text = destinations.map((url, index) => `[Link ${index}](${url})`).join('\n\n')
+    const { container } = render(<TranscriptText role="assistant" text={text}
+      bindings={[{ token: '[PT_1]', value: 'Arin Vellorin', kind: 'PT' }]} />)
+    expect(container.querySelector('a')).toBeNull()
+    for (let index = 0; index < destinations.length; index += 1) {
+      expect(container.textContent).toContain(`Link ${index}`)
+    }
+  })
+})
 
 const analysisDraft: DraftState = {
   draft_id: 'draft-0001', view_id: 'view-0001', app_id: 'somatic-snv',

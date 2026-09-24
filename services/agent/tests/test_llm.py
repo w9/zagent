@@ -30,6 +30,32 @@ def request(text="Hello", **kwargs):
     )
 
 
+@pytest.mark.parametrize(
+    ("mode", "model"),
+    [
+        ("live", "openai/gpt-6-luna"),
+        ("replay", "deepseek/deepseek-v4.1-flash"),
+        ("record", "deepseek/deepseek-v4.1-flash"),
+    ],
+)
+def test_default_model_preserves_replay_and_explicit_overrides(tmp_path, monkeypatch, mode, model):
+    from zagent.gateway import configured_gateway
+
+    monkeypatch.delenv("ZAGENT_MODEL", raising=False)
+    monkeypatch.delenv("ZAGENT_MODEL_ROUTES", raising=False)
+    monkeypatch.setenv("ZAGENT_LLM_MODE", mode)
+    assert configured_gateway().routes["default"].model == model
+    assert LlmGateway(tmp_path, mode=mode).routes["default"].model == model
+    monkeypatch.setenv("ZAGENT_MODEL", "")
+    assert configured_gateway().routes["default"].model == model
+    monkeypatch.setenv("ZAGENT_LLM_MODE", "live")
+    assert configured_gateway(mode).routes["default"].model == model
+    monkeypatch.setenv("ZAGENT_MODEL", "explicit-model")
+    assert configured_gateway(mode).routes["default"].model == "explicit-model"
+    monkeypatch.setenv("ZAGENT_MODEL_ROUTES", '{"default":{"model":"explicit-route"}}')
+    assert configured_gateway(mode).routes["default"].model == "explicit-route"
+
+
 async def test_replay_miss_is_loud_and_never_uses_network(tmp_path, monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
@@ -204,6 +230,41 @@ async def test_provider_errors_do_not_echo_secrets(tmp_path, monkeypatch):
     with pytest.raises(GatewayError, match="^Model provider returned HTTP 401$"):
         await gateway.complete(request())
     assert not list(tmp_path.iterdir())
+
+
+async def test_evaluation_budget_is_persistent_and_blocks_before_provider_calls(
+    tmp_path, monkeypatch
+):
+    from zagent.evals.budget import BudgetExceeded, ProviderBudget
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-private-credential")
+    prices = {ModelRoute().model: {"prompt": "0.0000001", "completion": "0.0000005"}}
+    calls = []
+
+    def provider(incoming):
+        calls.append(incoming)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "Done"}}]})
+
+    budget = ProviderBudget(tmp_path / "budget.json", dollars=0.01, prices=prices, max_calls=1)
+    gateway = LlmGateway(
+        tmp_path / "cassettes",
+        mode="record",
+        before_provider=budget.reserve,
+        transport=httpx.MockTransport(provider),
+        audit_path=tmp_path / "audit.db",
+    )
+    await gateway.complete(request("first", metadata={"conversation_turn_id": "turn"}))
+    restored = ProviderBudget(tmp_path / "budget.json", dollars=0.01, prices=prices, max_calls=1)
+    gateway.before_provider = restored.reserve
+    with pytest.raises(BudgetExceeded, match="budget exhausted"):
+        await gateway.complete(request("second", metadata={"conversation_turn_id": "turn"}))
+    assert len(calls) == 1
+    assert gateway.audit_for_turn("turn")[-1]["provider_calls"] == 0
+    assert len(list((tmp_path / "cassettes").glob("*.json"))) == 1
+    ledger = (tmp_path / "budget.json").read_text()
+    assert "test-private-credential" not in ledger and '"first"' not in ledger
+    with pytest.raises(BudgetExceeded, match="approved evaluation budget"):
+        await budget.reserve(request(), ModelRoute(model="unapproved"))
 
 
 @pytest.mark.parametrize("reason", ["length", "content_filter"])

@@ -102,12 +102,18 @@ def evaluate_detector(case, root: Path, *, seed: int, commit: str | None, dirty:
         session_id=str(events[0].session_id),
         duration_seconds=time.perf_counter() - started,
         executions=0,
+        adversarial={"family": case.adversarial.family, "ingress": case.adversarial.ingress}
+        if case.adversarial
+        else None,
+        requirement_outcomes={"REQ-JOB-04": not evidence.projection.jobs},
         provenance=Provenance(
             commit=commit,
             dirty_worktree=dirty,
             agent_implementation="Detector",
             seed=seed,
             clock=clock,
+            corpus_hash=hashlib.sha256(case.model_dump_json().encode()).hexdigest(),
+            label_source=case.adversarial.label_source if case.adversarial else "fixture_literal",
         ),
     )
 

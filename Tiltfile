@@ -5,9 +5,10 @@ analytics_settings(False)
 ci_settings(k8s_grace_period='30s')
 disable_snapshots()
 docker_prune_settings(disable=True)
-watch_settings(ignore=['.cluster', 'docs/evals', '**/test-results', '**/__pycache__', '.pytest_cache', '.ruff_cache'])
-watch_file('deploy/cluster')
 state = read_json('.cluster/config.json')
+recording_changes = ['services/agent/zagent/cassettes'] if state['mode'] == 'live' else []
+watch_settings(ignore=['.cluster', 'docs/evals', '**/test-results', '**/__pycache__', '.pytest_cache', '.ruff_cache'] + recording_changes)
+watch_file('deploy/cluster')
 custom_build('zagent-backend:plan9', ['python3', 'deploy/cluster/images.py', 'backend'],
     disable_push=True, skips_local_docker=True,
     deps=['pyproject.toml', 'uv.lock', 'services/agent/zagent',

@@ -114,6 +114,10 @@ def content_hash(content: DraftContent) -> str:
 def validate_draft(
     content: DraftContent, specimens: list[dict], libraries: list[dict]
 ) -> list[DraftIssue]:
+    from zagent.faults import enabled
+
+    if enabled("validator_off"):
+        return []
     issues = []
 
     def issue(code: str, field: str, message: str) -> None:

@@ -195,12 +195,13 @@ async def test_cleanup_failure_keeps_job_claim_recoverable(store, tmp_path):
         executor.close()
 
 
-def test_cluster_manifests_deny_direct_agent_access_and_limit_worker_egress():
+@pytest.mark.parametrize("mode", ["replay", "live"])
+def test_cluster_manifests_deny_direct_agent_access_and_limit_worker_egress(mode):
     import runpy
     from pathlib import Path
 
     manifests = runpy.run_path(str(Path(__file__).parents[3] / "deploy/cluster/manifests.py"))
-    objects = manifests["resources"]()
+    objects = manifests["resources"](mode=mode)
     policies = [item for item in objects if item["kind"] == "NetworkPolicy"]
     assert len([item for item in policies if item["metadata"]["name"] == "default-deny"]) == 3
     flows = manifests["FLOWS"]
@@ -222,6 +223,14 @@ def test_cluster_manifests_deny_direct_agent_access_and_limit_worker_egress():
     assert internet == ["allow-llm-gateway"]
     pods = [item["spec"]["template"]["spec"] for item in objects if item["kind"] == "Deployment"]
     assert sum(pod["automountServiceAccountToken"] for pod in pods) == 1
+    gateway = next(
+        container
+        for pod in pods
+        for container in pod["containers"]
+        if container["name"] == "llm-gateway"
+    )
+    model = next(entry["value"] for entry in gateway["env"] if entry["name"] == "ZAGENT_MODEL")
+    assert model == ("openai/gpt-6-luna" if mode == "live" else "deepseek/deepseek-v4.1-flash")
     for pod in pods:
         for container in pod["containers"]:
             command = container["command"]
@@ -287,7 +296,10 @@ def test_deployed_workflows_include_all_ordinary_real_agent_cases():
     assert {case.id for case in selected} == {
         case.id
         for case in load_suite(root / "evals").cases
-        if case.agent.startswith("llm:") and case.execution is None and case.simulator is None
+        if case.agent.startswith("llm:")
+        and case.execution is None
+        and case.simulator is None
+        and case.adversarial is None
     }
     assert {"DRAFT-CONFIRM", "PRIVACY-001", "JOBS-VIEWS"} <= {case.id for case in selected}
 

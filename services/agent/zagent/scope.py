@@ -188,6 +188,10 @@ class ScopeGuard:
         metadata: dict[str, str] | None = None,
         sample: int | None = None,
     ) -> Refusal | None:
+        from zagent.faults import enabled
+
+        if enabled("guard_off"):
+            return None
         completion = await self.gateway.complete(
             CompletionRequest(
                 route=self.route,

@@ -118,9 +118,10 @@ JOB_DESCRIPTIONS = {
 
 
 class JobsTools:
-    def __init__(self, clinical: ClinicalStore):
+    def __init__(self, clinical: ClinicalStore, *, knowledge_path=None):
         self.clinical = clinical
         self.jobs = JobStore(clinical)
+        self.knowledge_path = knowledge_path
 
     async def dispatch(self, session_id: UUID, turn_id: UUID, name: str, arguments: dict) -> dict:
         try:
@@ -205,7 +206,7 @@ class JobsTools:
                     ],
                 ).model_dump()
             else:
-                knowledge = KnowledgeBase()
+                knowledge = KnowledgeBase(self.knowledge_path)
                 try:
                     result = (
                         knowledge.search(params.query)

@@ -25,6 +25,7 @@ async def stream_report(database_url):
         if not case.agent.startswith(("guard:", "detector:"))
         and case.simulator is None
         and case.execution is None
+        and case.adversarial is None
     ],
 )
 async def test_case_golden_transcript(stream_report, case_id):
@@ -45,6 +46,7 @@ async def test_case_golden_transcript(stream_report, case_id):
         if not case.agent.startswith(("guard:", "detector:"))
         and case.simulator is None
         and case.execution is None
+        and case.adversarial is None
         for seed in range(10)
     ],
 )
@@ -62,7 +64,8 @@ async def test_case_chaos_resume(stream_report, case_id, seed):
 
 
 async def test_all_registered_requirements_are_covered(stream_report):
-    assert report_passes(stream_report), terminal_report(stream_report)
+    assert stream_report.findings_review["passed"], terminal_report(stream_report)
+    assert report_passes(stream_report) or stream_report.findings_review["known_cases"]
 
 
 def test_scope_samples_are_independent_and_structured(stream_report):

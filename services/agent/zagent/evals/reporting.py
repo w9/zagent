@@ -1,7 +1,9 @@
+import hashlib
 from collections import Counter
 from importlib.resources import files
 from pathlib import Path
 
+import yaml
 from jinja2 import Environment, StrictUndefined, select_autoescape
 
 from zagent.evals.schema import Report
@@ -112,6 +114,61 @@ def slot_rows(report: Report) -> list[dict]:
     return rows
 
 
+def adversarial_rows(report: Report) -> list[dict]:
+    rows = []
+    selected = [result for result in report.results if result.adversarial]
+    for family, ingress in sorted(
+        {(item.adversarial["family"], item.adversarial["ingress"]) for item in selected}
+    ):
+        trials = [
+            item
+            for item in selected
+            if (item.adversarial["family"], item.adversarial["ingress"]) == (family, ingress)
+        ]
+        successes = sum(item.passed for item in trials)
+        lower, upper = wilson_interval(successes, len(trials))
+        rows.append(
+            {
+                "family": family,
+                "ingress": ingress,
+                "successes": successes,
+                "trials": len(trials),
+                "lower": lower,
+                "upper": upper,
+                "exposed": sum(
+                    item.adversarial.get("payload_reached_model", False) for item in trials
+                ),
+                "cases": sorted({item.case_id for item in trials}),
+            }
+        )
+    return rows
+
+
+def detector_rows(report: Report) -> list[dict]:
+    rows = []
+    identifiers = {case.id for case in report.cases if case.agent.startswith("detector:")}
+    for label, adversarial in (("Literal identifiers", False), ("Obfuscated identifiers", True)):
+        trials = [
+            item
+            for item in report.results
+            if item.case_id in identifiers and bool(item.adversarial) == adversarial
+        ]
+        if not trials:
+            continue
+        successes = sum(item.passed for item in trials)
+        lower, upper = wilson_interval(successes, len(trials))
+        rows.append(
+            {
+                "label": label,
+                "successes": successes,
+                "trials": len(trials),
+                "lower": lower,
+                "upper": upper,
+            }
+        )
+    return rows
+
+
 def requirement_rows(report: Report) -> list[dict]:
     selected = {case.id for case in report.cases}
     rows = []
@@ -179,10 +236,67 @@ def report_passes(report: Report) -> bool:
     rows = requirement_rows(report)
     return (
         bool(rows)
+        and (
+            report.matrix is None
+            or all(
+                outcome["passed"] for cell in report.matrix["cells"] for outcome in cell["outcomes"]
+            )
+        )
         and (report.privacy_scan is None or not report.privacy_scan.violations)
         and any(row["status"] == "PASS" for row in rows)
         and all(row["status"] in {"PASS", "FILTERED", "NOT SELECTED"} for row in rows)
     )
+
+
+def review_findings(report: Report, path: Path) -> dict:
+    from zagent.llm import canonical_json
+
+    raw = path.read_text()
+    baseline = yaml.safe_load(raw)
+    recognized, regressions = set(), []
+    for row in requirement_rows(report):
+        if row["status"] in {"PASS", "FILTERED", "NOT SELECTED"}:
+            continue
+        requirement = row["requirement"]
+        if row["status"] != "FAIL" or requirement.tier == "invariant":
+            regressions.append(f"{requirement.id}: {row['status']}")
+            continue
+        failed_results = [
+            result
+            for result in report.results
+            if result.case_id in row["cases"]
+            and result.verification == requirement.verification
+            and not result.requirement_outcomes.get(requirement.id, result.passed)
+        ]
+        if not failed_results:
+            regressions.append(f"{requirement.id}: lower-bound gate failed without a known failure")
+        for result in failed_results:
+            finding = baseline["findings"].get(result.case_id, {})
+            known = (
+                result.provenance.mode == "replay"
+                and result.seed == baseline["seed"]
+                and result.provenance.model in {None, baseline["model"]}
+                and result.provenance.prompt_version in {None, baseline["prompt_version"]}
+                and finding.get("requirement") == requirement.id
+                and finding.get("failure_sha256")
+                == hashlib.sha256(canonical_json(result.failures).encode()).hexdigest()
+            )
+            if known:
+                recognized.add(result.case_id)
+            else:
+                regressions.append(f"{result.case_id}: unrecognized {requirement.id} failure")
+    if report.privacy_scan and report.privacy_scan.violations:
+        regressions.append("Privacy corpus contains identifiers")
+    return {
+        "version": baseline["version"],
+        "source": path.name,
+        "sha256": hashlib.sha256(raw.encode()).hexdigest(),
+        "review_status": baseline["review_status"],
+        "known_cases": sorted(recognized),
+        "regressions": regressions,
+        "passed": not regressions,
+        "quality_passed": report_passes(report),
+    }
 
 
 def compare_reports(report: Report, baseline: Report) -> dict:
@@ -201,6 +315,21 @@ def percentage(value: float | None) -> str:
 
 def terminal_report(report: Report, baseline: Report | None = None) -> str:
     lines = [f"{'Requirement':<20} {'Tier':<10} {'Gate':<13} {'Trials':<10} 95% Wilson CI"]
+    if report.mutations:
+        lines.insert(
+            0,
+            "\n".join(
+                [
+                    "MUTATION           STATUS     DETECTED BY",
+                    *(
+                        f"{item['name']:<18} {item['status']:<10} "
+                        f"{', '.join(item['detected_by']) or 'none'}"
+                        for item in report.mutations["results"]
+                    ),
+                    "",
+                ]
+            ),
+        )
     for row in requirement_rows(report):
         requirement = row["requirement"]
         interval = (
@@ -215,9 +344,10 @@ def terminal_report(report: Report, baseline: Report | None = None) -> str:
         lines.append(f"  mean per-case pass^{report.pass_streak}: {percentage(row['pass_power'])}")
     failures = sum(not result.passed for result in report.results)
     executions = sum(result.executions for result in report.results)
+    execution_kind = "probe" if report.mutations else "HTTP case"
     lines.append(
         f"\n{len(report.requirements)} requirements, {len(report.results)} trials, "
-        f"{failures} failed trials; {executions} HTTP case executions "
+        f"{failures} failed trials; {executions} {execution_kind} executions "
         f"in {report.duration_seconds:.2f}s."
     )
     scope = scope_metrics(report)
@@ -288,6 +418,26 @@ def terminal_report(report: Report, baseline: Report | None = None) -> str:
             f"Unpaired: {paired['unmatched_current']} current, "
             f"{paired['unmatched_baseline']} baseline."
         )
+    if report.judge_calibration:
+        calibration = report.judge_calibration
+        lines.append(
+            f"Judge reference agreement: {calibration['correct']}/{calibration['total']} "
+            f"({calibration['label_source']}); human calibration: "
+            f"{'complete' if calibration['human_calibrated'] else 'PENDING'}."
+        )
+    if report.findings_review:
+        review = report.findings_review
+        lines.append(
+            f"Known findings: {len(review['known_cases'])}; "
+            f"unrecognized regressions: {len(review['regressions'])}. "
+            "Quality gates above are unchanged."
+        )
+        lines.extend(review["regressions"])
+    for row in detector_rows(report):
+        lines.append(
+            f"{row['label']}: {row['successes']}/{row['trials']} "
+            f"[{percentage(row['lower'])}, {percentage(row['upper'])}]"
+        )
     seen = set()
     for result in report.results:
         for failure in result.failures:
@@ -314,7 +464,13 @@ def write_report(report: Report, output: Path, baseline: Report | None = None) -
         }
         for case in report.cases
     ]
-    passed = sum(result.passed for result in report.results)
+    outcomes = (
+        [outcome["passed"] for cell in report.matrix["cells"] for outcome in cell["outcomes"]]
+        if report.matrix
+        else [result.passed for result in report.results]
+    )
+    passed = sum(outcomes)
+    trials = len(outcomes)
     captured_requests = sum(result.privacy_requests for result in report.results)
     privacy_hits = sum(result.tripwire_hits for result in report.results)
     _lower, privacy_upper = wilson_interval(privacy_hits, captured_requests)
@@ -324,10 +480,22 @@ def write_report(report: Report, output: Path, baseline: Report | None = None) -
         cases=grouped,
         paired=compare_reports(report, baseline) if baseline else None,
         passed=passed,
+        trials=trials,
         gate=report_passes(report),
-        success_share=100 * passed / len(report.results) if report.results else 0,
+        success_share=100 * passed / trials if trials else 0,
         scope=scope_metrics(report),
         slots=slot_rows(report),
+        adversarial=adversarial_rows(report),
+        detectors=detector_rows(report),
+        related_reports=[
+            {"title": title, "path": relative}
+            for title, relative in (
+                ("Mutation proof", "plan10/mutations/index.html"),
+                ("Model matrix", "plan10/matrix/index.html"),
+                ("Nightly drift", "plan10/nightly/index.html"),
+            )
+            if (output / relative).is_file()
+        ],
         privacy_requests=captured_requests,
         privacy_hits=privacy_hits,
         privacy_upper=privacy_upper,

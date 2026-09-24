@@ -19,7 +19,10 @@ def deployed_cases(root):
     return [
         case
         for case in load_suite(root).cases
-        if case.agent.startswith("llm:") and not case.execution and not case.simulator
+        if case.agent.startswith("llm:")
+        and not case.execution
+        and not case.simulator
+        and not case.adversarial
     ]
 
 

@@ -9,6 +9,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from zagent.faults import enabled
+
 IdentifierKind = Literal["PT", "SP", "LB", "LIT"]
 TOKEN = re.compile(r"\[(?:PT|SP|LB|LIT)_[1-9][0-9]*\]")
 TOKEN_PREFIX = re.compile(
@@ -202,6 +204,8 @@ class SessionTokens:
             raise TypeError("Tokenization requires a Raw boundary value")
         if path not in INGRESS_PATHS:
             raise PrivacyError("Unregistered model-context ingress")
+        if enabled("tokenizer_off"):
+            return Tokenized(value=raw.value)
 
         def walk(value: Any, annotation: dict) -> Any:
             if "$ref" in annotation:
@@ -316,6 +320,8 @@ class EgressTripwire:
         )
 
     def __call__(self, request: dict[str, Any]) -> None:
+        if enabled("tripwire_off"):
+            return
         for text in string_values(request):
             self.scan(text)
 

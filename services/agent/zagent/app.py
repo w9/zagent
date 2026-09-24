@@ -514,6 +514,10 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         except ValueError as error:
             raise HTTPException(422, "Last-Event-ID must be a nonnegative integer") from error
         cursor = max(from_seq, header_cursor)
+        from zagent.faults import enabled
+
+        if enabled("resume_off"):
+            cursor = from_seq
         head, _ = await app.state.store.head(session_id)
         if cursor > head:
             raise HTTPException(409, "Cursor is ahead of this session's event log")

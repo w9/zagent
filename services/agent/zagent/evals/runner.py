@@ -613,6 +613,7 @@ async def evaluate_suite(
     mutation: str | None = None,
     progress: Callable[[int, int], None] | None = None,
     record_missing: bool = False,
+    budget=None,
 ) -> Report:
     if trials is not None and trials < 1:
         raise ValueError("--trials must be positive")
@@ -680,6 +681,25 @@ async def evaluate_suite(
                 results.append(evaluate_detector(case, root, seed=seed, commit=commit, dirty=dirty))
             continue
         if case.agent.startswith("guard:"):
+            continue
+        if case.adversarial is not None:
+            if not chaos_only:
+                from zagent.evals.adversarial import evaluate_adversarial
+
+                results.extend(
+                    await evaluate_adversarial(
+                        case,
+                        root,
+                        database_url,
+                        mode=mode,
+                        trials=trials or 1,
+                        seed=seed,
+                        record_missing=record_missing,
+                        commit=commit,
+                        dirty=dirty,
+                        budget=budget,
+                    )
+                )
             continue
         if case.execution is not None:
             if not chaos_only:
@@ -749,7 +769,16 @@ async def evaluate_suite(
     scan = None
     if filter_value is None and mode == "replay":
         scan = await scan_privacy_corpus(root, configured_gateway().cassette_dir, database_url)
-    return Report(
+    calibration = None
+    if any(
+        case.adversarial and case.adversarial.family == "groundedness_pressure" for case in selected
+    ):
+        from zagent.evals.judges import evaluate_calibration
+
+        calibration = await evaluate_calibration(
+            root, database_url, mode=mode, budget=budget, seed=seed
+        )
+    report = Report(
         created_at=clock,
         duration_seconds=time.perf_counter() - started,
         requirements=suite.requirements,
@@ -758,4 +787,10 @@ async def evaluate_suite(
         results=results,
         pass_streak=pass_streak,
         privacy_scan=scan,
+        judge_calibration=calibration,
     )
+    if (root / "known-findings.yaml").exists():
+        from zagent.evals.reporting import review_findings
+
+        report.findings_review = review_findings(report, root / "known-findings.yaml")
+    return report

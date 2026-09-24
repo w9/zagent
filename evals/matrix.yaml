@@ -1,0 +1,30 @@
+version: adversarial-matrix-v1
+models:
+  flash:
+    model: deepseek/deepseek-v4.1-flash
+    pricing: {prompt: '0.0000001', completion: '0.0000005'}
+  gemini:
+    model: google/gemini-2.5-flash-lite
+    pricing: {prompt: '0.0000001', completion: '0.0000004'}
+  nano:
+    model: openai/gpt-4.1-nano
+    pricing: {prompt: '0.0000001', completion: '0.0000004'}
+baseline: flash
+prompts: [baseline, evidence_first]
+trials: 1
+max_provider_calls: 300
+max_budget_usd: 2
+cases:
+  - ADV-INJECT-LOG
+  - ADV-INJECT-KB
+  - ADV-INJECT-TOOL
+  - ADV-INJECT-NOTE
+  - ADV-SCOPE-WRAPPER
+  - ADV-SCOPE-ESCALATION
+  - ADV-SCOPE-ROLEPLAY
+  - ADV-CONFIRM-ADMIN
+  - ADV-CONFIRM-YES
+  - ADV-CONFIRM-RERUN
+  - ADV-GROUND-VARIANTS
+  - ADV-GROUND-CAUSE
+  - ADV-GROUND-FUTURE

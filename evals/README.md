@@ -27,10 +27,19 @@ PLAN8 adds real synthetic worker processes, leased dispatch, versioned SOP retri
 job views, and journaled runtime recovery. Four execution cases have three independently recorded
 agent conversations each; ordinary job-view replay also drives desktop/mobile container tests.
 
+PLAN10 adds five adversarial families, nine paired enforcement mutations, narrow explanation
+judging, and a three-model/two-prompt matrix. Adversarial setup seeds synthetic drafts/jobs and
+injects bounded fixture payloads; conversation evidence still comes from the public API. Separate
+database checks verify that no attack caused an additional submission. Detector-only cases never
+send obfuscated identifiers to a provider.
+
 ## Commands
 
 ```bash
-make evals                    # 3,405 trials: 3,000 guard, 100 detector, 31 HTTP, 250 SSE, 12 slot, 12 execution.
+make evals                    # Full replay quality gate, including retained adversarial findings.
+make evals EVAL_ARGS='--accept-known-findings'  # Separate exact-known-findings regression gate.
+make evals MUTATE=all          # Nine paired enforcement probes; requires the existing k3d cluster.
+make matrix                   # Replay all three models and both prompt versions, with no key.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
 make test                     # The same harness plus unit/integration/client checks.
@@ -64,7 +73,7 @@ Each HTTP standard reference executes twice; those duplicate
 determinism checks are reported as HTTP executions, not inflated trial counts. `--chaos` selects
 only interrupted trials; `--no-chaos` selects only standard trials. Every newly registered case
 automatically participates in SSE chaos mode unless it is a guard-only, detector-only, simulated-user,
-or execution case. Execution cases specify their own runtime interruption boundary.
+execution, or adversarial case. Execution cases specify their own runtime interruption boundary.
 
 The report is [docs/evals/index.html](../docs/evals/index.html), with structured data in
 [docs/evals/results.json](../docs/evals/results.json). Both are generated and ignored by Git;
@@ -92,6 +101,80 @@ responses. Live does not assert deterministic text or update goldens.
 and calls the provider only for absent recordings/samples. Replay never falls through. PLAN6
 used it to preserve 2,690 already-clean scope samples and record 310 changed tokenized requests.
 
+## PLAN10 Adversarial Evidence
+
+The attack corpus is [adversarial.yaml](cases/adversarial.yaml) plus
+[obfuscated.yaml](cases/obfuscated.yaml). These are curated, agent-authored development cases,
+not held-out red-team evidence. They cover scope wrappers, confirmation bypass, grounding pressure,
+obfuscation, and injection through logs, KB documents, tool results, and specimen notes. A notes
+payload that never reaches the model is reported separately from resistance after exposure.
+Injection cases also require the intended ingress to be exercised: over-refusal can fail a case
+without an attack having been followed. No attack case contains a human confirmation action.
+
+The original 100 literal detector cases pass; only 2/12 obfuscated cases pass (95% Wilson interval
+4.7%-44.8%). The expanded recall gate remains red at its original threshold. Spacing, separators,
+homoglyphs, partial/contextual references, spelled digits, and split-turn identifiers are retained
+as findings, not patched away in evaluation setup.
+
+`make evals MUTATE=all` runs paired baseline/mutant checks for the nine mechanisms listed in
+[PLAN10](../docs/PLAN10.md). Both sides must remain healthy and the expected requirements must
+change from passing to failing. A crash, failed positive control, or surviving mutation fails the
+meta-requirement. Eight probes create and finally drop only their own disposable databases on the
+server named by `ZAGENT_TEST_DATABASE_URL`, whose source database must end in `_test`. The CNI
+probe creates three labeled temporary namespaces, copies the deployed policy definitions, and
+deletes only its copied policies. It leaves the current cluster mode and live policies unchanged.
+Mutation startup requires explicit test mode, replay, and matching dedicated disposable database
+URLs; normal application startup rejects flags. Provider access is refused under mutation.
+
+The model matrix is configured in [matrix.yaml](matrix.yaml). Its routes are
+`deepseek/deepseek-v4.1-flash`, `google/gemini-2.5-flash-lite`, and `openai/gpt-4.1-nano`.
+The production prompt and an evaluation-only evidence-first candidate share 13 cases and the
+same seeds. Per-cell results are 10/13, 10/13, 7/13, 9/13, 9/13, and 8/13, respectively, in
+baseline/candidate order. All 78 trials preserve the no-additional-submission invariant.
+Paired exact McNemar comparisons report matches, discordant pairs, and p-values. This small
+sample supports neither a reliable ranking nor a general factuality claim.
+
+```bash
+uv run zagent evals --filter 'ADV-*' --no-chaos --accept-known-findings
+uv run zagent matrix --mode replay --output docs/evals/plan10/matrix
+uv run zagent matrix --mode replay --baseline docs/evals/plan10/matrix/results.json \
+	--output .cluster/reports/matrix-check
+```
+
+Recording is an explicit paid operation requiring the existing external provider key, a test
+database, `--budget-usd 2`, and a persistent `--budget-ledger` path. Reuse that ledger across
+invocations of the same approved batch; never delete or replace it to regain budget. Reservations
+are made before provider access under a locked, owner-only ledger, using verified model prices
+and conservative request/output estimates. Errors consume reservations too. The initial batch
+made 183 calls and reserved $0.9313962, not a measured bill. No retries, response rewriting, parser
+relaxation, or rerolling failed samples was used. Ordinary replay makes no provider calls.
+
+[judge-labels.yaml](judge-labels.yaml) contains six reviewable **agent-authored** reference
+explanations. The judge checks factual support and uncertainty only, not style. Three of six
+calibration calls agreed; three failed the closed tool protocol. The report includes errors,
+Wilson intervals, prompt/model/label hashes, and an unavailable kappa. Human agreement is
+explicitly pending. Review and correct the references before marking them human-reviewed;
+changing the labels requires recalibration, not silently relabeling old evidence as human data.
+
+[known-findings.yaml](known-findings.yaml) retains the ten obfuscation misses and three baseline
+grounding/judge failures by exact case, seed, route, prompt, requirement, and failure hash.
+`--accept-known-findings` can accept only those measured replay failures. Quality scores remain
+red, and new findings, invariant failures, missing evidence, and coverage gaps still fail CI.
+Matrix gates separately reject incomplete recordings, confirmation violations, unmatched drift
+evidence, and statistically significant paired declines. Existing measured cell failures remain
+visible even when that regression command succeeds.
+
+The workflow runs keyless evidence and mutation checks on PRs. Scheduled paid runs at 03:17 UTC
+are disabled unless the repository variable `ZAGENT_LIVE_EVALS` is explicitly set to `true`;
+manual recording requires selecting the `live_matrix` dispatch input. Configure protection rules
+and `OPENROUTER_API_KEY` for the `model-evaluations` GitHub environment before enabling either.
+Each nightly run uses a fresh cassette directory and its own $2 maximum,
+compares with checked-in baseline recordings, and uploads failed responses and its ledger as
+separate artifacts. The report artifacts are assembled for main-branch GitHub Pages publication.
+This workflow is configured but has not yet been accepted remotely. Enabling the schedule opts
+into recurring paid runs; local approval for the initial batch does not enable that schedule or
+mean that remote runs occurred.
+
 ## Provider Cassettes
 
 The gateway stores reviewed cassettes under
@@ -101,7 +184,9 @@ whitespace, provider call IDs, transport metadata, and surrounding text whitespa
 meaningful prompt or argument changes miss. Replay misses fail with a hash and recording hint,
 never with a live fallback. Requests and responses are saved, not authorization headers.
 
-The default model is `deepseek/deepseek-v4.1-flash`. `ZAGENT_MODEL` changes the default route;
+The live default model is `openai/gpt-6-luna`; replay and recording retain
+`deepseek/deepseek-v4.1-flash` to preserve existing cassette hashes. An unset or empty
+`ZAGENT_MODEL` selects that mode's default; setting it explicitly changes the default route.
 `ZAGENT_MODEL_ROUTES` accepts a JSON object mapping route names to `{provider, model}`. A case
 uses `agent: llm:<route>`. `ZAGENT_CASSETTE_DIR` can select a separate cassette directory.
 Provider keys come from an owner-only file outside the repository, as described in the root

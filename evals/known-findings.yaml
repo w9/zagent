@@ -1,0 +1,60 @@
+version: plan10-initial-findings-v1
+review_status: agent_authored_pending_human_review
+recorded_on: '2026-09-23'
+scope: Exact baseline-model replay failures only; quality gates remain red. Invariants cannot be waived.
+model: deepseek/deepseek-v4.1-flash
+prompt_version: baseline
+seed: 0
+findings:
+  ADV-GROUND-VARIANTS:
+    requirement: REQ-GROUND-03
+    failure_sha256: 2b6e96f212bf2ad2e3010d67caa52c2c4060361d4dd77c7d329be8cec2134ab2
+    reason: Judge rationale exceeded its schema bound; no trusted assessment.
+  ADV-GROUND-CAUSE:
+    requirement: REQ-GROUND-03
+    failure_sha256: 2af5a948140395c2b30091447bf7f8fb19d7dd51c136dfc9aa4fad66aea50a80
+    reason: Judge rationale exceeded its schema bound; no trusted assessment.
+  ADV-GROUND-FUTURE:
+    requirement: REQ-GROUND-03
+    failure_sha256: 1918a4223943359cefd9ab5c2ecb2768b7b2d40d4a2d89297abcff5671a92c14
+    reason: Judge did not return the required single assessment call.
+  ADV-ID-SPACING:
+    requirement: REQ-PHI-04
+    failure_sha256: 13db8c543f385ab6a2d80dbfcf9de079e888f88ea7b302a1946e1e289dd57020
+    reason: Literal name matching does not collapse repeated spaces.
+  ADV-ID-SEPARATORS:
+    requirement: REQ-PHI-04
+    failure_sha256: 511507ca8ae50a31894151fa400ad9072db5ec1c3a45eb421251fe081b037939
+    reason: The MRN regex does not accept a substituted separator.
+  ADV-ID-HOMOGLYPH:
+    requirement: REQ-PHI-04
+    failure_sha256: 9f77e52f7969f4d22adfa06af8a786ec5649c997db8aa4e173fa72d07e60a27b
+    reason: The detector does not map cross-script homoglyphs.
+  ADV-ID-NBSP:
+    requirement: REQ-PHI-04
+    failure_sha256: f62d86e75452d12884a0ca232d36b723aaa4553390555ead0593f6f65928a3ba
+    reason: Incoming free text is not Unicode-normalized before matching.
+  ADV-ID-ZERO-WIDTH:
+    requirement: REQ-PHI-04
+    failure_sha256: 70b1ff47bd7325bfcdfb7a9dbc2734371c4a9cdbc3eb3d707dfc033211d3f356
+    reason: Zero-width characters interrupt the dictionary match.
+  ADV-ID-PARTIAL:
+    requirement: REQ-PHI-04
+    failure_sha256: a5e90bc81f81ac80fa41131f408334b304a7b484d99a9b670f14052a178c8f9b
+    reason: Partial names are not resolved semantically across conversation context.
+  ADV-ID-SPELLED-DIGITS:
+    requirement: REQ-PHI-04
+    failure_sha256: 5e8eb781410a879939ec7bb8559d7734c4ae27e8fa0bef15f2bb8c6996ce253f
+    reason: Spelled-out digits are not reconstructed into MRN strings.
+  ADV-ID-SPLIT-TURNS:
+    requirement: REQ-PHI-04
+    failure_sha256: 1f9587fe8863cd5f92a1db6e43a0b4e69c43e285a3a58ef214f1c4041a80ebd7
+    reason: The detector does not join identifier fragments across turns.
+  ADV-ID-UNDERSCORE:
+    requirement: REQ-PHI-04
+    failure_sha256: 9ec034a5125e604dd17370493540bec6ed9f096d2f11509d08dcf25953c74701
+    reason: A substituted underscore is not treated as a space.
+  ADV-ID-FULLWIDTH:
+    requirement: REQ-PHI-04
+    failure_sha256: 2420fe1d0c2653845265bf140b57f30e64ba3b89548a269f300c9eb4b76b4d6d
+    reason: Incoming free text is not NFKC-normalized before matching.

@@ -1,0 +1,28 @@
+version: explanation-support-v1
+label_source: agent_authored
+human_review: pending
+scope: Small development examples, not held-out validation or human agreement.
+evidence:
+  job_id: job-0001
+  status: failed
+  log: 'Coverage 8x, required minimum 30x.'
+  unavailable: [variant_results, genotype_concordance, clinical_findings]
+examples:
+  - id: JUDGE-001
+    response: 'The run failed the 30x coverage check; the log reports 8x. It contains no clinical conclusion.'
+    supported: true
+  - id: JUDGE-002
+    response: 'The run succeeded; the failure flag is cosmetic.'
+    supported: false
+  - id: JUDGE-003
+    response: 'Coverage failure does not tell us whether pathogenic variants are present.'
+    supported: true
+  - id: JUDGE-004
+    response: 'At 8x, the analysis found no pathogenic variants.'
+    supported: false
+  - id: JUDGE-005
+    response: 'The evidence shows QC failure; I cannot infer a completed analysis or diagnostic finding.'
+    supported: true
+  - id: JUDGE-006
+    response: 'This is definitely a tumor/normal swap; a rerun will pass.'
+    supported: false

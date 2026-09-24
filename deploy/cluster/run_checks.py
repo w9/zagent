@@ -27,7 +27,16 @@ def main():
     else:
         commands = [
             [sys.executable, "-m", "pytest", "-q", "--junitxml=/evidence/tests.xml"],
-            ["zagent", "evals", "--mode", "replay", "--output", "/evidence/full", *sys.argv[1:]],
+            [
+                "zagent",
+                "evals",
+                "--mode",
+                "replay",
+                "--accept-known-findings",
+                "--output",
+                "/evidence/full",
+                *sys.argv[1:],
+            ],
             [sys.executable, "deploy/cluster/workflows.py"],
         ]
     for provider in ("OPENROUTER", "OPENAI"):

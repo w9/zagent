@@ -61,16 +61,83 @@
       <div class="topline"><div class="brand">Zagent.</div><span class="mode">{{ report.results|map(attribute='provenance.mode')|unique|join(' / ')|upper }}</span></div>
       <h1>Evidence report</h1>
       <div class="meta">{{ report.created_at.isoformat() }} &middot; <a href="results.json">Result data</a></div>
+      {% if related_reports %}<nav class="evidence-links" aria-label="Related evidence">{% for link in related_reports %}<a href="{{ link.path }}">{{ link.title }}</a>{% if not loop.last %} &middot; {% endif %}{% endfor %}</nav>{% endif %}
       <div class="metrics">
         <div><strong class="{{ 'pass' if gate else 'fail' }}">{{ 'PASS' if gate else 'FAIL' }}</strong><span>Requirement gates</span></div>
         <div><strong>{{ report.requirements|length }}</strong><span>Registered requirements</span></div>
-        <div><strong>{{ passed }} / {{ report.results|length }}</strong><span>Successful trials</span></div>
+        <div><strong>{{ passed }} / {{ trials }}</strong><span>Successful {{ 'matrix ' if report.matrix else '' }}trials</span></div>
         <div><strong>{{ '%.2f'|format(report.duration_seconds) }}s</strong><span>Wall-clock duration</span></div>
       </div>
-      <div class="distribution" role="img" aria-label="{{ passed }} of {{ report.results|length }} trials passed"><span style="width: {{ success_share }}%"></span></div>
+      <div class="distribution" role="img" aria-label="{{ passed }} of {{ trials }} trials passed"><span style="width: {{ success_share }}%"></span></div>
     </div>
   </header>
   <main>
+    {% if report.findings_review %}
+    <section aria-labelledby="known-findings"><h2 id="known-findings">Open findings and regression status</h2>
+      <p>{{ report.findings_review.known_cases|length }} exact documented findings; {{ report.findings_review.regressions|length }} unrecognized regressions. Quality gates remain {{ 'PASS' if report.findings_review.quality_passed else 'FAIL' }}.</p>
+      <p class="meta">This is a separate replay regression check, not a waiver of quality targets. Invariant violations, missing evidence, and different failures cannot be accepted. Baseline review: {{ report.findings_review.review_status }}; hash <code>{{ report.findings_review.sha256 }}</code>.</p>
+      {% for case in report.findings_review.known_cases %}<a href="#case-{{ case }}">{{ case }}</a> {% endfor %}
+      {% for failure in report.findings_review.regressions %}<pre class="diff">{{ failure }}</pre>{% endfor %}
+    </section>
+    {% endif %}
+    {% if report.matrix %}
+    <section aria-labelledby="model-matrix"><h2 id="model-matrix">Model and prompt matrix</h2>
+      <p class="meta">Requirement and case details below the matrix describe the baseline cell. Each linked cell retains all failures, transcripts, assertion results, and per-trial provenance. One sample per case is development evidence, not a general model ranking.</p>
+      <div class="table-scroll"><table><thead><tr><th>Model / Prompt</th><th>Successful trials</th><th>Model identifier</th><th>Prompt hash</th></tr></thead>
+        <tbody>{% for cell in report.matrix.cells %}<tr><td><a href="{{ cell.path }}">{{ cell.label }}</a></td><td>{{ cell.passed }}/{{ cell.trials }}</td><td><code>{{ cell.model }}</code></td><td><code>{{ cell.prompt_hash }}</code></td></tr>{% endfor %}</tbody>
+      </table></div>
+      <h3>Paired comparisons</h3>
+      <div class="table-scroll"><table><thead><tr><th>Comparison</th><th>Paired</th><th>Improved / Regressed</th><th>Exact McNemar p</th><th>Unmatched current / baseline</th></tr></thead>
+        <tbody>{% for comparison in report.matrix.comparisons %}<tr><td>{{ comparison.current }} vs {{ comparison.baseline }} ({{ comparison.kind }})</td><td>{{ comparison.matched }}</td><td>{{ comparison.improved }} / {{ comparison.regressed }}</td><td>{{ comparison.exact_p_value }}</td><td>{{ comparison.unmatched_current }} / {{ comparison.unmatched_baseline }}</td></tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="meta">Paired by the same case and sample index. These small exploratory comparisons are not adjusted for multiple comparisons; a rate difference alone is not evidence of a regression. Replay adds no new independent samples.</p>
+      {% if report.matrix.drift_comparisons is defined %}
+      <h3>Paired drift against the stored baseline</h3>
+      <div class="table-scroll"><table><thead><tr><th>Cell</th><th>Paired</th><th>Improved / Regressed</th><th>Exact McNemar p</th></tr></thead>
+      <tbody>{% for comparison in report.matrix.drift_comparisons %}<tr><td>{{ comparison.current }}</td><td>{{ comparison.matched }}</td><td>{{ comparison.improved }} / {{ comparison.regressed }}</td><td>{{ comparison.exact_p_value }}</td></tr>{% endfor %}</tbody></table></div>
+      <p class="meta">Baseline result hash: <code>{{ report.matrix.baseline_sha256 }}</code>. Statistical drift and invariant violations are distinct from the existing measured quality failures.</p>
+      {% endif %}
+      <details><summary>Matrix provenance and bounded cost ledger</summary><pre>{{ report.matrix|tojson(indent=2) }}</pre></details>
+    </section>
+    {% endif %}
+    {% if adversarial %}
+    <section aria-labelledby="adversarial"><h2 id="adversarial">Adversarial breakdown</h2>
+      <div class="table-scroll"><table><thead><tr><th>Family / Ingress</th><th>Passed</th><th>95% Wilson CI</th><th>Payload reached model</th><th>Cases</th></tr></thead>
+      <tbody>{% for row in adversarial %}<tr><td>{{ row.family }} / {{ row.ingress }}</td><td>{{ row.successes }}/{{ row.trials }}</td><td>{{ row.lower|percentage }} &ndash; {{ row.upper|percentage }}</td><td>{{ row.exposed }}/{{ row.trials }}</td><td>{% for case in row.cases %}<a href="#case-{{ case }}">{{ case }}</a> {% endfor %}</td></tr>{% endfor %}</tbody></table></div>
+      <p class="meta">Attack fixtures and expectation labels are agent-authored development tests. Specimen notes are deliberately excluded by the handle-only contract; a payload blocked before context is distinct from one the model sees and resists. Every model-driven attack compares job state against its pre-attack state without sending a human confirmation.</p>
+    </section>
+    {% endif %}
+    {% if detectors %}
+    <section aria-labelledby="detector-recall"><h2 id="detector-recall">Identifier detection recall</h2>
+      <div class="table-scroll"><table><thead><tr><th>Corpus</th><th>Detected cases</th><th>95% Wilson CI</th></tr></thead>
+      <tbody>{% for row in detectors %}<tr><td>{{ row.label }}</td><td>{{ row.successes }}/{{ row.trials }}</td><td>{{ row.lower|percentage }} &ndash; {{ row.upper|percentage }}</td></tr>{% endfor %}</tbody></table></div>
+      <p class="meta">Obfuscated identifiers include spacing, homoglyphs, Unicode, partial mentions, spelled-out digits, and cross-turn fragments. Misses are retained as findings. The original 95% lower-bound target is unchanged, so the expanded detector requirement may be red.</p>
+    </section>
+    {% endif %}
+    {% if report.judge_calibration %}
+    <section aria-labelledby="judge-agreement"><h2 id="judge-agreement">Explanation judge agreement</h2>
+      {% set calibration = report.judge_calibration %}
+      <p>Reference agreement: {{ calibration.correct }}/{{ calibration.total }} ({{ calibration.reference_agreement|percentage }}); 95% Wilson CI {{ calibration.lower|percentage }} &ndash; {{ calibration.upper|percentage }}. Cohen's kappa: {{ calibration.cohen_kappa }}. Errors: {{ calibration.errors }}.</p>
+      <p class="status {{ 'pass' if calibration.human_calibrated else 'insufficient' }}">Human calibration: {{ 'complete' if calibration.human_calibrated else 'PENDING' }}</p>
+      <p class="meta">Reference source: {{ calibration.label_source }}. Agent-authored labels are not human judgments; agreement with them does not establish judge-to-human validity. The six examples are curated development cases, not held-out calibration.</p>
+      <dl><dt>Judge model</dt><dd>{{ calibration.model }}</dd><dt>Judge prompt hash</dt><dd><code>{{ calibration.prompt_hash }}</code></dd><dt>Reference label hash</dt><dd><code>{{ calibration.labels_hash }}</code></dd></dl>
+      <details><summary>Reference assessments and labels provenance</summary><pre>{{ calibration|tojson(indent=2) }}</pre></details>
+    </section>
+    {% endif %}
+    {% if report.mutations %}
+    <section aria-labelledby="mutations"><h2 id="mutations">Enforcement mutations</h2>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Mutation</th><th>Result</th><th>Expected detection</th><th>Detected by</th><th>Healthy control / mutant</th></tr></thead>
+        <tbody>{% for item in report.mutations.results %}<tr>
+          <td><a href="#case-MUT-{{ item.name|upper|replace('_', '-') }}">{{ item.name }}</a></td>
+          <td>{{ item.status }}</td><td>{{ item.expected|join(', ') }}</td>
+          <td>{{ item.detected_by|join(', ') or 'none' }}{% if item.unexpected %}<br>Unexpected: {{ item.unexpected|join(', ') }}{% endif %}</td>
+          <td>{{ item.control.healthy }} / {{ item.mutant.healthy }}</td>
+        </tr>{% endfor %}</tbody>
+      </table></div>
+      <p class="meta">A crashed probe or failed positive control is invalid, not a detected mutation. Live namespaces and databases are never mutation targets. Raw paired observations and provenance are retained under each linked case.</p>
+    </section>
+    {% endif %}
     <section aria-labelledby="requirements">
       <div class="heading"><h2 id="requirements">Requirements</h2><small>{{ report.cases|length }} selected cases</small></div>
       <div class="table-scroll">
@@ -189,7 +256,7 @@
             <dt>Clock / Seed</dt><dd>{{ result.provenance.clock.isoformat() }} / {{ result.provenance.seed }}</dd>
             <dt>Script SHA-256</dt><dd><code>{{ result.provenance.script_sha256 }}</code></dd>
             <dt>Timing</dt><dd>{{ result.provenance.delay_scale }}x script delays; {{ result.provenance.coalesce_seconds }}s coalescing</dd>
-            <dt>HTTP executions</dt><dd>{{ result.executions }} including determinism references when applicable</dd>
+            <dt>{{ 'Probe' if report.mutations else 'HTTP' }} executions</dt><dd>{{ result.executions }} {{ 'including the control and mutant' if report.mutations else 'including determinism references when applicable' }}</dd>
             <dt>Session</dt><dd><code>{{ result.session_id or 'Unavailable' }}</code></dd>
             <dt>Model / Prompt hash</dt><dd>{{ result.provenance.model or 'Not applicable' }} / {{ result.provenance.prompt_hash or 'Not applicable' }}</dd>
             <dt>Tool schema / KB</dt><dd>{{ result.provenance.tool_schema_hash or 'Not applicable' }} / {{ result.provenance.kb_version or 'Not applicable' }}</dd>

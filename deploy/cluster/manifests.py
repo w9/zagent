@@ -435,7 +435,9 @@ def resources(api_ip="172.30.0.2", mode="replay"):
         {
             **common,
             **tokenized,
-            "ZAGENT_MODEL": "deepseek/deepseek-v4.1-flash",
+            "ZAGENT_MODEL": "openai/gpt-6-luna"
+            if mode == "live"
+            else "deepseek/deepseek-v4.1-flash",
             "ZAGENT_LOCAL_INGRESS": "0",
             "ZAGENT_GATEWAY_AUDIT": "/var/lib/zagent/gateway-audit.sqlite3",
             "ZAGENT_PRIVACY_CAPABILITY_FILE": "/run/privacy/gateway.key",

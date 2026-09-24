@@ -49,6 +49,10 @@ case "$action" in
         docker exec "$name" tilt wait --port 10359 --for=condition=Ready uiresources --all --timeout=3m
         docker run --rm "${options[@]}" "$image" python3 deploy/cluster/evidence.py "$@"
         ;;
+    mutation)
+        docker run --rm "${options[@]}" -e ZAGENT_MUTATION -e ZAGENT_TEST_MODE -e ZAGENT_LLM_MODE \
+            -e DATABASE_URL -e ZAGENT_TEST_DATABASE_URL "$image" python3 deploy/cluster/mutation.py
+        ;;
     *)
         printf 'Usage: bash deploy/cluster/cluster.sh up|stop|kubectl ...\n' >&2
         exit 2

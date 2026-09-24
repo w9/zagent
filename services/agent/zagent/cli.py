@@ -45,6 +45,18 @@ def main() -> None:
     evaluate.add_argument("--seed", type=int, default=0)
     evaluate.add_argument("--scope-concurrency", type=int, default=8)
     evaluate.add_argument("--mutation", choices=["disable_scope_guard"])
+    evaluate.add_argument(
+        "--mutate", help="Run paired enforcement mutations: all or comma-separated names"
+    )
+    evaluate.add_argument("--budget-usd", type=float)
+    evaluate.add_argument(
+        "--accept-known-findings",
+        action="store_true",
+        help="Allow only exact documented measured replay findings; never waive invariants",
+    )
+    evaluate.add_argument(
+        "--budget-ledger", type=Path, default=Path(".cluster/evaluation-budget.json")
+    )
     evaluate.add_argument("--update-golden", action="store_true")
     evaluate.add_argument(
         "--record-missing",
@@ -67,6 +79,20 @@ def main() -> None:
     report.add_argument("--input", type=Path, default=Path("docs/evals/results.json"))
     report.add_argument("--output", type=Path, default=Path("docs/evals"))
     report.add_argument("--baseline", type=Path)
+    report.add_argument("--accept-known-findings", action="store_true")
+    matrix = commands.add_parser(
+        "matrix", help="Bounded three-model, two-prompt adversarial evidence"
+    )
+    matrix.add_argument("--root", type=Path, default=Path("evals"))
+    matrix.add_argument("--database-url", default=os.environ.get("ZAGENT_TEST_DATABASE_URL"))
+    matrix.add_argument("--mode", choices=["replay", "record"], default="replay")
+    matrix.add_argument("--seed", type=int, default=0)
+    matrix.add_argument("--output", type=Path, default=Path("docs/evals/plan10/matrix"))
+    matrix.add_argument("--budget-usd", type=float)
+    matrix.add_argument("--baseline", type=Path, help="Stored matrix result for paired drift")
+    matrix.add_argument(
+        "--budget-ledger", type=Path, default=Path(".cluster/evaluation-budget.json")
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.ERROR)
     try:
@@ -74,14 +100,67 @@ def main() -> None:
             result = asyncio.run(transcript(args.session_id, args.database_url))
             print(json.dumps(result, indent=2, sort_keys=True))
             return
+        if args.command == "matrix":
+            from zagent.evals.matrix import evaluate_matrix, matrix_regressions
+
+            if not args.database_url or not 0 <= args.seed <= 9997:
+                raise ValueError("Matrix requires a test database and a seed in 0..9997")
+            result = asyncio.run(
+                evaluate_matrix(
+                    args.root,
+                    args.database_url,
+                    args.output,
+                    mode=args.mode,
+                    seed=args.seed,
+                    budget_usd=args.budget_usd,
+                    ledger=args.budget_ledger,
+                    baseline=Report.model_validate_json(args.baseline.read_text())
+                    if args.baseline
+                    else None,
+                )
+            )
+            print(f"Matrix report: {args.output / 'index.html'}")
+            regressions = matrix_regressions(result)
+            print(
+                f"Quality gates: {'PASS' if report_passes(result) else 'FAIL (findings retained)'}"
+            )
+            for regression in regressions:
+                print(regression)
+            if regressions:
+                parser.exit(1)
+            return
         baseline = Report.model_validate_json(args.baseline.read_text()) if args.baseline else None
         if args.command == "evals":
+            if args.mutate:
+                from zagent.evals.mutations import evaluate_mutations, evidence_report
+
+                if (
+                    args.mode != "replay"
+                    or args.update_golden
+                    or args.record_missing
+                    or args.mutation
+                ):
+                    raise ValueError("Enforcement mutations are keyless replay-only experiments")
+                result = evidence_report(
+                    asyncio.run(evaluate_mutations(args.database_url, args.root, args.mutate))
+                )
+                path = write_report(result, args.output / "mutations")
+                print(terminal_report(result))
+                print(f"Mutation report: {path}")
+                if not report_passes(result):
+                    parser.exit(1)
+                return
             if args.record_missing and args.mode != "record":
                 raise ValueError("--record-missing requires explicit --mode record")
             if args.mode != "replay" and (not args.no_chaos or not args.filter_value):
                 raise ValueError("Provider access requires --filter and --no-chaos to bound cost")
             if args.mode == "live" and args.update_golden:
                 raise ValueError("Use --mode record to update replay goldens")
+            budget = None
+            if args.budget_usd is not None:
+                from zagent.evals.matrix import budget_for
+
+                budget = budget_for(args.root, args.budget_ledger, args.budget_usd)
             result = asyncio.run(
                 evaluate_suite(
                     args.root,
@@ -97,6 +176,7 @@ def main() -> None:
                     record_missing=args.record_missing,
                     scope_concurrency=args.scope_concurrency,
                     mutation=args.mutation,
+                    budget=budget,
                     progress=lambda done, total: print(
                         f"Scope samples: {done}/{total}", file=sys.stderr
                     ),
@@ -109,7 +189,13 @@ def main() -> None:
         print(f"Report: {path}")
         if args.command == "evals" and args.update_golden:
             print("Golden update requested. Review the golden-file diff before committing.")
-        if not report_passes(result):
+        accepted_findings = (
+            args.command in {"evals", "report"}
+            and args.accept_known_findings
+            and result.findings_review
+            and result.findings_review["passed"]
+        )
+        if not report_passes(result) and not accepted_findings:
             parser.exit(1)
     except (NotFound, OSError, ValueError, asyncpg.PostgresError) as error:
         parser.exit(1, f"zagent: {error}\n")

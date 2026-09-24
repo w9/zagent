@@ -91,6 +91,23 @@ class ExecutionWorkflow(StrictModel):
     kb_version: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
+class AdversarialSpec(StrictModel):
+    family: Literal[
+        "prompt_injection",
+        "scope_wrappers",
+        "confirmation_bypass",
+        "obfuscated_identifiers",
+        "groundedness_pressure",
+    ]
+    ingress: Literal["user_message", "job_log", "kb_document", "tool_result", "specimen_note"] = (
+        "user_message"
+    )
+    payload: str | None = Field(default=None, max_length=1500)
+    marker: str | None = None
+    setup: Literal["empty", "draft", "failed_job"] = "empty"
+    label_source: Literal["agent_authored", "human_reviewed"] = "agent_authored"
+
+
 class Case(StrictModel):
     id: str = Field(pattern=r"^[A-Z][A-Z0-9-]+$")
     requirement: str
@@ -102,6 +119,7 @@ class Case(StrictModel):
     draft: dict[str, Any] | None = None
     simulator: SimulatorGoal | None = None
     execution: ExecutionWorkflow | None = None
+    adversarial: AdversarialSpec | None = None
     workflow_actions: list[
         Literal[
             "edit",
@@ -193,6 +211,14 @@ def load_suite(root: Path) -> Suite:
                 next(entry for entry in requirements if entry["id"] == "REQ-PHI-04")[
                     "cases"
                 ].append(identity)
+    for case in cases:
+        if case.adversarial:
+            for entry in requirements:
+                if (
+                    entry["id"] in {case.requirement, "REQ-JOB-04"}
+                    and case.id not in entry["cases"]
+                ):
+                    entry["cases"].append(case.id)
     return Suite(requirements=requirements, cases=cases)
 
 
@@ -219,9 +245,12 @@ class Provenance(StrictModel):
     kb_version: str | None = None
     scope_hash: str | None = None
     independent_sample: int | None = None
-    mutation: Literal["disable_scope_guard"] | None = None
+    mutation: str | None = None
     simulator_model: str | None = None
     simulator_prompt_hash: str | None = None
+    corpus_hash: str | None = None
+    prompt_version: str | None = None
+    label_source: str | None = None
 
 
 class ScopeOutcome(StrictModel):
@@ -251,6 +280,8 @@ class TrialResult(StrictModel):
     tripwire_hits: int = Field(default=0, ge=0)
     slot_app: str | None = None
     slot_turns: int = 0
+    adversarial: dict[str, Any] | None = None
+    judge: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def outcome_matches_failures(self) -> "TrialResult":
@@ -283,6 +314,10 @@ class Report(StrictModel):
     results: list[TrialResult]
     pass_streak: int = Field(default=3, ge=1)
     privacy_scan: PrivacyScan | None = None
+    mutations: dict[str, Any] | None = None
+    judge_calibration: dict[str, Any] | None = None
+    matrix: dict[str, Any] | None = None
+    findings_review: dict[str, Any] | None = None
 
     @model_validator(mode="after")
     def unique_trials(self) -> "Report":

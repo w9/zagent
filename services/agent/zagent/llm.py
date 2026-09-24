@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from zagent.privacy import EgressBlocked
 
+DEFAULT_LIVE_MODEL = "openai/gpt-6-luna"
 DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash"
 PROVIDERS = {
     "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY"),
@@ -170,16 +171,28 @@ class LlmGateway:
         audit_path: Path | None = None,
         protect_response: Callable[[CompletionRequest, Completion], Awaitable[Completion]]
         | None = None,
+        before_provider: Callable[[CompletionRequest, ModelRoute], Awaitable[None]] | None = None,
     ):
         if mode not in {"replay", "record", "live"}:
             raise ValueError("Gateway mode must be replay, record, or live")
+        from zagent.faults import configured
+
+        if configured() and mode != "replay":
+            raise ValueError("Mutation tests cannot enable model provider access")
         self.cassette_dir = cassette_dir
         self.mode = mode
-        self.routes = routes if routes is not None else {"default": ModelRoute()}
+        self.routes = (
+            routes
+            if routes is not None
+            else {
+                "default": ModelRoute(model=DEFAULT_LIVE_MODEL if mode == "live" else DEFAULT_MODEL)
+            }
+        )
         self.transport = transport
         self.egress_check = egress_check
         self.audit_path = audit_path
         self.protect_response = protect_response
+        self.before_provider = before_provider
         self.record_missing = False
         self.record_locks: dict[str, asyncio.Lock] = {}
 
@@ -375,6 +388,8 @@ class LlmGateway:
 
         endpoint, key_name = PROVIDERS[route.provider]
         key = await asyncio.to_thread(provider_key, key_name)
+        if self.before_provider is not None:
+            await self.before_provider(request, route)
         try:
             async with httpx.AsyncClient(transport=self.transport, timeout=60) as client:
                 audit["provider_calls"] = 1

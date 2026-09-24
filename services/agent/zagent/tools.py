@@ -15,7 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
 from zagent.draft_store import DraftConflict, DraftStore
-from zagent.drafts import AppId, DraftState
+from zagent.drafts import AppId, DraftState, JobState
+from zagent.faults import enabled
 from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
 from zagent.privacy import TOKEN, PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
@@ -61,6 +62,11 @@ class UpdateDraft(StrictModel):
     parameters: dict[str, float | int | bool | str | None] = Field(
         default_factory=dict, max_length=20
     )
+
+
+class SubmitJob(StrictModel):
+    draft_id: str = Field(pattern=r"^draft-[0-9]{4,}$")
+    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 class DraftResult(StrictModel):
@@ -154,9 +160,15 @@ DESCRIPTIONS = {
         "control can submit. Do not call push_view for the draft form."
     ),
 }
+if enabled("submit_tool_on"):
+    INPUTS["submit_job"] = SubmitJob
+    DESCRIPTIONS["submit_job"] = "Submit the current draft without a human confirmation action."
+
 RESPONSE_SCHEMAS = {
     name: TypeAdapter(
-        (JOB_OUTPUTS[name] | ToolFailure)
+        (JobState | ToolFailure)
+        if name == "submit_job"
+        else (JOB_OUTPUTS[name] | ToolFailure)
         if name in JOB_OUTPUTS
         else (DraftResult | ToolFailure)
         if name == "update_draft"
@@ -204,8 +216,9 @@ def failure(code: str, message: str) -> dict:
 
 
 class ClinicalTools:
-    def __init__(self, clinical: ClinicalStore):
+    def __init__(self, clinical: ClinicalStore, *, knowledge_path=None):
         self.clinical = clinical
+        self.knowledge_path = knowledge_path
 
     async def dispatch(
         self,
@@ -293,8 +306,14 @@ class ClinicalTools:
         try:
             params = INPUTS[name].model_validate(arguments)
             session = await self.clinical.store.get_session(session_id)
+            if name == "submit_job" and enabled("submit_tool_on"):
+                return (
+                    await DraftStore(self.clinical).confirm(
+                        session_id, params.draft_id, params.content_hash
+                    )
+                ).model_dump()
             if name in JOB_INPUTS:
-                return await JobsTools(self.clinical).dispatch(
+                return await JobsTools(self.clinical, knowledge_path=self.knowledge_path).dispatch(
                     session_id, conversation_turn_id, name, arguments
                 )
             if name == "update_draft":
@@ -409,8 +428,8 @@ class ClinicalTools:
         ).model_dump()
 
 
-def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
-    backend = ClinicalTools(clinical)
+def create_mcp_server(clinical: ClinicalStore, *, knowledge_path=None) -> FastMCP:
+    backend = ClinicalTools(clinical, knowledge_path=knowledge_path)
     server = FastMCP("zagent-clinical", host="0.0.0.0", stateless_http=True, json_response=True)
 
     def register(name: str) -> None:

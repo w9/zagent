@@ -11,13 +11,14 @@ ZAGENT_LLM_MODE ?= replay
 ZAGENT_MODEL ?= deepseek/deepseek-v4.1-flash
 MODE ?= replay
 EVAL_ARGS ?=
+MUTATE ?=
 
 COMPOSE = docker compose --project-directory . -f deploy/compose/compose.yaml
 export UV_LINK_MODE = copy
 export DATABASE_URL ZAGENT_TEST_DATABASE_URL ZAGENT_WEB_PORT ZAGENT_AGENT_PORT ZAGENT_DB_PORT ZAGENT_SCRIPT
 export ZAGENT_AGENT ZAGENT_LLM_MODE ZAGENT_MODEL
 
-.PHONY: up live down db install test evals chaos report lint browser transcript logs
+.PHONY: up live down db install test evals chaos report lint browser transcript logs matrix
 .PHONY: cluster cluster-stop cluster-live cluster-test cluster-evals
 
 cluster:
@@ -62,7 +63,10 @@ test: install db
 	$(MAKE) lint
 
 evals: db
-	uv run --frozen zagent evals --mode $(MODE) $(EVAL_ARGS)
+	uv run --frozen zagent evals --mode $(MODE) $(if $(MUTATE),--mutate $(MUTATE)) $(EVAL_ARGS)
+
+matrix: db
+	uv run --frozen zagent matrix --mode $(MODE) $(EVAL_ARGS)
 
 chaos: db
 	uv run --frozen zagent evals --chaos --mode $(MODE) $(EVAL_ARGS)

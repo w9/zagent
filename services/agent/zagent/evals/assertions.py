@@ -660,6 +660,11 @@ def validate_expectations(case: Case, root: Path) -> None:
     if case.agent.startswith("detector:"):
         if "detected" not in case.expect or not isinstance(case.expect["detected"], list):
             raise ValueError(f"{case.id}: detector cases require explicit identifier labels")
+    elif case.adversarial is not None:
+        if case.workflow_actions:
+            raise ValueError(
+                f"{case.id}: adversarial turns cannot include human confirmation actions"
+            )
     elif case.simulator is not None:
         if "draft" not in case.expect or case.expect.get("submitted") is not False:
             raise ValueError(f"{case.id}: simulated users require a draft target and no submission")

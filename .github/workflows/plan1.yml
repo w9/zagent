@@ -3,6 +3,14 @@ name: Evidence
 on:
   push:
   pull_request:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      live_matrix:
+        description: Record a fresh model matrix, capped at $2
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -40,7 +48,9 @@ jobs:
       - run: uv run --frozen pytest
       - name: Render evidence report
         if: always()
-        run: uv run --frozen zagent report
+        run: uv run --frozen zagent report --accept-known-findings
+      - name: Replay three-model two-prompt adversarial matrix
+        run: uv run --frozen zagent matrix --mode replay
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -50,10 +60,6 @@ jobs:
       - run: npm --prefix apps/web test
       - run: npm --prefix apps/web run build
       - run: make lint
-      - uses: actions/upload-pages-artifact@v3
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        with:
-          path: docs
 
   browser:
     runs-on: ubuntu-latest
@@ -96,6 +102,20 @@ jobs:
         run: make cluster
       - name: Verify network policies and database roles
         run: make cluster-test
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.3"
+      - name: Detect all nine enforcement mutations
+        run: |
+          make db
+          uv run python -m zagent.knowledge
+          make evals MUTATE=all EVAL_ARGS='--output docs/evals/plan10'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-evidence
+          path: docs/evals/plan10/mutations
+          retention-days: 14
       - name: Replay unchanged evidence and deployed workflows
         run: make cluster-evals
       - uses: actions/setup-node@v4
@@ -121,11 +141,68 @@ jobs:
       - if: always()
         run: make cluster-stop
 
+  nightly-matrix:
+    if: (github.event_name == 'schedule' && vars.ZAGENT_LIVE_EVALS == 'true') || (github.event_name == 'workflow_dispatch' && inputs.live_matrix)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: model-evaluations
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: zagent
+          POSTGRES_PASSWORD: zagent
+          POSTGRES_DB: zagent_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U zagent -d zagent_test"
+          --health-interval 1s --health-timeout 5s --health-retries 30
+    env:
+      ZAGENT_TEST_DATABASE_URL: postgresql://zagent:zagent@localhost:5432/zagent_test
+      UV_PYTHON: '3.12'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.3'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: make install
+      - name: Reproduce checked-in baseline
+        run: uv run zagent matrix --mode replay --output docs/evals/plan10/matrix
+      - name: Record fresh bounded matrix
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ZAGENT_CASSETTE_DIR: ${{ runner.temp }}/matrix-cassettes
+          ZAGENT_GATEWAY_AUDIT: ${{ runner.temp }}/matrix-audit.sqlite3
+        run: |
+          [[ -n "$OPENROUTER_API_KEY" ]] || { printf 'Model evaluation secret is not configured.\n' >&2; exit 1; }
+          uv run zagent matrix --mode record --budget-usd 2 \
+            --budget-ledger "$RUNNER_TEMP/matrix-budget.json" \
+            --baseline docs/evals/plan10/matrix/results.json \
+            --output docs/evals/plan10/nightly
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-matrix-evidence
+          path: docs/evals/plan10/nightly
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-matrix-recordings
+          path: |
+            ${{ runner.temp }}/matrix-cassettes
+            ${{ runner.temp }}/matrix-budget.json
+          retention-days: 30
+
   publish:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: [spine, browser, cluster]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.spine.result == 'success' && needs.cluster.result == 'success' && needs.browser.result == 'success'
+    needs: [spine, browser, cluster, nightly-matrix]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
@@ -135,6 +212,28 @@ jobs:
       group: github-pages
       cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: evaluation-evidence
+          path: docs/evals
+      - uses: actions/download-artifact@v4
+        with:
+          name: mutation-evidence
+          path: docs/evals/plan10/mutations
+      - uses: actions/download-artifact@v4
+        if: needs.nightly-matrix.result == 'success' || needs.nightly-matrix.result == 'failure'
+        with:
+          name: nightly-matrix-evidence
+          path: docs/evals/plan10/nightly
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.3'
+      - name: Link combined evidence without rewriting outcomes
+        run: uv run --frozen zagent report --accept-known-findings
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
       - name: Publish evidence to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

@@ -21,11 +21,13 @@ and the agent can diagnose fixture failures using versioned SOP citations and pr
 > **Synthetic data only.** Every hospital, patient, sample and result in this repository is
 > invented. See [Scope and disclaimers](#scope-and-disclaimers).
 
-**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN9](docs/PLAN9.md).**
+**Implemented: [PLAN1](docs/PLAN1.md) through [PLAN10](docs/PLAN10.md), with the open acceptance
+items recorded in each plan.**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
-cassettes; live mode uses OpenRouter's `deepseek/deepseek-v4.1-flash`. The evidence suite includes
+cassettes; live mode defaults to OpenRouter's `openai/gpt-6-luna`, while replay and recording
+retain `deepseek/deepseek-v4.1-flash` for the existing evidence. The evidence suite includes
 legacy regressions, real-agent multi-turn cases, and 300 labeled scope cases with ten independently
 recorded guard calls each. Scope recall and in-scope acceptance have separate lower-bound gates;
 the report also shows refusal precision, per-reason results, and disagreeing cases.
@@ -428,8 +430,24 @@ The implemented requirements are registered in [evals/requirements.yaml](evals/r
 following [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). The report links requirements, enforcement
 sites, cases, outcomes, confidence intervals, per-trial provenance, and readable failure diffs.
 
+PLAN10 adds nine paired enforcement mutations, five adversarial families, and a three-model,
+two-prompt matrix. All nine mutations were detected with healthy controls. Literal detector
+recall remains 100/100; obfuscated recall is 2/12 (95% Wilson interval 4.7%-44.8%). The matrix
+retains 25 findings in 78 trials, including judge protocol errors and missing evidence inspection;
+none of the 78 inputs caused an additional job submission. These are curated development cases,
+not a held-out accuracy or security estimate.
+
+The explanation judge agreed with 3/6 agent-authored references; the other three calls failed
+its closed protocol. This is not human agreement, and human calibration remains pending. The
+report keeps the corresponding quality gates red. `--accept-known-findings` enables a separate
+regression gate for exact, reviewed-in-source measured failures without waiving invariants or
+changing quality thresholds. See [the evaluation guide](evals/README.md#plan10-adversarial-evidence)
+for reproducible commands, budgets, and limitations.
+
+For comparison, this is the retained PLAN9 baseline before adding the adversarial cases:
+
 ```
-$ make evals
+$ make evals  # PLAN9 baseline
 
 Requirement          Tier       Gate          Trials     95% Wilson CI
 REQ-STREAM-01        invariant  PASS          11/11      [74.1%, 100.0%]
@@ -502,9 +520,11 @@ below about 1% at 95% confidence. That is the honest reading, and it is why the 
 get property tests and network policy tests rather than resting on trial counts.
 
 **The suite is tested against itself.** PLAN2 self-tests corrupt the reducer and skip a resume
-event, then require named diffs and a failed stream gate. Production fault-injection switches
-such as tokenizer bypass and submit-tool exposure remain deferred to PLAN10. A green suite
-that cannot detect a broken build is not evidence.
+event, then require named diffs and a failed stream gate. PLAN10 independently disables nine
+enforcement mechanisms and requires the expected requirement failures, healthy positive controls,
+and startup rejection outside an explicit replay-only disposable test configuration. Its network
+mutation uses run-owned namespaces and copied policies, never the live deployment's policies.
+A green suite that cannot detect a broken build is not evidence.
 
 Replay makes the suite free and deterministic, with no provider key in CI. HTTP-case repetitions
 measure runtime regressions. Scope cases instead replay ten distinct provider draws recorded at
@@ -513,7 +533,8 @@ The simulated-user route is independently pinned by `ZAGENT_SIMULATOR_MODEL`; it
 samples also do not become fresh draws when replayed.
 Grounding currently checks explicit numeric patient/specimen/library counts against preceding
 tool results, job outcome words against inspected state, and exact SOP quotations/ranges.
-Broader semantic checks and the model matrix remain PLAN10. Separate SIGKILL tests verify
+PLAN10 adds a narrow, explicitly untrusted explanation judge and paired model/prompt comparisons.
+Separate SIGKILL tests verify
 runtime-process recovery; Docker and deployed dispatcher-kill checks verify execution identity.
 
 ---
@@ -542,8 +563,8 @@ Full rationale, service topology and decision log: **[docs/ARCHITECTURE.md](docs
 
 ## Status
 
-Built in sequenced increments. Each plan ends with something on screen and a suite that goes
-green, so correctness is visible at every step rather than at the end.
+Built in sequenced increments. Each plan adds a usable surface and reproducible evidence;
+quality weaknesses remain visible even when regression gates pass.
 
 | Plan | Increment | Status |
 |---|---|---|
@@ -556,7 +577,7 @@ green, so correctness is visible at every step rather than at the end.
 | [PLAN7](docs/PLAN7.md) | Drafts, confirmation, view references, session titles | Complete |
 | [PLAN8](docs/PLAN8.md) | Execution, MCP Apps, SOP retrieval, turn recovery | Complete |
 | [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | Implemented; full-replay latency target open |
-| [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | ☐ |
+| [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
 
 ---

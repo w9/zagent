@@ -1,7 +1,7 @@
 import hashlib
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from importlib.resources import files
 from typing import Literal
 from uuid import UUID, uuid4
@@ -10,6 +10,7 @@ import asyncpg
 from pydantic import BaseModel
 
 from zagent.events import Event, EventDraft, Projection, project
+from zagent.faults import configured, enabled
 from zagent.privacy import Raw
 from zagent.privacy_client import PrivacyClient, Tokenizer
 from zagent.privacy_store import PrivacyStore
@@ -85,6 +86,7 @@ class Store:
 
     @classmethod
     async def open(cls, database_url: str) -> "Store":
+        configured(database_url)
         pool = await asyncpg.create_pool(
             database_url, min_size=2, max_size=10, init=configure_connection
         )
@@ -183,6 +185,11 @@ class Store:
                 )
         if isinstance(self.privacy, PrivacyStore):
             await self.privacy.migrate_history()
+        if enabled("rls_off"):
+            async with self.pool.acquire() as connection, connection.transaction():
+                for table in ("patients", "specimens", "libraries", "query_handles"):
+                    await connection.execute(f"ALTER TABLE {table} DISABLE ROW LEVEL SECURITY")
+                    await connection.execute(f"GRANT SELECT ON {table} TO zagent_runtime")
 
     async def protect_event(self, session_id: UUID, event: EventDraft) -> EventDraft:
         event = EventDraft.model_validate(event.model_dump())
@@ -336,6 +343,15 @@ class Store:
             and event.type in {"draft_updated", "view_pushed", "job_submitted", "session_updated"}
         ):
             raise ConversationTurnConflict("Conversation turn is not active")
+        if enabled("drop_events") and event.type == "text_delta":
+            return Event(
+                session_id=session_id,
+                seq=seq,
+                conversation_turn_id=conversation_turn_id,
+                type=event.type,
+                payload=event.payload,
+                created_at=datetime.now(UTC),
+            )
         row = await connection.fetchrow(
             """INSERT INTO events (session_id, seq, conversation_turn_id, type, payload)
                VALUES ($1, $2, $3, $4, $5) RETURNING *""",

@@ -347,6 +347,7 @@ it('shows tool names, arguments, and correction errors inside a collapsed step',
     }],
   }} />)
   expect(container.querySelector('details')!.open).toBe(false)
+  expect(screen.getByText('Specimen search failed')).toBeTruthy()
   await userEvent.click(container.querySelector('summary')!)
   expect(screen.getByText('find_specimens')).toBeTruthy()
   expect(screen.getByText(/"received_within": "bad"/)).toBeTruthy()

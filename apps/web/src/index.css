@@ -908,6 +908,9 @@ a:focus-visible {
 .step-message {
   min-width: 0;
 }
+.step-message + .step-message {
+  margin-top: -28px;
+}
 .step-marker {
   color: #829076;
   font-size: 11px;

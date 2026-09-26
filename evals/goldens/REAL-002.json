@@ -22,17 +22,53 @@
     },
     {
       "payload": {
-        "text": "I'll look up specimens received in the last 24 hours."
+        "arguments": "{\"mrn\":null}",
+        "name": "find_patients"
       },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
+      "type": "tool_call"
     },
     {
       "payload": {
-        "arguments": "{\"received_within\": \"P1D\"}",
+        "name": "find_patients",
+        "result": {
+          "count": 10,
+          "handle": "query-0001",
+          "schema": [
+            {
+              "key": "id",
+              "label": "Patient",
+              "type": "string"
+            },
+            {
+              "key": "mrn",
+              "label": "MRN",
+              "type": "string"
+            },
+            {
+              "key": "display_name",
+              "label": "Name",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "find_patients"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -42,7 +78,7 @@
         "name": "find_specimens",
         "result": {
           "count": 29,
-          "handle": "query-0001",
+          "handle": "query-0002",
           "schema": [
             {
               "key": "id",
@@ -77,13 +113,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 2"
+        "title": "Agent step 3"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 29}}}",
+        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":29}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -115,7 +151,7 @@
                 "type": "string"
               }
             ],
-            "handle": "query-0001",
+            "handle": "query-0002",
             "row_count": 29,
             "title": "Specimens received in the last 24 hours"
           },
@@ -143,13 +179,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 3"
+        "title": "Agent step 4"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "text": "29 specimens arrived in the last 24 hours. The table \"Specimens received in the last 24 hours\" is published in the working surface."
+        "text": "29 specimens. [Specimens received in the last 24 hours](view:view-0001)"
       },
       "type": "text_delta"
     },
@@ -177,26 +213,53 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "I'll look up specimens received in the last 24 hours."
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "29 specimens arrived in the last 24 hours. The table \"Specimens received in the last 24 hours\" is published in the working surface."
+      "text": "29 specimens. [Specimens received in the last 24 hours](view:view-0001)"
     }
   ],
   "steps": [
     {
-      "detail": "find_specimens",
+      "detail": "find_patients",
       "status": "complete",
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"received_within\": \"P1D\"}",
+          "arguments": "{\"mrn\":null}",
+          "name": "find_patients",
+          "result": {
+            "count": 10,
+            "handle": "query-0001",
+            "schema": [
+              {
+                "key": "id",
+                "label": "Patient",
+                "type": "string"
+              },
+              {
+                "key": "mrn",
+                "label": "MRN",
+                "type": "string"
+              },
+              {
+                "key": "display_name",
+                "label": "Name",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "find_specimens",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 29,
-            "handle": "query-0001",
+            "handle": "query-0002",
             "schema": [
               {
                 "key": "id",
@@ -226,10 +289,10 @@
     {
       "detail": "push_view",
       "status": "complete",
-      "title": "Agent step 2",
+      "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0001\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 29}}}",
+          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":29}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
@@ -243,7 +306,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 3"
+      "title": "Agent step 4"
     }
   ],
   "views": [
@@ -272,7 +335,7 @@
             "type": "string"
           }
         ],
-        "handle": "query-0001",
+        "handle": "query-0002",
         "row_count": 29,
         "title": "Specimens received in the last 24 hours"
       },

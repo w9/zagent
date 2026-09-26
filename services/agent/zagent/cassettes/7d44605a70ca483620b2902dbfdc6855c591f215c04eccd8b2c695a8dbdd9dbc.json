@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "What specimens came in yesterday for patient [PT_1]?",
+        "role": "user"
+      },
+      {
+        "content": "Three specimens were received in the last 24 hours. See [Specimens received in the last 24 hours for [PT_1]](view:view-0001).",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "7d44605a70ca483620b2902dbfdc6855c591f215c04eccd8b2c695a8dbdd9dbc",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Recent specimen intake review",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 8,
+      "cost": 1.53e-05,
+      "prompt_tokens": 113,
+      "reasoning_tokens": 0,
+      "total_tokens": 121
+    }
+  },
+  "version": 1
+}

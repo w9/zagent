@@ -1,0 +1,45 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare rna-fusion for RNA specimens from [PT_1] in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "Prepared the [RNA fusion analysis draft](view:view-0001) for the RNA specimen query from [PT_1] received in the past week. It\u2019s in editing status, with the default parameters shown in the form. Tell me your preferred parameter changes when you\u2019re ready; the draft has not been submitted.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "a01b4bc96fa4a17a9fd6b3747a8a2c99bfb19be76b3bbbd41d2c50da17cf8155",
+  "samples": {
+    "2": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "RNA fusion draft preparation for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 11,
+        "cost": 2.17e-05,
+        "prompt_tokens": 162,
+        "reasoning_tokens": 0,
+        "total_tokens": 173
+      }
+    }
+  },
+  "version": 2
+}

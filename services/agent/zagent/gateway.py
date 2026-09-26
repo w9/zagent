@@ -9,7 +9,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from zagent.llm import (
-    DEFAULT_LIVE_MODEL,
     DEFAULT_MODEL,
     Completion,
     CompletionRequest,
@@ -60,11 +59,10 @@ def configured_gateway(
     mode: str | None = None, *, egress_check=None, protect_response=None
 ) -> LlmGateway:
     mode = mode or os.environ.get("ZAGENT_LLM_MODE", "replay")
-    default_model = DEFAULT_LIVE_MODEL if mode == "live" else DEFAULT_MODEL
     routes = {
         name: ModelRoute.model_validate(route)
         for name, route in json.loads(os.environ.get("ZAGENT_MODEL_ROUTES") or "{}").items()
-    } or {"default": ModelRoute(model=os.environ.get("ZAGENT_MODEL") or default_model)}
+    } or {"default": ModelRoute(model=os.environ.get("ZAGENT_MODEL") or DEFAULT_MODEL)}
     if os.environ.get("ZAGENT_PRIVACY_URL"):
         privacy = GatewayPrivacy(PrivacyClient.configured("gateway"))
         egress_check = privacy.check

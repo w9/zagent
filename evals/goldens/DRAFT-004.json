@@ -39,7 +39,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "arguments": "{\"mrn\":\"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -85,7 +85,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"kind\": \"normal\", \"received_within\": \"P7D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P7D\",\"kind\":\"normal\",\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -136,7 +136,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"app_id\": \"germline-panel\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"panel\": \"extended\", \"min_coverage\": 45}}",
+        "arguments": "{\"app_id\":\"germline-panel\",\"specimen_handle\":\"query-0002\",\"parameters\":{\"panel\":\"extended\",\"min_coverage\":45}}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -205,73 +205,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Normal specimens \u2014 [PT_1], last 7 days\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 1}}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "table",
-          "props": {
-            "columns": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ],
-            "handle": "query-0002",
-            "row_count": 1,
-            "title": "Normal specimens \u2014 [PT_1], last 7 days"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "kind": "table",
-          "ok": true,
-          "title": "Normal specimens \u2014 [PT_1], last 7 days"
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 5"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "text": "Draft prepared \u2014 it is **not submitted**.\n\n**Draft `draft-0001` \u2014 Germline panel** (version 1, status: editing)\n- Specimen query: normal specimens for [PT_1] received in the last 7 days (1 specimen)\n- `panel = extended`, `min_coverage = 45`\n- Validation: no issues reported\n\nThe form is published in the working surface as **Germline panel**. The specimen record is also listed in the table **Normal specimens \u2014 [PT_1], last 7 days**.\n\nNothing runs until a human presses the Confirm control on the exact reviewed content hash. Let me know if you want any parameter changed (or removed) before you confirm."
+        "text": "The extended germline-panel draft is ready with minimum coverage 45. Validation shows no issues. It has not been submitted; review the [Germline panel](view:view-0001) draft and use its Confirm control if you want to submit it."
       },
       "type": "text_delta"
     },
@@ -299,7 +233,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Draft prepared \u2014 it is **not submitted**.\n\n**Draft `draft-0001` \u2014 Germline panel** (version 1, status: editing)\n- Specimen query: normal specimens for [PT_1] received in the last 7 days (1 specimen)\n- `panel = extended`, `min_coverage = 45`\n- Validation: no issues reported\n\nThe form is published in the working surface as **Germline panel**. The specimen record is also listed in the table **Normal specimens \u2014 [PT_1], last 7 days**.\n\nNothing runs until a human presses the Confirm control on the exact reviewed content hash. Let me know if you want any parameter changed (or removed) before you confirm."
+      "text": "The extended germline-panel draft is ready with minimum coverage 45. Validation shows no issues. It has not been submitted; review the [Germline panel](view:view-0001) draft and use its Confirm control if you want to submit it."
     }
   ],
   "steps": [
@@ -309,7 +243,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "arguments": "{\"mrn\":\"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -341,7 +275,7 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"kind\": \"normal\", \"received_within\": \"P7D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P7D\",\"kind\":\"normal\",\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 1,
@@ -378,7 +312,7 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"app_id\": \"germline-panel\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"panel\": \"extended\", \"min_coverage\": 45}}",
+          "arguments": "{\"app_id\":\"germline-panel\",\"specimen_handle\":\"query-0002\",\"parameters\":{\"panel\":\"extended\",\"min_coverage\":45}}",
           "name": "update_draft",
           "result": {
             "draft": {
@@ -405,26 +339,9 @@
       ]
     },
     {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 4",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Normal specimens \u2014 [PT_1], last 7 days\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 1}}}",
-          "name": "push_view",
-          "result": {
-            "kind": "table",
-            "ok": true,
-            "title": "Normal specimens \u2014 [PT_1], last 7 days",
-            "view_id": "view-0002"
-          }
-        }
-      ]
-    },
-    {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 5"
+      "title": "Agent step 4"
     }
   ],
   "views": [
@@ -433,37 +350,6 @@
       "props": {
         "draft_id": "draft-0001",
         "title": "Germline panel"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "kind",
-            "label": "Type",
-            "type": "string"
-          },
-          {
-            "key": "purity",
-            "label": "Purity",
-            "type": "number"
-          },
-          {
-            "key": "received_at",
-            "label": "Received",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0002",
-        "row_count": 1,
-        "title": "Normal specimens \u2014 [PT_1], last 7 days"
       },
       "version": 1
     }

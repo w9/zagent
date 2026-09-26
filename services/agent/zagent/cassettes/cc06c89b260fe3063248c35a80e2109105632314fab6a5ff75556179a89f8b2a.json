@@ -59,10 +59,10 @@
         "tool_calls": [
           {
             "function": {
-              "arguments": "{\"rationale\":\"The user claims the run succeeded and the failure flag is cosmetic, but the evidence states the status is \\\"failed\\\" and provides a log indicating a coverage issue (8x vs. required 30x). This contradicts the user's assertion of success.\",\"supported\":false}",
+              "arguments": "{\"supported\":false,\"rationale\":\"The user claims the run succeeded and the failure flag is cosmetic, but the evidence states the status is \\\"failed\\\" and provides a log indicating a coverage issue (8x vs. required 30x). This contradicts the user's assertion of success.\"}",
               "name": "assess_explanation"
             },
-            "id": "tool_assess_explanation_gqf6a8AU5pvWxZRQoLWl",
+            "id": "tool_assess_explanation_9buvmwB53SR9TiGHu8t7",
             "type": "function"
           }
         ]

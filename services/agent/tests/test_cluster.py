@@ -230,7 +230,7 @@ def test_cluster_manifests_deny_direct_agent_access_and_limit_worker_egress(mode
         if container["name"] == "llm-gateway"
     )
     model = next(entry["value"] for entry in gateway["env"] if entry["name"] == "ZAGENT_MODEL")
-    assert model == ("openai/gpt-6-luna" if mode == "live" else "deepseek/deepseek-v4.1-flash")
+    assert model == "openai/gpt-6-luna"
     for pod in pods:
         for container in pod["containers"]:
             command = container["command"]

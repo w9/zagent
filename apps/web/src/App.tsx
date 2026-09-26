@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Button } from './components/ui/button'
 import { IconButton } from './components/ui/icon-button'
 import { StepMarker } from './components/step-marker'
@@ -29,6 +30,7 @@ import { WorkingSurface } from './components/working-surface'
 import { XrayPanel } from './components/xray-panel'
 import { TranscriptText } from './components/transcript-text'
 import { request } from './lib/api'
+import { toolView } from './lib/events'
 import type { RuntimeHealth, Session } from './lib/api'
 import { useSession } from './lib/use-session'
 
@@ -148,6 +150,9 @@ function Chat({
           : state?.conversation_turn
             ? 'Complete'
             : 'Ready'
+  const views = state?.views ?? []
+  const stepViews = new Set((state?.steps ?? []).flatMap((step) =>
+    (step.tools ?? []).flatMap((tool) => toolView(tool)?.id ?? [])))
   const timeline = [
     ...(state?.messages ?? []).map((value) => ({
       kind: 'message' as const,
@@ -155,8 +160,13 @@ function Chat({
     })),
     ...(state?.steps ?? []).map((value) => ({ kind: 'step' as const, value })),
     ...(state?.refusals ?? []).map((value) => ({ kind: 'refusal' as const, value })),
-    ...(state?.views ?? []).map((value) => ({ kind: 'view' as const, value })),
+    ...views.filter((view) => !stepViews.has(view.id))
+      .map((value) => ({ kind: 'view' as const, value })),
   ].sort((first, second) => first.value.seq - second.value.seq)
+  const viewLink = (viewId: string, children: ReactNode) => views.some((view) => view.id === viewId)
+    ? <Link className="view-link" data-view-id={viewId} to="/sessions/$sessionId" params={{ sessionId }}
+      search={{ view: viewId, panel: 'surface' }}>{children}</Link>
+    : children
 
   useEffect(() => {
     if (atBottom && scrollArea.current)
@@ -239,7 +249,7 @@ function Chat({
             <ol className="messages" aria-label="Conversation">
               {timeline.map((item) => {
                 if (item.kind === 'view') return <li key={`view:${item.value.id}`} className="view-reference-item">
-                  <Link className="view-reference" to="/sessions/$sessionId" params={{ sessionId }}
+                  <Link className="view-reference" data-view-id={item.value.id} to="/sessions/$sessionId" params={{ sessionId }}
                     search={{ view: item.value.id, panel: 'surface' }}>
                     <Table2 size={15} aria-hidden="true" />
                     <span>{String(item.value.spec.props.title ?? item.value.spec.kind)}</span>
@@ -255,7 +265,7 @@ function Chat({
                 if (item.kind === 'step')
                   return (
                     <li key={`step:${item.value.id}`} className="step-message">
-                      <StepMarker step={item.value} />
+                      <StepMarker step={item.value} viewLink={viewLink} />
                     </li>
                   )
                 const message = item.value
@@ -273,6 +283,7 @@ function Chat({
                       )}
                     </div>
                     <TranscriptText text={message.text} role={message.role} bindings={bindings}
+                      viewLink={viewLink}
                       streaming={message.status === 'streaming'} />
                   </li>
                 )

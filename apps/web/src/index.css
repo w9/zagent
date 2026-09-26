@@ -945,6 +945,20 @@ a:focus-visible {
 .step-marker.failed .step-status {
   color: #af514a;
 }
+.step-title .view-link {
+  color: inherit;
+  text-decoration: underline dotted #aebba6;
+  text-underline-offset: 3px;
+}
+.step-title .view-link:hover {
+  color: #315b48;
+  text-decoration-style: solid;
+  text-decoration-color: currentColor;
+}
+.step-title .view-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .step-marker p {
   margin: 8px 0 0 20px;
   border-left: 1px solid #dce5d7;

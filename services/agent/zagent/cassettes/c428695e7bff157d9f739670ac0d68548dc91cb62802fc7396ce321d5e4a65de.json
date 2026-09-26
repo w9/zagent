@@ -1,0 +1,45 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "The germline-panel draft is ready for your preferred parameter changes: [Germline panel](view:view-0001). It currently uses the default predisposition panel and minimum coverage of 30; no validation issues were reported. Tell me what you\u2019d like to change. Only the human Confirm control can submit it.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "c428695e7bff157d9f739670ac0d68548dc91cb62802fc7396ce321d5e4a65de",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Drafting germline panels for recent normal specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 13,
+        "cost": 2.26e-05,
+        "prompt_tokens": 161,
+        "reasoning_tokens": 0,
+        "total_tokens": 174
+      }
+    }
+  },
+  "version": 2
+}

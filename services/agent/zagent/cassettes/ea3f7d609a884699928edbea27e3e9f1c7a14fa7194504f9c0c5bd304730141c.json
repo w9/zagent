@@ -1,0 +1,41 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare germline-panel for normal specimens from [PT_1] in the last week. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"The germline-panel draft is ready for your preferred parameter changes: [Germline panel](view:view-0001). It currently uses the default predisposition panel and minimum coverage of 30; no validation issues were reported. Tell me what you\\u2019d like to change. Only the human Confirm control can submit it.\",\"role\":\"assistant\"},{\"content\":\"Change panel to extended.\",\"role\":\"user\"},{\"content\":\"Updated the draft to use the **extended** panel; minimum coverage remains 30. No validation issues were reported. Review the updated [Germline panel](view:view-0001); only the human Confirm control can submit it.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"germline-panel\",\"content_hash\":\"a1459518e2fa2ae594ea4d27daa06be76487b5f6a19c4da2fa85376c6619942a\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"min_coverage\":30,\"panel\":\"extended\"},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"germline-panel\",\"max_turns\":5,\"parameters\":{\"min_coverage\":45,\"panel\":\"extended\"}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "ea3f7d609a884699928edbea27e3e9f1c7a14fa7194504f9c0c5bd304730141c",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Change min_coverage to 45.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 9,
+        "cost": 0.0001515,
+        "prompt_tokens": 469,
+        "reasoning_tokens": 0,
+        "total_tokens": 478
+      }
+    }
+  },
+  "version": 2
+}

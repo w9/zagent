@@ -30,15 +30,9 @@ def request(text="Hello", **kwargs):
     )
 
 
-@pytest.mark.parametrize(
-    ("mode", "model"),
-    [
-        ("live", "openai/gpt-6-luna"),
-        ("replay", "deepseek/deepseek-v4.1-flash"),
-        ("record", "deepseek/deepseek-v4.1-flash"),
-    ],
-)
-def test_default_model_preserves_replay_and_explicit_overrides(tmp_path, monkeypatch, mode, model):
+@pytest.mark.parametrize("mode", ["live", "replay", "record"])
+def test_default_model_preserves_replay_and_explicit_overrides(tmp_path, monkeypatch, mode):
+    model = "openai/gpt-6-luna"
     from zagent.gateway import configured_gateway
 
     monkeypatch.delenv("ZAGENT_MODEL", raising=False)

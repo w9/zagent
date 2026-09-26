@@ -61,7 +61,7 @@ services:
     command: ["uvicorn", "zagent.gateway:app", "--host", "0.0.0.0", "--port", "8001"]
     environment:
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
-      ZAGENT_MODEL: "${ZAGENT_MODEL:-deepseek/deepseek-v4.1-flash}"
+      ZAGENT_MODEL: "${ZAGENT_MODEL:-openai/gpt-6-luna}"
       ZAGENT_MODEL_ROUTES: "${ZAGENT_MODEL_ROUTES:-}"
       ZAGENT_LOCAL_INGRESS: "1"
       ZAGENT_GATEWAY_AUDIT: /var/lib/zagent/gateway-audit.sqlite3

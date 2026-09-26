@@ -68,17 +68,7 @@
     },
     {
       "payload": {
-        "text": "\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
-        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -129,17 +119,7 @@
     },
     {
       "payload": {
-        "text": "\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours \u2014 [PT_1]\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":3}}}",
+        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours for [PT_1]\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -173,7 +153,7 @@
             ],
             "handle": "query-0002",
             "row_count": 3,
-            "title": "Specimens received in the last 24 hours \u2014 [PT_1]"
+            "title": "Specimens received in the last 24 hours for [PT_1]"
           },
           "version": 1
         }
@@ -186,7 +166,7 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Specimens received in the last 24 hours \u2014 [PT_1]"
+          "title": "Specimens received in the last 24 hours for [PT_1]"
         }
       },
       "type": "tool_result"
@@ -205,7 +185,7 @@
     },
     {
       "payload": {
-        "text": "3 specimens arrived for [PT_1] in the last 24 hours. I've published them as the table \"Specimens received in the last 24 hours \u2014 [PT_1]\" in the working surface, showing specimen ID, type, purity, and received time.\n\nWant me to check library QC status for any of these, or prepare a draft analysis?"
+        "text": "Three specimens were received in the last 24 hours. See [Specimens received in the last 24 hours for [PT_1]](view:view-0001)."
       },
       "type": "text_delta"
     },
@@ -241,7 +221,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"specimen_handle\":\"query-0002\"}",
+        "arguments": "{\"specimen_handle\":\"query-0002\",\"qc_status\":null}",
         "name": "find_libraries"
       },
       "type": "tool_call"
@@ -297,17 +277,7 @@
     },
     {
       "payload": {
-        "text": "\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\":{\"kind\":\"table\",\"props\":{\"columns\":[{\"key\":\"id\",\"label\":\"Library\",\"type\":\"string\"},{\"key\":\"specimen_id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"prep\",\"label\":\"Preparation\",\"type\":\"string\"},{\"key\":\"coverage\",\"label\":\"Coverage\",\"type\":\"number\"},{\"key\":\"qc_status\",\"label\":\"QC status\",\"type\":\"string\"}],\"handle\":\"query-0003\",\"row_count\":3,\"title\":\"Libraries for specimens received in the last 24 hours \u2014 [PT_1]\"},\"version\":1}}",
+        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Libraries for the specimens received in the last 24 hours for [PT_1]\",\"handle\":\"query-0003\",\"columns\":[{\"key\":\"id\",\"label\":\"Library\",\"type\":\"string\"},{\"key\":\"specimen_id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"prep\",\"label\":\"Preparation\",\"type\":\"string\"},{\"key\":\"coverage\",\"label\":\"Coverage\",\"type\":\"number\"},{\"key\":\"qc_status\",\"label\":\"QC status\",\"type\":\"string\"}],\"row_count\":3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -346,7 +316,7 @@
             ],
             "handle": "query-0003",
             "row_count": 3,
-            "title": "Libraries for specimens received in the last 24 hours \u2014 [PT_1]"
+            "title": "Libraries for the specimens received in the last 24 hours for [PT_1]"
           },
           "version": 1
         }
@@ -359,7 +329,7 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Libraries for specimens received in the last 24 hours \u2014 [PT_1]"
+          "title": "Libraries for the specimens received in the last 24 hours for [PT_1]"
         }
       },
       "type": "tool_result"
@@ -378,7 +348,7 @@
     },
     {
       "payload": {
-        "text": "3 libraries belong to those specimens. I've published \"Libraries for specimens received in the last 24 hours \u2014 [PT_1]\" in the working surface, with library ID, specimen, preparation, coverage, and QC status.\n\nIf you'd like, I can filter to a specific QC status (passed / review / failed) or prepare a draft analysis for these."
+        "text": "There are three libraries linked to those specimens. See [Libraries for the specimens received in the last 24 hours for [PT_1]](view:view-0002)."
       },
       "type": "text_delta"
     },
@@ -414,7 +384,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\":{\"kind\":\"chart\",\"props\":{\"encoding\":{\"color\":{\"field\":\"qc_status\",\"type\":\"nominal\"},\"x\":{\"field\":\"id\",\"type\":\"nominal\"},\"y\":{\"field\":\"coverage\",\"type\":\"quantitative\"}},\"handle\":\"query-0003\",\"mark\":\"bar\",\"title\":\"Library coverage \u2014 specimens received in the last 24 hours ([PT_1])\"},\"version\":1}}",
+        "arguments": "{\"spec\":{\"kind\":\"chart\",\"version\":1,\"props\":{\"title\":\"Coverage for libraries of the specimens received in the last 24 hours for [PT_1]\",\"handle\":\"query-0003\",\"mark\":\"bar\",\"encoding\":{\"x\":{\"field\":\"id\",\"type\":\"nominal\"},\"y\":{\"field\":\"coverage\",\"type\":\"quantitative\"}}}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -425,10 +395,6 @@
           "kind": "chart",
           "props": {
             "encoding": {
-              "color": {
-                "field": "qc_status",
-                "type": "nominal"
-              },
               "x": {
                 "field": "id",
                 "type": "nominal"
@@ -440,7 +406,7 @@
             },
             "handle": "query-0003",
             "mark": "bar",
-            "title": "Library coverage \u2014 specimens received in the last 24 hours ([PT_1])"
+            "title": "Coverage for libraries of the specimens received in the last 24 hours for [PT_1]"
           },
           "version": 1
         }
@@ -453,7 +419,7 @@
         "result": {
           "kind": "chart",
           "ok": true,
-          "title": "Library coverage \u2014 specimens received in the last 24 hours ([PT_1])"
+          "title": "Coverage for libraries of the specimens received in the last 24 hours for [PT_1]"
         }
       },
       "type": "tool_result"
@@ -472,7 +438,7 @@
     },
     {
       "payload": {
-        "text": "Published the bar chart \"Library coverage \u2014 specimens received in the last 24 hours ([PT_1])\" in the working surface: library on the x-axis, coverage on the y-axis, colored by QC status.\n\nNote that coverage values are rendered from the query data privately, so I can't quote individual numbers here. Let me know if you'd like a different mark (line/point) or a QC-status filter."
+        "text": "Published [Coverage for libraries of the specimens received in the last 24 hours for [PT_1]](view:view-0003)."
       },
       "type": "text_delta"
     },
@@ -500,17 +466,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "\n\n"
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "\n\n"
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "3 specimens arrived for [PT_1] in the last 24 hours. I've published them as the table \"Specimens received in the last 24 hours \u2014 [PT_1]\" in the working surface, showing specimen ID, type, purity, and received time.\n\nWant me to check library QC status for any of these, or prepare a draft analysis?"
+      "text": "Three specimens were received in the last 24 hours. See [Specimens received in the last 24 hours for [PT_1]](view:view-0001)."
     },
     {
       "role": "user",
@@ -520,12 +476,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "\n\n"
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "3 libraries belong to those specimens. I've published \"Libraries for specimens received in the last 24 hours \u2014 [PT_1]\" in the working surface, with library ID, specimen, preparation, coverage, and QC status.\n\nIf you'd like, I can filter to a specific QC status (passed / review / failed) or prepare a draft analysis for these."
+      "text": "There are three libraries linked to those specimens. See [Libraries for the specimens received in the last 24 hours for [PT_1]](view:view-0002)."
     },
     {
       "role": "user",
@@ -535,7 +486,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Published the bar chart \"Library coverage \u2014 specimens received in the last 24 hours ([PT_1])\" in the working surface: library on the x-axis, coverage on the y-axis, colored by QC status.\n\nNote that coverage values are rendered from the query data privately, so I can't quote individual numbers here. Let me know if you'd like a different mark (line/point) or a QC-status filter."
+      "text": "Published [Coverage for libraries of the specimens received in the last 24 hours for [PT_1]](view:view-0003)."
     }
   ],
   "steps": [
@@ -577,7 +528,7 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 3,
@@ -614,12 +565,12 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours \u2014 [PT_1]\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":3}}}",
+          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours for [PT_1]\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":3}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Specimens received in the last 24 hours \u2014 [PT_1]",
+            "title": "Specimens received in the last 24 hours for [PT_1]",
             "view_id": "view-0001"
           }
         }
@@ -636,7 +587,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"specimen_handle\":\"query-0002\"}",
+          "arguments": "{\"specimen_handle\":\"query-0002\",\"qc_status\":null}",
           "name": "find_libraries",
           "result": {
             "count": 3,
@@ -678,12 +629,12 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"spec\":{\"kind\":\"table\",\"props\":{\"columns\":[{\"key\":\"id\",\"label\":\"Library\",\"type\":\"string\"},{\"key\":\"specimen_id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"prep\",\"label\":\"Preparation\",\"type\":\"string\"},{\"key\":\"coverage\",\"label\":\"Coverage\",\"type\":\"number\"},{\"key\":\"qc_status\",\"label\":\"QC status\",\"type\":\"string\"}],\"handle\":\"query-0003\",\"row_count\":3,\"title\":\"Libraries for specimens received in the last 24 hours \u2014 [PT_1]\"},\"version\":1}}",
+          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Libraries for the specimens received in the last 24 hours for [PT_1]\",\"handle\":\"query-0003\",\"columns\":[{\"key\":\"id\",\"label\":\"Library\",\"type\":\"string\"},{\"key\":\"specimen_id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"prep\",\"label\":\"Preparation\",\"type\":\"string\"},{\"key\":\"coverage\",\"label\":\"Coverage\",\"type\":\"number\"},{\"key\":\"qc_status\",\"label\":\"QC status\",\"type\":\"string\"}],\"row_count\":3}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Libraries for specimens received in the last 24 hours \u2014 [PT_1]",
+            "title": "Libraries for the specimens received in the last 24 hours for [PT_1]",
             "view_id": "view-0002"
           }
         }
@@ -700,12 +651,12 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"spec\":{\"kind\":\"chart\",\"props\":{\"encoding\":{\"color\":{\"field\":\"qc_status\",\"type\":\"nominal\"},\"x\":{\"field\":\"id\",\"type\":\"nominal\"},\"y\":{\"field\":\"coverage\",\"type\":\"quantitative\"}},\"handle\":\"query-0003\",\"mark\":\"bar\",\"title\":\"Library coverage \u2014 specimens received in the last 24 hours ([PT_1])\"},\"version\":1}}",
+          "arguments": "{\"spec\":{\"kind\":\"chart\",\"version\":1,\"props\":{\"title\":\"Coverage for libraries of the specimens received in the last 24 hours for [PT_1]\",\"handle\":\"query-0003\",\"mark\":\"bar\",\"encoding\":{\"x\":{\"field\":\"id\",\"type\":\"nominal\"},\"y\":{\"field\":\"coverage\",\"type\":\"quantitative\"}}}}}",
           "name": "push_view",
           "result": {
             "kind": "chart",
             "ok": true,
-            "title": "Library coverage \u2014 specimens received in the last 24 hours ([PT_1])",
+            "title": "Coverage for libraries of the specimens received in the last 24 hours for [PT_1]",
             "view_id": "view-0003"
           }
         }
@@ -745,7 +696,7 @@
         ],
         "handle": "query-0002",
         "row_count": 3,
-        "title": "Specimens received in the last 24 hours \u2014 [PT_1]"
+        "title": "Specimens received in the last 24 hours for [PT_1]"
       },
       "version": 1
     },
@@ -781,7 +732,7 @@
         ],
         "handle": "query-0003",
         "row_count": 3,
-        "title": "Libraries for specimens received in the last 24 hours \u2014 [PT_1]"
+        "title": "Libraries for the specimens received in the last 24 hours for [PT_1]"
       },
       "version": 1
     },
@@ -789,10 +740,6 @@
       "kind": "chart",
       "props": {
         "encoding": {
-          "color": {
-            "field": "qc_status",
-            "type": "nominal"
-          },
           "x": {
             "field": "id",
             "type": "nominal"
@@ -804,7 +751,7 @@
         },
         "handle": "query-0003",
         "mark": "bar",
-        "title": "Library coverage \u2014 specimens received in the last 24 hours ([PT_1])"
+        "title": "Coverage for libraries of the specimens received in the last 24 hours for [PT_1]"
       },
       "version": 1
     }

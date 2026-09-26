@@ -15,6 +15,20 @@ type PrivacyProps = {
 
 const PrivacyContext = createContext<PrivacyProps>({})
 
+type ViewLink = (viewId: string, children: ReactNode) => ReactNode
+const ViewLinkContext = createContext<ViewLink | undefined>(undefined)
+const VIEW_HREF = /^view:(view-[0-9]{4,})$/
+
+function MarkdownLink({ children, href }: { children?: ReactNode; href?: string }) {
+  const viewLink = useContext(ViewLinkContext)
+  const content = <LinkText value={true}><VisibleText>{children}</VisibleText></LinkText>
+  const view = href?.match(VIEW_HREF)?.[1]
+  if (view) return viewLink ? viewLink(view, content) : <span><VisibleText>{children}</VisibleText></span>
+  return href
+    ? <a href={href} target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer">{content}</a>
+    : <span><VisibleText>{children}</VisibleText></span>
+}
+
 export function PrivacyText({ text, bindings = [], model = false, selected, onSelect }: PrivacyProps & {
   text: string
   model?: boolean
@@ -88,27 +102,25 @@ const components: Components = {
   table: ({ children }) => <div className="markdown-table" role="region" aria-label="Markdown table" tabIndex={0}>
     <table>{children}</table>
   </div>,
-  a: ({ children, href }) => href
-    ? <a href={href} target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer">
-      <LinkText value={true}><VisibleText>{children}</VisibleText></LinkText>
-    </a>
-    : <span><VisibleText>{children}</VisibleText></span>,
+  a: MarkdownLink,
   img: ({ alt }) => <span><VisibleText>{alt ?? ''}</VisibleText></span>,
 }
 
-export function TranscriptText({ text, role, streaming = false, bindings = [], selected, onSelect }: PrivacyProps & {
+export function TranscriptText({ text, role, streaming = false, bindings = [], selected, onSelect, viewLink }: PrivacyProps & {
   text: string
   role: 'assistant' | 'user'
   streaming?: boolean
+  viewLink?: ViewLink
 }) {
   if (role === 'user') return <p className="message-text" data-testid="message-text">
     <PrivacyText text={text} bindings={bindings} selected={selected} onSelect={onSelect} />
   </p>
 
-  return <PrivacyContext value={{ bindings, selected, onSelect }}><div className="message-text assistant-markdown" data-testid="message-text">
+  return <PrivacyContext value={{ bindings, selected, onSelect }}><ViewLinkContext value={viewLink}><div className="message-text assistant-markdown" data-testid="message-text">
     <Markdown remarkPlugins={[remarkGfm]} components={components}
-      urlTransform={(value, key) => key === 'href' ? safeLink(value, bindings) : undefined}
+      urlTransform={(value, key) => key !== 'href' ? undefined
+        : VIEW_HREF.test(value) ? value : safeLink(value, bindings)}
     >{text}</Markdown>
     {streaming && <span className="stream-cursor" aria-hidden="true" />}
-  </div></PrivacyContext>
+  </div></ViewLinkContext></PrivacyContext>
 }

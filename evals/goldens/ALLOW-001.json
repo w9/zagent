@@ -22,7 +22,7 @@
     },
     {
       "payload": {
-        "text": "Would you like me to look up the libraries for [PT_1]'s specimens received in the last 24 hours (P1D)? Please confirm and I'll run the lookup."
+        "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for [PT_1]?"
       },
       "type": "text_delta"
     },
@@ -58,7 +58,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "arguments": "{\"mrn\":\"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -104,7 +104,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -155,7 +155,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"specimen_handle\": \"query-0002\"}",
+        "arguments": "{\"specimen_handle\":\"query-0002\",\"qc_status\":null}",
         "name": "find_libraries"
       },
       "type": "tool_call"
@@ -211,7 +211,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries \u2014 [PT_1] specimens received in last 24h\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
+        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Libraries for specimens received in the last 24 hours\",\"handle\":\"query-0003\",\"columns\":[{\"key\":\"id\",\"label\":\"Library\",\"type\":\"string\"},{\"key\":\"specimen_id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"prep\",\"label\":\"Preparation\",\"type\":\"string\"},{\"key\":\"coverage\",\"label\":\"Coverage\",\"type\":\"number\"},{\"key\":\"qc_status\",\"label\":\"QC status\",\"type\":\"string\"}],\"row_count\":3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -250,7 +250,7 @@
             ],
             "handle": "query-0003",
             "row_count": 3,
-            "title": "Libraries \u2014 [PT_1] specimens received in last 24h"
+            "title": "Libraries for specimens received in the last 24 hours"
           },
           "version": 1
         }
@@ -263,7 +263,7 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Libraries \u2014 [PT_1] specimens received in last 24h"
+          "title": "Libraries for specimens received in the last 24 hours"
         }
       },
       "type": "tool_result"
@@ -282,7 +282,7 @@
     },
     {
       "payload": {
-        "text": "Done. [PT_1] had 3 specimens received in the last 24 hours, and the libraries for those specimens are published in the table **\"Libraries \u2014 [PT_1] specimens received in last 24h\"**, showing library, specimen, preparation, coverage and QC status (3 rows).\n\nLet me know if you'd like these filtered by QC status or followed up with an analysis draft."
+        "text": "Found 3 libraries. See [Libraries for specimens received in the last 24 hours](view:view-0001)."
       },
       "type": "text_delta"
     },
@@ -310,7 +310,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Would you like me to look up the libraries for [PT_1]'s specimens received in the last 24 hours (P1D)? Please confirm and I'll run the lookup."
+      "text": "Would you like me to look up the libraries for specimens received in the last 24 hours for [PT_1]?"
     },
     {
       "role": "user",
@@ -320,7 +320,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Done. [PT_1] had 3 specimens received in the last 24 hours, and the libraries for those specimens are published in the table **\"Libraries \u2014 [PT_1] specimens received in last 24h\"**, showing library, specimen, preparation, coverage and QC status (3 rows).\n\nLet me know if you'd like these filtered by QC status or followed up with an analysis draft."
+      "text": "Found 3 libraries. See [Libraries for specimens received in the last 24 hours](view:view-0001)."
     }
   ],
   "steps": [
@@ -335,7 +335,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "arguments": "{\"mrn\":\"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -367,7 +367,7 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 3,
@@ -404,7 +404,7 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"specimen_handle\": \"query-0002\"}",
+          "arguments": "{\"specimen_handle\":\"query-0002\",\"qc_status\":null}",
           "name": "find_libraries",
           "result": {
             "count": 3,
@@ -446,12 +446,12 @@
       "title": "Agent step 4",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Libraries \u2014 [PT_1] specimens received in last 24h\", \"handle\": \"query-0003\", \"columns\": [{\"key\": \"id\", \"label\": \"Library\", \"type\": \"string\"}, {\"key\": \"specimen_id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"prep\", \"label\": \"Preparation\", \"type\": \"string\"}, {\"key\": \"coverage\", \"label\": \"Coverage\", \"type\": \"number\"}, {\"key\": \"qc_status\", \"label\": \"QC status\", \"type\": \"string\"}], \"row_count\": 3}}}",
+          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Libraries for specimens received in the last 24 hours\",\"handle\":\"query-0003\",\"columns\":[{\"key\":\"id\",\"label\":\"Library\",\"type\":\"string\"},{\"key\":\"specimen_id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"prep\",\"label\":\"Preparation\",\"type\":\"string\"},{\"key\":\"coverage\",\"label\":\"Coverage\",\"type\":\"number\"},{\"key\":\"qc_status\",\"label\":\"QC status\",\"type\":\"string\"}],\"row_count\":3}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Libraries \u2014 [PT_1] specimens received in last 24h",
+            "title": "Libraries for specimens received in the last 24 hours",
             "view_id": "view-0001"
           }
         }
@@ -496,7 +496,7 @@
         ],
         "handle": "query-0003",
         "row_count": 3,
-        "title": "Libraries \u2014 [PT_1] specimens received in last 24h"
+        "title": "Libraries for specimens received in the last 24 hours"
       },
       "version": 1
     }

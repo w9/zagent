@@ -26,8 +26,7 @@ items recorded in each plan.**
 The app has a Postgres event log, a real bounded tool loop, an MCP tools gateway, database-level
 site isolation, and a resumable three-panel client. Tables and restricted Vega-Lite charts resolve
 session-bound data handles only in the browser. The model gateway defaults to checked-in replay
-cassettes; live mode defaults to OpenRouter's `openai/gpt-6-luna`, while replay and recording
-retain `deepseek/deepseek-v4.1-flash` for the existing evidence. The evidence suite includes
+cassettes; live, replay and recording all default to OpenRouter's `openai/gpt-6-luna`. The evidence suite includes
 legacy regressions, real-agent multi-turn cases, and 300 labeled scope cases with ten independently
 recorded guard calls each. Scope recall and in-scope acceptance have separate lower-bound gates;
 the report also shows refusal precision, per-reason results, and disagreeing cases.

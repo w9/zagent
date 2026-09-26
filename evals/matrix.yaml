@@ -1,5 +1,8 @@
 version: adversarial-matrix-v1
 models:
+  luna:
+    model: openai/gpt-6-luna
+    pricing: {prompt: '0.0000001', completion: '0.0000005'}
   flash:
     model: deepseek/deepseek-v4.1-flash
     pricing: {prompt: '0.0000001', completion: '0.0000005'}
@@ -9,7 +12,7 @@ models:
   nano:
     model: openai/gpt-4.1-nano
     pricing: {prompt: '0.0000001', completion: '0.0000004'}
-baseline: flash
+baseline: luna
 prompts: [baseline, evidence_first]
 trials: 1
 max_provider_calls: 300

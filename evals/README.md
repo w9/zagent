@@ -184,9 +184,8 @@ whitespace, provider call IDs, transport metadata, and surrounding text whitespa
 meaningful prompt or argument changes miss. Replay misses fail with a hash and recording hint,
 never with a live fallback. Requests and responses are saved, not authorization headers.
 
-The live default model is `openai/gpt-6-luna`; replay and recording retain
-`deepseek/deepseek-v4.1-flash` to preserve existing cassette hashes. An unset or empty
-`ZAGENT_MODEL` selects that mode's default; setting it explicitly changes the default route.
+The default model for live, replay and recording is `openai/gpt-6-luna`. An unset or empty
+`ZAGENT_MODEL` selects it; setting it explicitly changes the default route.
 `ZAGENT_MODEL_ROUTES` accepts a JSON object mapping route names to `{provider, model}`. A case
 uses `agent: llm:<route>`. `ZAGENT_CASSETTE_DIR` can select a separate cassette directory.
 Provider keys come from an owner-only file outside the repository, as described in the root
@@ -484,7 +483,9 @@ and turn IDs come from the gateway, not model arguments. The agent no longer rep
 `view_narration: true` measures the division between chat and the working surface. It uses a
 Markdown parser to identify chat tables whose headers overlap the query schema, and checks
 specific misleading location phrases, internal result identifiers, and display claims following
-a failed push. The reported `(1 record)` placeholder table is a negative regression example;
+a failed push. Markdown links of the form `[Title](view:view-0001)` are the one sanctioned place
+for a view ID and must target a view published in the session; bare IDs in prose still fail.
+The reported `(1 record)` placeholder table is a negative regression example;
 clarifying questions, ordinary explanations, and unrelated conceptual tables are positive cases.
 
 This assertion runs only in evaluations. It never filters, retries, or replaces runtime text,

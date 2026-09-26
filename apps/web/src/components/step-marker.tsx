@@ -1,5 +1,9 @@
 import { ChevronRight, CircleCheck, CircleX, LoaderCircle } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { toolView } from '../lib/events'
 import type { StepState } from '../lib/events'
+
+export type ViewLink = (viewId: string, children: ReactNode) => ReactNode
 
 function formatArguments(argumentsJson: string) {
   try {
@@ -37,7 +41,7 @@ const TOOL_LABELS: Record<string, {
   push_view: {
     pending: 'Publishing view',
     failed: 'View rejected',
-    done: (r) => (r.title ? `Published “${r.title}”` : 'Published view'),
+    done: () => 'Published',
   },
   update_draft: {
     pending: 'Updating draft',
@@ -47,7 +51,7 @@ const TOOL_LABELS: Record<string, {
   show_jobs: {
     pending: 'Loading jobs',
     failed: 'Job view failed',
-    done: (r) => (r.kind === 'job_card' ? 'Showed job' : `Showed ${plural(r.count, 'job', 'jobs')}`),
+    done: () => 'Showed',
   },
   get_job: {
     pending: 'Checking job',
@@ -78,17 +82,24 @@ function toolLabel({ name, result }: Tool) {
   return result.error ? label.failed : label.done(result)
 }
 
-export function stepSummary(step: StepState) {
+function StepSummary({ step, viewLink }: { step: StepState; viewLink?: ViewLink }) {
   if (!/^Agent step \d+$/.test(step.title)) return step.title
-  const labels = (step.tools ?? []).map(toolLabel)
-  if (labels.length)
-    return labels.map((label, index) => (index ? label[0].toLowerCase() + label.slice(1) : label)).join(', ')
+  const tools = step.tools ?? []
+  if (tools.length)
+    return tools.map((tool, index) => {
+      const label = toolLabel(tool)
+      const view = toolView(tool)
+      return <span key={tool.call_id}>
+        {index ? `, ${label[0].toLowerCase()}${label.slice(1)}` : label}
+        {view && <> “{viewLink ? viewLink(view.id, view.title) : view.title}”</>}
+      </span>
+    })
   if (step.status === 'running') return 'Thinking'
   if (step.status === 'failed') return 'Step failed'
   return step.detail === 'Request declined' ? 'Declined request' : 'Wrote response'
 }
 
-export function StepMarker({ step }: { step: StepState }) {
+export function StepMarker({ step, viewLink }: { step: StepState; viewLink?: ViewLink }) {
   return (
     <details className={`step-marker ${step.status}`} data-testid="step-marker">
       <summary>
@@ -100,7 +111,7 @@ export function StepMarker({ step }: { step: StepState }) {
         ) : (
           <CircleCheck size={14} aria-hidden="true" />
         )}
-        <span className="step-title">{stepSummary(step)}</span>
+        <span className="step-title"><StepSummary step={step} viewLink={viewLink} /></span>
         <span className="step-status">
           {step.status === 'running'
             ? 'In progress'

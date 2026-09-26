@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import { ViewRenderer } from './view-renderer'
 import { StepMarker } from './step-marker'
 import { RefusalChip } from './refusal-chip'
@@ -352,6 +353,33 @@ it('shows tool names, arguments, and correction errors inside a collapsed step',
   expect(screen.getByText('find_specimens')).toBeTruthy()
   expect(screen.getByText(/"received_within": "bad"/)).toBeTruthy()
   expect(screen.getByText(/Use a relative window/)).toBeTruthy()
+})
+
+const viewLink = (viewId: string, children: ReactNode) =>
+  <a data-view-id={viewId} href={`#${viewId}`}>{children}</a>
+
+it('links a published view title from its step summary', () => {
+  const { container } = render(<StepMarker viewLink={viewLink} step={{
+    id: 'step-1', seq: 2, title: 'Agent step 1', detail: '', status: 'complete',
+    tools: [{
+      call_id: 'call-1', name: 'push_view', arguments: '{}',
+      result: { ok: true, view_id: 'view-0001', kind: 'table', title: 'Recent specimens' },
+    }],
+  }} />)
+  expect(container.querySelector('.step-title')!.textContent).toBe('Published “Recent specimens”')
+  expect(container.querySelector('.step-title a[data-view-id="view-0001"]')!.textContent).toBe('Recent specimens')
+})
+
+it('renders only well-formed agent view links as in-app links', () => {
+  const text = 'See [Recent specimens](view:view-0001). Plain Recent specimens. [Bad](view:../x) [Spoof](view:view-0001/x)'
+  const { container, rerender } = render(<TranscriptText role="assistant" text={text} viewLink={viewLink} />)
+  const links = container.querySelectorAll('a')
+  expect(links).toHaveLength(1)
+  expect(links[0].getAttribute('data-view-id')).toBe('view-0001')
+  expect(links[0].textContent).toBe('Recent specimens')
+  rerender(<TranscriptText role="assistant" text={text} />)
+  expect(container.querySelectorAll('a')).toHaveLength(0)
+  expect(container.textContent).toContain('See Recent specimens.')
 })
 
 const chartSpec: ChartSpec = {

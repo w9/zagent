@@ -17,7 +17,7 @@
       "status": "submitted",
       "validation": [],
       "version": 1,
-      "view_id": "view-0002"
+      "view_id": "view-0001"
     },
     "draft-0002": {
       "app_id": "readqc",
@@ -32,7 +32,7 @@
       "status": "submitted",
       "validation": [],
       "version": 1,
-      "view_id": "view-0003"
+      "view_id": "view-0002"
     }
   },
   "events": [
@@ -54,7 +54,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "arguments": "{\"mrn\":\"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -100,7 +100,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P7D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -151,124 +151,121 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"tumor\"}",
-        "name": "find_specimens"
+        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+        "name": "update_draft"
       },
       "type": "tool_call"
     },
     {
       "payload": {
-        "name": "find_specimens",
+        "draft": {
+          "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
+          "parameters": {
+            "check_identity": true,
+            "min_coverage": 30
+          },
+          "specimen_handle": "query-0002",
+          "status": "editing",
+          "validation": [],
+          "version": 1
+        }
+      },
+      "type": "draft_updated"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "draft_form",
+          "props": {
+            "title": "Read quality control"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "update_draft",
         "result": {
-          "count": 1,
-          "handle": "query-0003",
-          "schema": [
-            {
-              "key": "id",
-              "label": "Specimen",
-              "type": "string"
+          "draft": {
+            "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
+            "parameters": {
+              "check_identity": true,
+              "min_coverage": 30
             },
-            {
-              "key": "kind",
-              "label": "Type",
-              "type": "string"
-            },
-            {
-              "key": "purity",
-              "label": "Purity",
-              "type": "number"
-            },
-            {
-              "key": "received_at",
-              "label": "Received",
-              "type": "string"
-            }
-          ]
+            "specimen_handle": "query-0002",
+            "status": "editing",
+            "validation": [],
+            "version": 1
+          },
+          "kind": "draft_form",
+          "ok": true,
+          "title": "Read quality control"
         }
       },
       "type": "tool_result"
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"normal\"}",
-        "name": "find_specimens"
+        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+        "name": "update_draft"
       },
       "type": "tool_call"
     },
     {
       "payload": {
-        "name": "find_specimens",
+        "draft": {
+          "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
+          "parameters": {
+            "check_identity": true,
+            "min_coverage": 30
+          },
+          "specimen_handle": "query-0002",
+          "status": "editing",
+          "validation": [],
+          "version": 1
+        }
+      },
+      "type": "draft_updated"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "draft_form",
+          "props": {
+            "title": "Read quality control"
+          },
+          "version": 1
+        }
+      },
+      "type": "view_pushed"
+    },
+    {
+      "payload": {
+        "name": "update_draft",
         "result": {
-          "count": 1,
-          "handle": "query-0004",
-          "schema": [
-            {
-              "key": "id",
-              "label": "Specimen",
-              "type": "string"
+          "draft": {
+            "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
+            "parameters": {
+              "check_identity": true,
+              "min_coverage": 30
             },
-            {
-              "key": "kind",
-              "label": "Type",
-              "type": "string"
-            },
-            {
-              "key": "purity",
-              "label": "Purity",
-              "type": "number"
-            },
-            {
-              "key": "received_at",
-              "label": "Received",
-              "type": "string"
-            }
-          ]
+            "specimen_handle": "query-0002",
+            "status": "editing",
+            "validation": [],
+            "version": 1
+          },
+          "kind": "draft_form",
+          "ok": true,
+          "title": "Read quality control"
         }
       },
       "type": "tool_result"
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"RNA\"}",
-        "name": "find_specimens"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "find_specimens",
-        "result": {
-          "count": 1,
-          "handle": "query-0005",
-          "schema": [
-            {
-              "key": "id",
-              "label": "Specimen",
-              "type": "string"
-            },
-            {
-              "key": "kind",
-              "label": "Type",
-              "type": "string"
-            },
-            {
-              "key": "purity",
-              "label": "Purity",
-              "type": "number"
-            },
-            {
-              "key": "received_at",
-              "label": "Received",
-              "type": "string"
-            }
-          ]
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "find_specimens, find_specimens, find_specimens"
+        "detail": "update_draft, update_draft"
       },
       "type": "step_finished"
     },
@@ -280,211 +277,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 7 days \u2014 [PT_1]\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "table",
-          "props": {
-            "columns": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ],
-            "handle": "query-0002",
-            "row_count": 3,
-            "title": "Specimens received in the last 7 days \u2014 [PT_1]"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "kind": "table",
-          "ok": true,
-          "title": "Specimens received in the last 7 days \u2014 [PT_1]"
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 5"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\"}",
-        "name": "update_draft"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "draft": {
-          "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
-          "parameters": {
-            "check_identity": true,
-            "min_coverage": 30
-          },
-          "specimen_handle": "query-0002",
-          "status": "editing",
-          "validation": [],
-          "version": 1
-        }
-      },
-      "type": "draft_updated"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "draft_form",
-          "props": {
-            "title": "Read quality control"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "name": "update_draft",
-        "result": {
-          "draft": {
-            "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
-            "parameters": {
-              "check_identity": true,
-              "min_coverage": 30
-            },
-            "specimen_handle": "query-0002",
-            "status": "editing",
-            "validation": [],
-            "version": 1
-          },
-          "kind": "draft_form",
-          "ok": true,
-          "title": "Read quality control"
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "update_draft"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 6"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\"}",
-        "name": "update_draft"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "draft": {
-          "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
-          "parameters": {
-            "check_identity": true,
-            "min_coverage": 30
-          },
-          "specimen_handle": "query-0002",
-          "status": "editing",
-          "validation": [],
-          "version": 1
-        }
-      },
-      "type": "draft_updated"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "draft_form",
-          "props": {
-            "title": "Read quality control"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "name": "update_draft",
-        "result": {
-          "draft": {
-            "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
-            "parameters": {
-              "check_identity": true,
-              "min_coverage": 30
-            },
-            "specimen_handle": "query-0002",
-            "status": "editing",
-            "validation": [],
-            "version": 1
-          },
-          "kind": "draft_form",
-          "ok": true,
-          "title": "Read quality control"
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "update_draft"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 7"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "text": "Two readqc drafts are now prepared, both using the default parameters (min_coverage=30, check_identity=true):\n\n- **Read quality control** (draft-0001) \u2014 form published in the working surface\n- **Read quality control** (draft-0002) \u2014 form published in the working surface\n\nBoth are scoped to the last 7 days for [PT_1]: 3 specimens (1 tumor, 1 normal, 1 RNA), listed in the **Specimens received in the last 7 days \u2014 [PT_1]** table. Validation returned no issues, and both remain in `editing` status \u2014 neither has been submitted.\n\nOne note: the two drafts are identical in app, scope and parameters, so running both would duplicate the same QC work. If you intended different specimen sets (for example tumor/normal only, or RNA only), tell me which and I'll adjust one of the drafts. Only the human Confirm control can submit a draft, and it submits exactly the reviewed content hash."
+        "text": "Prepared two separate read QC drafts using all 3 specimens received in the last week, with default parameters. Neither was submitted; both are valid and awaiting human confirmation.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)"
       },
       "type": "text_delta"
     },
@@ -612,7 +405,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"state\": \"all\"}",
+        "arguments": "{\"job_id\":null,\"state\":\"all\",\"since\":null}",
         "name": "show_jobs"
       },
       "type": "tool_call"
@@ -659,7 +452,7 @@
     },
     {
       "payload": {
-        "text": "The live job grid is published in the working surface as **Analysis jobs** (job grid), showing 2 jobs for this session.\n\nFor context: the persisted draft state now shows both readqc drafts as `submitted`, each linked to a job (job-0001 and job-0002). I haven't inspected either job's state or logs \u2014 say the word and I'll pull up a specific job card with `get_job` to report its actual outcome."
+        "text": "[Analysis jobs](view:view-0005) is the live job grid for this session."
       },
       "type": "text_delta"
     },
@@ -715,7 +508,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Two readqc drafts are now prepared, both using the default parameters (min_coverage=30, check_identity=true):\n\n- **Read quality control** (draft-0001) \u2014 form published in the working surface\n- **Read quality control** (draft-0002) \u2014 form published in the working surface\n\nBoth are scoped to the last 7 days for [PT_1]: 3 specimens (1 tumor, 1 normal, 1 RNA), listed in the **Specimens received in the last 7 days \u2014 [PT_1]** table. Validation returned no issues, and both remain in `editing` status \u2014 neither has been submitted.\n\nOne note: the two drafts are identical in app, scope and parameters, so running both would duplicate the same QC work. If you intended different specimen sets (for example tumor/normal only, or RNA only), tell me which and I'll adjust one of the drafts. Only the human Confirm control can submit a draft, and it submits exactly the reviewed content hash."
+      "text": "Prepared two separate read QC drafts using all 3 specimens received in the last week, with default parameters. Neither was submitted; both are valid and awaiting human confirmation.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)"
     },
     {
       "role": "user",
@@ -725,7 +518,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "The live job grid is published in the working surface as **Analysis jobs** (job grid), showing 2 jobs for this session.\n\nFor context: the persisted draft state now shows both readqc drafts as `submitted`, each linked to a job (job-0001 and job-0002). I haven't inspected either job's state or logs \u2014 say the word and I'll pull up a specific job card with `get_job` to report its actual outcome."
+      "text": "[Analysis jobs](view:view-0005) is the live job grid for this session."
     }
   ],
   "steps": [
@@ -735,7 +528,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "arguments": "{\"mrn\":\"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -767,7 +560,7 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P7D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 3,
@@ -799,132 +592,43 @@
       ]
     },
     {
-      "detail": "find_specimens, find_specimens, find_specimens",
+      "detail": "update_draft, update_draft",
       "status": "complete",
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"tumor\"}",
-          "name": "find_specimens",
-          "result": {
-            "count": 1,
-            "handle": "query-0003",
-            "schema": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ]
-          }
-        },
-        {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"normal\"}",
-          "name": "find_specimens",
-          "result": {
-            "count": 1,
-            "handle": "query-0004",
-            "schema": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ]
-          }
-        },
-        {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P7D\", \"kind\": \"RNA\"}",
-          "name": "find_specimens",
-          "result": {
-            "count": 1,
-            "handle": "query-0005",
-            "schema": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 4",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 7 days \u2014 [PT_1]\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
-          "name": "push_view",
-          "result": {
-            "kind": "table",
-            "ok": true,
-            "title": "Specimens received in the last 7 days \u2014 [PT_1]",
-            "view_id": "view-0001"
-          }
-        }
-      ]
-    },
-    {
-      "detail": "update_draft",
-      "status": "complete",
-      "title": "Agent step 5",
-      "tools": [
-        {
-          "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\"}",
+          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
           "name": "update_draft",
           "result": {
             "draft": {
               "app_id": "readqc",
               "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
               "draft_id": "draft-0001",
+              "job_id": null,
+              "parameters": {
+                "check_identity": true,
+                "min_coverage": 30
+              },
+              "specimen_handle": "query-0002",
+              "status": "editing",
+              "validation": [],
+              "version": 1,
+              "view_id": "view-0001"
+            },
+            "kind": "draft_form",
+            "ok": true,
+            "title": "Read quality control",
+            "view_id": "view-0001"
+          }
+        },
+        {
+          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+          "name": "update_draft",
+          "result": {
+            "draft": {
+              "app_id": "readqc",
+              "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
+              "draft_id": "draft-0002",
               "job_id": null,
               "parameters": {
                 "check_identity": true,
@@ -945,41 +649,9 @@
       ]
     },
     {
-      "detail": "update_draft",
-      "status": "complete",
-      "title": "Agent step 6",
-      "tools": [
-        {
-          "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\"}",
-          "name": "update_draft",
-          "result": {
-            "draft": {
-              "app_id": "readqc",
-              "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
-              "draft_id": "draft-0002",
-              "job_id": null,
-              "parameters": {
-                "check_identity": true,
-                "min_coverage": 30
-              },
-              "specimen_handle": "query-0002",
-              "status": "editing",
-              "validation": [],
-              "version": 1,
-              "view_id": "view-0003"
-            },
-            "kind": "draft_form",
-            "ok": true,
-            "title": "Read quality control",
-            "view_id": "view-0003"
-          }
-        }
-      ]
-    },
-    {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 7"
+      "title": "Agent step 4"
     },
     {
       "detail": "show_jobs",
@@ -987,7 +659,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"state\": \"all\"}",
+          "arguments": "{\"job_id\":null,\"state\":\"all\",\"since\":null}",
           "name": "show_jobs",
           "result": {
             "count": 2,
@@ -995,7 +667,7 @@
             "kind": "job_grid",
             "ok": true,
             "title": "Analysis jobs",
-            "view_id": "view-0006"
+            "view_id": "view-0005"
           }
         }
       ]
@@ -1007,37 +679,6 @@
     }
   ],
   "views": [
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "kind",
-            "label": "Type",
-            "type": "string"
-          },
-          {
-            "key": "purity",
-            "label": "Purity",
-            "type": "number"
-          },
-          {
-            "key": "received_at",
-            "label": "Received",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0002",
-        "row_count": 3,
-        "title": "Specimens received in the last 7 days \u2014 [PT_1]"
-      },
-      "version": 1
-    },
     {
       "kind": "draft_form",
       "props": {

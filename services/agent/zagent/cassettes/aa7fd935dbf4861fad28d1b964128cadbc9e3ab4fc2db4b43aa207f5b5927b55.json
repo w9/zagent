@@ -52,28 +52,7 @@
   "request_hash": "aa7fd935dbf4861fad28d1b964128cadbc9e3ab4fc2db4b43aa207f5b5927b55",
   "samples": {
     "0": {
-      "finish_reason": "tool_calls",
-      "message": {
-        "content": null,
-        "role": "assistant",
-        "tool_calls": [
-          {
-            "function": {
-              "arguments": "{\"supported\":true,\"rationale\":\"The answer correctly states that coverage failure does not indicate the presence or absence of pathogenic variants. The evidence shows that the coverage was 8x, which is below the required minimum of 30x, leading to a job failure. This insufficient coverage means that the analysis could not be completed, and therefore, no conclusions can be drawn about the variants.\"}",
-              "name": "assess_explanation"
-            },
-            "id": "tool_assess_explanation_JUHFvKVKNmXLJ5Ej8JW6",
-            "type": "function"
-          }
-        ]
-      },
-      "usage": {
-        "completion_tokens": 78,
-        "cost": 5.34e-05,
-        "prompt_tokens": 222,
-        "reasoning_tokens": 0,
-        "total_tokens": 300
-      }
+      "gateway_error": "Model provider request failed; check gateway connectivity"
     }
   },
   "version": 2

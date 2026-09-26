@@ -617,6 +617,7 @@ def test_narration_measurement_detects_the_reported_placeholder_without_changing
     "text",
     [
         'Found 1 library. See "Libraries" in the working surface.',
+        "Found 1 library. See [Libraries](view:view-0001) in the working surface.",
         "Coverage is a sequencing-depth metric. Would you like to filter libraries by QC status?",
         "| Concept | Meaning |\n|---|---|\n| Coverage | Sequencing depth |",
     ],
@@ -624,6 +625,17 @@ def test_narration_measurement_detects_the_reported_placeholder_without_changing
 def test_narration_measurement_preserves_explanations_and_non_result_tables(tmp_path, text):
     assert view_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST") is None
     assert view_narration(sample_evidence(text), True, tmp_path, "PRESENT-TEST") is None
+
+
+@pytest.mark.parametrize(
+    "text,issue",
+    [
+        ("See [Libraries](view:view-0002).", "links a view that was not published"),
+        ("See [Libraries](view:view-0001), also view-0001.", "internal result identifier"),
+    ],
+)
+def test_narration_measurement_rejects_unpublished_view_links_and_bare_ids(tmp_path, text, issue):
+    assert issue in view_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST")
 
 
 @pytest.mark.parametrize(

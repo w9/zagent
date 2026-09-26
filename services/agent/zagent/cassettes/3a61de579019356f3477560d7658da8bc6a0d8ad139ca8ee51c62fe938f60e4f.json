@@ -1,0 +1,45 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare a readqc draft for all specimens from [PT_1] received in the last week. Use default parameters and do not submit.",
+        "role": "user"
+      },
+      {
+        "content": "The readqc draft is prepared for all 3 specimens received in the last week, using the default parameters. It remains in editing status and has no validation issues. It has not been submitted; human confirmation is required to submit the reviewed draft.\n\n[Read quality control draft](view:view-0001)",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "3a61de579019356f3477560d7658da8bc6a0d8ad139ca8ee51c62fe938f60e4f",
+  "samples": {
+    "1": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Prepare ReadQC Drafts for Recent Specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 13,
+        "cost": 2.2e-05,
+        "prompt_tokens": 155,
+        "reasoning_tokens": 0,
+        "total_tokens": 168
+      }
+    }
+  },
+  "version": 2
+}

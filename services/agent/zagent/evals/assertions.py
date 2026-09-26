@@ -558,6 +558,8 @@ def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) 
     columns: set[str] = set()
     texts: dict[str, str] = {}
     published: bool | None = None
+    views: set[str] = set()
+    view_link = re.compile(r"\]\(view:([^)\s]*)\)")
     location = re.compile(
         r"\b(?:table|chart|view|results?)\s+(?:(?:is|are)\s+)?"
         r"(?:(?:displayed|shown|available)\s+)?(?:above|below)\b|"
@@ -574,6 +576,8 @@ def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) 
         payload = event.payload
         if event.type == "user_message":
             published = None
+        elif event.type == "view_pushed":
+            views.add(payload["view_id"])
         elif event.type == "tool_result":
             result = payload["result"]
             if payload["name"] == "push_view":
@@ -595,7 +599,9 @@ def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) 
                     return f"{case_id}: REQ-PRESENT-01 chat duplicates a query-result table"
             if location.search(text):
                 return f"{case_id}: REQ-PRESENT-01 misleading view location in chat"
-            if re.search(r"\b(?:query|view)-\d{4,}\b", text):
+            if any(target not in views for target in view_link.findall(text)):
+                return f"{case_id}: REQ-PRESENT-01 chat links a view that was not published"
+            if re.search(r"\b(?:query|view)-\d{4,}\b", view_link.sub("]", text)):
                 return f"{case_id}: REQ-PRESENT-01 internal result identifier in chat"
             if not published and display_claim.search(text):
                 return f"{case_id}: REQ-PRESENT-01 publication claimed after a failed push_view"

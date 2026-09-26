@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Give me the metadata of patient [PT_1]. Show the patient table.",
+        "role": "user"
+      },
+      {
+        "content": "The patient table is published: [Patient metadata](view:view-0001).",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "032fd8eb024e974af39be85add3654e4800dba79f7531ca5ad46a2a0f76e16aa",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Patient Metadata Table Viewing",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 8,
+      "cost": 1.38e-05,
+      "prompt_tokens": 98,
+      "reasoning_tokens": 0,
+      "total_tokens": 106
+    }
+  },
+  "version": 1
+}

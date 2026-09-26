@@ -23,7 +23,7 @@
         }
       ],
       "version": 2,
-      "view_id": "view-0002"
+      "view_id": "view-0001"
     }
   },
   "events": [
@@ -45,7 +45,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "arguments": "{\"mrn\":\"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -91,7 +91,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -142,73 +142,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours (PT_1)\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 2}}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "table",
-          "props": {
-            "columns": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ],
-            "handle": "query-0002",
-            "row_count": 2,
-            "title": "Specimens received in the last 24 hours (PT_1)"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "kind": "table",
-          "ok": true,
-          "title": "Specimens received in the last 24 hours (PT_1)"
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 4"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "arguments": "{\"app_id\": \"somatic-snv\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_vaf\": 0.05, \"min_depth\": 20}}",
+        "arguments": "{\"app_id\":\"somatic-snv\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -283,64 +217,13 @@
     },
     {
       "payload": {
-        "title": "Agent step 5"
+        "title": "Agent step 4"
       },
       "type": "step_started"
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P30D\", \"kind\": \"normal\"}",
-        "name": "find_specimens"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "name": "find_specimens",
-        "result": {
-          "count": 0,
-          "handle": "query-0003",
-          "schema": [
-            {
-              "key": "id",
-              "label": "Specimen",
-              "type": "string"
-            },
-            {
-              "key": "kind",
-              "label": "Type",
-              "type": "string"
-            },
-            {
-              "key": "purity",
-              "label": "Purity",
-              "type": "number"
-            },
-            {
-              "key": "received_at",
-              "label": "Received",
-              "type": "string"
-            }
-          ]
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "find_specimens"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 6"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "text": "I published the specimen records in the working surface as **\"Specimens received in the last 24 hours (PT_1)\"** (table, 2 specimens) and prepared a somatic-snv draft form (**\"Somatic variant calling\"**, draft-0001, version 1).\n\n**Draft status: editing \u2014 not submitted.** Validation is blocking it:\n\n- `missing_matched_normal` on `specimen_handle`: \"A matched normal specimen is missing.\"\n\nThe last-24-hours specimen query for this patient contains 2 specimens, and no normal specimen exists for this patient in the last 30 days either. Somatic calling needs tumor and normal together in one query, so I can't fix this by inventing a matched normal.\n\nTo proceed, please tell me one of the following:\n- whether a normal specimen for this patient was received outside the last 30 days (I can only query P1D/P7D/P30D windows, so you'd need to point me to the right intake window or record), or\n- whether you want the draft left as-is for review.\n\nParameters currently in the draft: `min_vaf=0.05`, `min_depth=20`. Only the human Confirm control can submit the exact reviewed content hash \u2014 a chat \"yes\" is not authorization."
+        "text": "I prepared the [Somatic variant calling](view:view-0001) draft using the specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to include; the draft has not been submitted."
       },
       "type": "text_delta"
     },
@@ -376,7 +259,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"draft_id\": \"draft-0001\", \"parameters\": {\"min_vaf\": 0.03}}",
+        "arguments": "{\"draft_id\":\"draft-0001\",\"parameters\":{\"min_vaf\":0.03}}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -445,7 +328,7 @@
     },
     {
       "payload": {
-        "text": "Updated the existing draft (draft-0001, now version 2) \u2014 the form was republished automatically as **\"Somatic variant calling\"**.\n\n- `min_vaf` = 0.03\n- `min_depth` = 20\n- specimen_handle = the last-24-hours specimen query for PT_1\n\n**Status: editing \u2014 still blocked.** The same validation issue remains: `missing_matched_normal` (\"A matched normal specimen is missing.\"). The last-24-hours query has no normal specimen, and no normal exists for this patient within the last 30 days either.\n\nI still need one of:\n- a pointer to a normal specimen for this patient (which intake window/record to include), or\n- confirmation to leave the draft as-is.\n\nOnly the human Confirm control can submit the exact reviewed content hash."
+        "text": "Updated the somatic-calling draft\u2019s minimum VAF to 0.03. Validation still requires a matched normal specimen; the draft has not been submitted."
       },
       "type": "text_delta"
     },
@@ -473,7 +356,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "I published the specimen records in the working surface as **\"Specimens received in the last 24 hours (PT_1)\"** (table, 2 specimens) and prepared a somatic-snv draft form (**\"Somatic variant calling\"**, draft-0001, version 1).\n\n**Draft status: editing \u2014 not submitted.** Validation is blocking it:\n\n- `missing_matched_normal` on `specimen_handle`: \"A matched normal specimen is missing.\"\n\nThe last-24-hours specimen query for this patient contains 2 specimens, and no normal specimen exists for this patient in the last 30 days either. Somatic calling needs tumor and normal together in one query, so I can't fix this by inventing a matched normal.\n\nTo proceed, please tell me one of the following:\n- whether a normal specimen for this patient was received outside the last 30 days (I can only query P1D/P7D/P30D windows, so you'd need to point me to the right intake window or record), or\n- whether you want the draft left as-is for review.\n\nParameters currently in the draft: `min_vaf=0.05`, `min_depth=20`. Only the human Confirm control can submit the exact reviewed content hash \u2014 a chat \"yes\" is not authorization."
+      "text": "I prepared the [Somatic variant calling](view:view-0001) draft using the specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to include; the draft has not been submitted."
     },
     {
       "role": "user",
@@ -483,7 +366,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Updated the existing draft (draft-0001, now version 2) \u2014 the form was republished automatically as **\"Somatic variant calling\"**.\n\n- `min_vaf` = 0.03\n- `min_depth` = 20\n- specimen_handle = the last-24-hours specimen query for PT_1\n\n**Status: editing \u2014 still blocked.** The same validation issue remains: `missing_matched_normal` (\"A matched normal specimen is missing.\"). The last-24-hours query has no normal specimen, and no normal exists for this patient within the last 30 days either.\n\nI still need one of:\n- a pointer to a normal specimen for this patient (which intake window/record to include), or\n- confirmation to leave the draft as-is.\n\nOnly the human Confirm control can submit the exact reviewed content hash."
+      "text": "Updated the somatic-calling draft\u2019s minimum VAF to 0.03. Validation still requires a matched normal specimen; the draft has not been submitted."
     }
   ],
   "steps": [
@@ -493,7 +376,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "arguments": "{\"mrn\":\"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -525,7 +408,7 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 2,
@@ -557,29 +440,12 @@
       ]
     },
     {
-      "detail": "push_view",
+      "detail": "update_draft",
       "status": "complete",
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours (PT_1)\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 2}}}",
-          "name": "push_view",
-          "result": {
-            "kind": "table",
-            "ok": true,
-            "title": "Specimens received in the last 24 hours (PT_1)",
-            "view_id": "view-0001"
-          }
-        }
-      ]
-    },
-    {
-      "detail": "update_draft",
-      "status": "complete",
-      "title": "Agent step 4",
-      "tools": [
-        {
-          "arguments": "{\"app_id\": \"somatic-snv\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_vaf\": 0.05, \"min_depth\": 20}}",
+          "arguments": "{\"app_id\":\"somatic-snv\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
           "name": "update_draft",
           "result": {
             "draft": {
@@ -601,49 +467,12 @@
                 }
               ],
               "version": 1,
-              "view_id": "view-0002"
+              "view_id": "view-0001"
             },
             "kind": "draft_form",
             "ok": true,
             "title": "Somatic variant calling",
-            "view_id": "view-0002"
-          }
-        }
-      ]
-    },
-    {
-      "detail": "find_specimens",
-      "status": "complete",
-      "title": "Agent step 5",
-      "tools": [
-        {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P30D\", \"kind\": \"normal\"}",
-          "name": "find_specimens",
-          "result": {
-            "count": 0,
-            "handle": "query-0003",
-            "schema": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ]
+            "view_id": "view-0001"
           }
         }
       ]
@@ -651,7 +480,7 @@
     {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 6"
+      "title": "Agent step 4"
     },
     {
       "detail": "update_draft",
@@ -659,7 +488,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"draft_id\": \"draft-0001\", \"parameters\": {\"min_vaf\": 0.03}}",
+          "arguments": "{\"draft_id\":\"draft-0001\",\"parameters\":{\"min_vaf\":0.03}}",
           "name": "update_draft",
           "result": {
             "draft": {
@@ -681,12 +510,12 @@
                 }
               ],
               "version": 2,
-              "view_id": "view-0002"
+              "view_id": "view-0001"
             },
             "kind": "draft_form",
             "ok": true,
             "title": "Somatic variant calling",
-            "view_id": "view-0002"
+            "view_id": "view-0001"
           }
         }
       ]
@@ -698,37 +527,6 @@
     }
   ],
   "views": [
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "kind",
-            "label": "Type",
-            "type": "string"
-          },
-          {
-            "key": "purity",
-            "label": "Purity",
-            "type": "number"
-          },
-          {
-            "key": "received_at",
-            "label": "Received",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0002",
-        "row_count": 2,
-        "title": "Specimens received in the last 24 hours (PT_1)"
-      },
-      "version": 1
-    },
     {
       "kind": "draft_form",
       "props": {

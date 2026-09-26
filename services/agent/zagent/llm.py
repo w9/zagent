@@ -17,8 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from zagent.privacy import EgressBlocked
 
-DEFAULT_LIVE_MODEL = "openai/gpt-6-luna"
-DEFAULT_MODEL = "deepseek/deepseek-v4.1-flash"
+DEFAULT_MODEL = "openai/gpt-6-luna"
 PROVIDERS = {
     "openrouter": ("https://openrouter.ai/api/v1/chat/completions", "OPENROUTER_API_KEY"),
     "openai": ("https://api.openai.com/v1/chat/completions", "OPENAI_API_KEY"),
@@ -181,13 +180,7 @@ class LlmGateway:
             raise ValueError("Mutation tests cannot enable model provider access")
         self.cassette_dir = cassette_dir
         self.mode = mode
-        self.routes = (
-            routes
-            if routes is not None
-            else {
-                "default": ModelRoute(model=DEFAULT_LIVE_MODEL if mode == "live" else DEFAULT_MODEL)
-            }
-        )
+        self.routes = routes if routes is not None else {"default": ModelRoute()}
         self.transport = transport
         self.egress_check = egress_check
         self.audit_path = audit_path

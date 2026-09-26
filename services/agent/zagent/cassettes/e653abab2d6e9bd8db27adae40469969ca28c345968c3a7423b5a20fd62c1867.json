@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare RNA fusion for RNA specimens received in the last day for [PT_1] with minimum support 8. Leave it as a draft.",
+        "role": "user"
+      },
+      {
+        "content": "The RNA fusion analysis is prepared as a draft for the one RNA specimen received in the last 24 hours. Minimum support is 8; artifact filtering is enabled by default, and validation reports no issues. It has not been submitted. Review the [RNA fusion analysis draft](view:view-0001); only the human Confirm control can submit it.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "e653abab2d6e9bd8db27adae40469969ca28c345968c3a7423b5a20fd62c1867",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "RNA Fusion Draft for Recent Specimen with Minimum Support 8",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 16,
+      "cost": 2.45e-05,
+      "prompt_tokens": 165,
+      "reasoning_tokens": 0,
+      "total_tokens": 181
+    }
+  },
+  "version": 1
+}

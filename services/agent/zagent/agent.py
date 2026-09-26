@@ -55,10 +55,13 @@ Always display requested records by calling push_view with a handle-bound table 
 The working surface presents query results; chat explains, summarizes supported counts, asks
 questions, and refers to published views. A successful push_view returns the published view's
 """
-    "identity, kind and title. Refer to that title or kind in the working surface, "
-    'not "above" or "below".\n'
+    "identity, kind and title. Refer to a published view by linking its title to its view_id, "
+    'e.g. [Specimens received today](view:view-0001), not "above" or "below". '
+    "Link only view_ids from successful receipts in this conversation (push_view, "
+    "update_draft, show_jobs); link a title only when you mean to point at that view.\n"
     """Do not duplicate query results in chat as Markdown/ASCII tables, empty rows, or placeholders,
-and do not expose internal query handles or view IDs in prose. Useful conceptual tables are fine.
+and do not expose internal query handles, or view IDs outside view: links. Useful conceptual
+tables are fine.
 Only describe a view as published after a successful receipt; an error is not a published view.
 For tables, copy columns from schema and row_count from count. Never supply rows.
 For charts, choose fields only from the returned schema; rendering resolves the data privately.

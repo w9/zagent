@@ -59,10 +59,10 @@
         "tool_calls": [
           {
             "function": {
-              "arguments": "{\"supported\":true,\"rationale\":\"The answer accurately states that the run failed the coverage check (8x vs. 30x required) and that clinical conclusions are unavailable, as indicated by the 'failed' status and the 'unavailable' field in the evidence.\"}",
+              "arguments": "{\"rationale\":\"The answer accurately states that the run failed the coverage check (8x vs. 30x required) and that clinical conclusions are unavailable, as indicated by the 'failed' status and the 'unavailable' field in the evidence.\",\"supported\":true}",
               "name": "assess_explanation"
             },
-            "id": "tool_assess_explanation_3fWAXPlGpXCLlPjEBKH1",
+            "id": "tool_assess_explanation_RacUbdRjOvYjdcmlYT1h",
             "type": "function"
           },
           {
@@ -70,7 +70,7 @@
               "arguments": "{\"supported\":true,\"rationale\":\"The answer accurately states that the run failed the coverage check (8x vs. 30x required) and that clinical conclusions are unavailable, as indicated by the 'failed' status and the 'unavailable' field in the evidence. The answer also correctly states that the log reports 8x coverage.\"}",
               "name": "assess_explanation"
             },
-            "id": "tool_assess_explanation_6mkDX6RX0zUlC2jgiKll",
+            "id": "tool_assess_explanation_1ZqnGtp0JrC0bkddSJPX",
             "type": "function"
           },
           {
@@ -78,15 +78,15 @@
               "arguments": "{\"supported\":true,\"rationale\":\"The answer accurately states that the run failed the coverage check (8x vs. 30x required) and that clinical conclusions are unavailable, as indicated by the 'failed' status and the 'unavailable' field in the evidence. The answer also correctly states that the log reports 8x coverage.\"}",
               "name": "assess_explanation"
             },
-            "id": "tool_assess_explanation_gTNlUI1CILuiietrgbrd",
+            "id": "tool_assess_explanation_hPuCZ3PpLjLPUEb7P8iE",
             "type": "function"
           },
           {
             "function": {
-              "arguments": "{\"rationale\":\"The answer accurately states that the run failed the coverage check (8x vs. 30x required) and that clinical conclusions are unavailable, as indicated by the 'failed' status and the 'unavailable' field in the evidence. The answer also correctly states that the log reports 8x coverage.\",\"supported\":true}",
+              "arguments": "{\"supported\":true,\"rationale\":\"The answer accurately states that the run failed the coverage check (8x vs. 30x required) and that clinical conclusions are unavailable, as indicated by the 'failed' status and the 'unavailable' field in the evidence. The answer also correctly states that the log reports 8x coverage.\"}",
               "name": "assess_explanation"
             },
-            "id": "tool_assess_explanation_7sgU2ZAKKkWSQcacbbl4",
+            "id": "tool_assess_explanation_kKDMhK605J3SW3TiPWlS",
             "type": "function"
           }
         ]

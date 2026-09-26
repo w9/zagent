@@ -87,6 +87,11 @@ export type StepState = {
   }[]
 }
 
+export function toolView({ result }: NonNullable<StepState['tools']>[number]) {
+  const view = result?.view_id, title = result?.title
+  return typeof view === 'string' && typeof title === 'string' ? { id: view, title } : undefined
+}
+
 export type Projection = {
   session_id: string
   seq: number

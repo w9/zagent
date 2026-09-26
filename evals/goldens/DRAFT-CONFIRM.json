@@ -39,7 +39,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "arguments": "{\"mrn\":\"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -85,7 +85,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -136,7 +136,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_coverage\": 40}}",
+        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{\"min_coverage\":40}}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -205,73 +205,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
-        "name": "push_view"
-      },
-      "type": "tool_call"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "table",
-          "props": {
-            "columns": [
-              {
-                "key": "id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "kind",
-                "label": "Type",
-                "type": "string"
-              },
-              {
-                "key": "purity",
-                "label": "Purity",
-                "type": "number"
-              },
-              {
-                "key": "received_at",
-                "label": "Received",
-                "type": "string"
-              }
-            ],
-            "handle": "query-0002",
-            "row_count": 3,
-            "title": "Specimens received in the last 24 hours"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "name": "push_view",
-        "result": {
-          "kind": "table",
-          "ok": true,
-          "title": "Specimens received in the last 24 hours"
-        }
-      },
-      "type": "tool_result"
-    },
-    {
-      "payload": {
-        "detail": "push_view"
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "title": "Agent step 5"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "text": "Draft prepared (not submitted).\n\n- **Draft:** readqc \u2014 status *editing*, version 1, no validation issues.\n- **Scope:** the query handle for [PT_1]'s specimens received in the last 24 hours (3 specimens, shown in the published table *\"Specimens received in the last 24 hours\"*).\n- **Parameters:** min_coverage=40, check_identity=true (default).\n\nThe draft form is published in the working surface. It stays pending until a human uses the Confirm control on the reviewed content hash \u2014 a chat \"yes\" does not submit it. Tell me if you want any parameter changed before review."
+        "text": "The readqc draft for the three specimens received in the last day is ready, with minimum coverage set to 40 and identity checking enabled. It has no validation issues and was not submitted. Review it in [Read quality control](view:view-0001)."
       },
       "type": "text_delta"
     },
@@ -323,7 +257,7 @@
     },
     {
       "payload": {
-        "text": "The currently saved value is **min_coverage = 45** (draft-0001, version 2, status *editing*, check_identity=true, no validation issues).\n\nNote the discrepancy with our earlier exchange: the draft I prepared came back as version 1 with min_coverage=40, but the persisted draft is now at version 2 with 45 \u2014 so it was modified after that edit. The persisted state is authoritative, so 45 is what's saved. I have not edited or submitted anything; the draft remains pending human confirmation. If you want it set back to 40, say so and I'll prepare that edit for review."
+        "text": "The minimum coverage currently saved in your readqc draft is **45**. I did not edit or submit it."
       },
       "type": "text_delta"
     },
@@ -412,7 +346,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Draft prepared (not submitted).\n\n- **Draft:** readqc \u2014 status *editing*, version 1, no validation issues.\n- **Scope:** the query handle for [PT_1]'s specimens received in the last 24 hours (3 specimens, shown in the published table *\"Specimens received in the last 24 hours\"*).\n- **Parameters:** min_coverage=40, check_identity=true (default).\n\nThe draft form is published in the working surface. It stays pending until a human uses the Confirm control on the reviewed content hash \u2014 a chat \"yes\" does not submit it. Tell me if you want any parameter changed before review."
+      "text": "The readqc draft for the three specimens received in the last day is ready, with minimum coverage set to 40 and identity checking enabled. It has no validation issues and was not submitted. Review it in [Read quality control](view:view-0001)."
     },
     {
       "role": "user",
@@ -422,7 +356,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "The currently saved value is **min_coverage = 45** (draft-0001, version 2, status *editing*, check_identity=true, no validation issues).\n\nNote the discrepancy with our earlier exchange: the draft I prepared came back as version 1 with min_coverage=40, but the persisted draft is now at version 2 with 45 \u2014 so it was modified after that edit. The persisted state is authoritative, so 45 is what's saved. I have not edited or submitted anything; the draft remains pending human confirmation. If you want it set back to 40, say so and I'll prepare that edit for review."
+      "text": "The minimum coverage currently saved in your readqc draft is **45**. I did not edit or submit it."
     }
   ],
   "steps": [
@@ -432,7 +366,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "arguments": "{\"mrn\":\"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -464,7 +398,7 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"patient_handle\": \"query-0001\", \"received_within\": \"P1D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 3,
@@ -501,7 +435,7 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"app_id\": \"readqc\", \"specimen_handle\": \"query-0002\", \"parameters\": {\"min_coverage\": 40}}",
+          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{\"min_coverage\":40}}",
           "name": "update_draft",
           "result": {
             "draft": {
@@ -528,26 +462,9 @@
       ]
     },
     {
-      "detail": "push_view",
-      "status": "complete",
-      "title": "Agent step 4",
-      "tools": [
-        {
-          "arguments": "{\"spec\": {\"kind\": \"table\", \"version\": 1, \"props\": {\"title\": \"Specimens received in the last 24 hours\", \"handle\": \"query-0002\", \"columns\": [{\"key\": \"id\", \"label\": \"Specimen\", \"type\": \"string\"}, {\"key\": \"kind\", \"label\": \"Type\", \"type\": \"string\"}, {\"key\": \"purity\", \"label\": \"Purity\", \"type\": \"number\"}, {\"key\": \"received_at\", \"label\": \"Received\", \"type\": \"string\"}], \"row_count\": 3}}}",
-          "name": "push_view",
-          "result": {
-            "kind": "table",
-            "ok": true,
-            "title": "Specimens received in the last 24 hours",
-            "view_id": "view-0002"
-          }
-        }
-      ]
-    },
-    {
       "detail": "Response complete",
       "status": "complete",
-      "title": "Agent step 5"
+      "title": "Agent step 4"
     },
     {
       "detail": "Response complete",
@@ -561,37 +478,6 @@
       "props": {
         "draft_id": "draft-0001",
         "title": "Read quality control"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "kind",
-            "label": "Type",
-            "type": "string"
-          },
-          {
-            "key": "purity",
-            "label": "Purity",
-            "type": "number"
-          },
-          {
-            "key": "received_at",
-            "label": "Received",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0002",
-        "row_count": 3,
-        "title": "Specimens received in the last 24 hours"
       },
       "version": 1
     },

@@ -22,7 +22,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"mrn\": \"[PT_1]\"}",
+        "arguments": "{\"mrn\":\"[PT_1]\"}",
         "name": "find_patients"
       },
       "type": "tool_call"
@@ -68,17 +68,7 @@
     },
     {
       "payload": {
-        "text": "\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Patient Metadata \u2014 [PT_1]\",\"handle\":\"query-0001\",\"columns\":[{\"key\":\"id\",\"label\":\"Patient\",\"type\":\"string\"},{\"key\":\"mrn\",\"label\":\"MRN\",\"type\":\"string\"},{\"key\":\"display_name\",\"label\":\"Name\",\"type\":\"string\"}],\"row_count\":1}}}",
+        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Patient metadata\",\"handle\":\"query-0001\",\"columns\":[{\"key\":\"id\",\"label\":\"Patient\",\"type\":\"string\"},{\"key\":\"mrn\",\"label\":\"MRN\",\"type\":\"string\"},{\"key\":\"display_name\",\"label\":\"Name\",\"type\":\"string\"}],\"row_count\":1}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -107,7 +97,7 @@
             ],
             "handle": "query-0001",
             "row_count": 1,
-            "title": "Patient Metadata \u2014 [PT_1]"
+            "title": "Patient metadata"
           },
           "version": 1
         }
@@ -120,7 +110,7 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Patient Metadata \u2014 [PT_1]"
+          "title": "Patient metadata"
         }
       },
       "type": "tool_result"
@@ -139,7 +129,7 @@
     },
     {
       "payload": {
-        "text": "Published the table **Patient Metadata \u2014 [PT_1]** in the working surface, with one matching patient record and columns Patient, MRN, and Name.\n\nNote: the patient query returns only these three fields \u2014 no additional demographic or clinical metadata is available through this workbench. If you'd like, I can look up specimens for this patient (e.g., last 24 hours, 7 days, or 30 days) or their libraries."
+        "text": "The patient table is published: [Patient metadata](view:view-0001)."
       },
       "type": "text_delta"
     },
@@ -175,7 +165,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\"}",
+        "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
         "name": "find_specimens"
       },
       "type": "tool_call"
@@ -226,17 +216,7 @@
     },
     {
       "payload": {
-        "text": "\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {
-        "arguments": "{\"spec\":{\"kind\":\"table\",\"props\":{\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"handle\":\"query-0002\",\"row_count\":3,\"title\":\"Specimens Received in Last 24 Hours \u2014 [PT_1]\"},\"version\":1}}",
+        "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":3}}}",
         "name": "push_view"
       },
       "type": "tool_call"
@@ -270,7 +250,7 @@
             ],
             "handle": "query-0002",
             "row_count": 3,
-            "title": "Specimens Received in Last 24 Hours \u2014 [PT_1]"
+            "title": "Specimens received in the last 24 hours"
           },
           "version": 1
         }
@@ -283,7 +263,7 @@
         "result": {
           "kind": "table",
           "ok": true,
-          "title": "Specimens Received in Last 24 Hours \u2014 [PT_1]"
+          "title": "Specimens received in the last 24 hours"
         }
       },
       "type": "tool_result"
@@ -302,7 +282,7 @@
     },
     {
       "payload": {
-        "text": "Published the table **Specimens Received in Last 24 Hours \u2014 [PT_1]** in the working surface: 3 specimens, with columns Specimen, Type, Purity, and Received.\n\nI can't see individual row values, so I can't tell you which types or purity values are present. If you'd like, I can:\n- filter to tumor, normal, or RNA specimens,\n- show a purity chart over these specimens,\n- or look up libraries and QC status for them."
+        "text": "There are 3 specimens received in the last 24 hours. View them in [Specimens received in the last 24 hours](view:view-0002)."
       },
       "type": "text_delta"
     },
@@ -330,12 +310,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "\n\n"
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "Published the table **Patient Metadata \u2014 [PT_1]** in the working surface, with one matching patient record and columns Patient, MRN, and Name.\n\nNote: the patient query returns only these three fields \u2014 no additional demographic or clinical metadata is available through this workbench. If you'd like, I can look up specimens for this patient (e.g., last 24 hours, 7 days, or 30 days) or their libraries."
+      "text": "The patient table is published: [Patient metadata](view:view-0001)."
     },
     {
       "role": "user",
@@ -345,12 +320,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "\n\n"
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "Published the table **Specimens Received in Last 24 Hours \u2014 [PT_1]** in the working surface: 3 specimens, with columns Specimen, Type, Purity, and Received.\n\nI can't see individual row values, so I can't tell you which types or purity values are present. If you'd like, I can:\n- filter to tumor, normal, or RNA specimens,\n- show a purity chart over these specimens,\n- or look up libraries and QC status for them."
+      "text": "There are 3 specimens received in the last 24 hours. View them in [Specimens received in the last 24 hours](view:view-0002)."
     }
   ],
   "steps": [
@@ -360,7 +330,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"mrn\": \"[PT_1]\"}",
+          "arguments": "{\"mrn\":\"[PT_1]\"}",
           "name": "find_patients",
           "result": {
             "count": 1,
@@ -392,12 +362,12 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Patient Metadata \u2014 [PT_1]\",\"handle\":\"query-0001\",\"columns\":[{\"key\":\"id\",\"label\":\"Patient\",\"type\":\"string\"},{\"key\":\"mrn\",\"label\":\"MRN\",\"type\":\"string\"},{\"key\":\"display_name\",\"label\":\"Name\",\"type\":\"string\"}],\"row_count\":1}}}",
+          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Patient metadata\",\"handle\":\"query-0001\",\"columns\":[{\"key\":\"id\",\"label\":\"Patient\",\"type\":\"string\"},{\"key\":\"mrn\",\"label\":\"MRN\",\"type\":\"string\"},{\"key\":\"display_name\",\"label\":\"Name\",\"type\":\"string\"}],\"row_count\":1}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Patient Metadata \u2014 [PT_1]",
+            "title": "Patient metadata",
             "view_id": "view-0001"
           }
         }
@@ -414,7 +384,7 @@
       "title": "Agent step 1",
       "tools": [
         {
-          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\"}",
+          "arguments": "{\"patient_handle\":\"query-0001\",\"received_within\":\"P1D\",\"kind\":null,\"identity\":\"reported\"}",
           "name": "find_specimens",
           "result": {
             "count": 3,
@@ -451,12 +421,12 @@
       "title": "Agent step 2",
       "tools": [
         {
-          "arguments": "{\"spec\":{\"kind\":\"table\",\"props\":{\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"handle\":\"query-0002\",\"row_count\":3,\"title\":\"Specimens Received in Last 24 Hours \u2014 [PT_1]\"},\"version\":1}}",
+          "arguments": "{\"spec\":{\"kind\":\"table\",\"version\":1,\"props\":{\"title\":\"Specimens received in the last 24 hours\",\"handle\":\"query-0002\",\"columns\":[{\"key\":\"id\",\"label\":\"Specimen\",\"type\":\"string\"},{\"key\":\"kind\",\"label\":\"Type\",\"type\":\"string\"},{\"key\":\"purity\",\"label\":\"Purity\",\"type\":\"number\"},{\"key\":\"received_at\",\"label\":\"Received\",\"type\":\"string\"}],\"row_count\":3}}}",
           "name": "push_view",
           "result": {
             "kind": "table",
             "ok": true,
-            "title": "Specimens Received in Last 24 Hours \u2014 [PT_1]",
+            "title": "Specimens received in the last 24 hours",
             "view_id": "view-0002"
           }
         }
@@ -491,7 +461,7 @@
         ],
         "handle": "query-0001",
         "row_count": 1,
-        "title": "Patient Metadata \u2014 [PT_1]"
+        "title": "Patient metadata"
       },
       "version": 1
     },
@@ -522,7 +492,7 @@
         ],
         "handle": "query-0002",
         "row_count": 3,
-        "title": "Specimens Received in Last 24 Hours \u2014 [PT_1]"
+        "title": "Specimens received in the last 24 hours"
       },
       "version": 1
     }

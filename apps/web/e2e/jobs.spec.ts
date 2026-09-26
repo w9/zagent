@@ -58,7 +58,7 @@ test('MCP-owned job cards and grid update independently and reopen without execu
   await expect(frame.locator('[data-job-id]')).toHaveCount(2)
   const chat = page.getByRole('tab', { name: 'Conversation', exact: true })
   if (await chat.isVisible()) await chat.click()
-  await page.locator('a.view-reference').filter({ hasText: 'Read quality control' }).nth(2).click()
+  await page.locator('a.view-reference').filter({ hasText: 'Read quality control' }).first().click()
   await expect(frame.locator('[data-job-id]')).toHaveCount(1)
   await page.goBack()
   const surface = page.getByRole('tab', { name: /Working surface/ })

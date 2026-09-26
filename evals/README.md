@@ -127,7 +127,9 @@ Mutation startup requires explicit test mode, replay, and matching dedicated dis
 URLs; normal application startup rejects flags. Provider access is refused under mutation.
 
 The model matrix is configured in [matrix.yaml](matrix.yaml). Its routes are
-`deepseek/deepseek-v4.1-flash`, `google/gemini-2.5-flash-lite`, and `openai/gpt-4.1-nano`.
+`openai/gpt-6-luna` (baseline), `google/gemini-2.5-flash-lite`, and `openai/gpt-4.1-nano`.
+The per-cell results below were recorded with `deepseek/deepseek-v4.1-flash` as the baseline
+and the previous production prompt; re-record the matrix before relying on them.
 The production prompt and an evaluation-only evidence-first candidate share 13 cases and the
 same seeds. Per-cell results are 10/13, 10/13, 7/13, 9/13, 9/13, and 8/13, respectively, in
 baseline/candidate order. All 78 trials preserve the no-additional-submission invariant.

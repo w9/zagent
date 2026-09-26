@@ -3,9 +3,6 @@ models:
   luna:
     model: openai/gpt-6-luna
     pricing: {prompt: '0.0000001', completion: '0.0000005'}
-  flash:
-    model: deepseek/deepseek-v4.1-flash
-    pricing: {prompt: '0.0000001', completion: '0.0000005'}
   gemini:
     model: google/gemini-2.5-flash-lite
     pricing: {prompt: '0.0000001', completion: '0.0000004'}

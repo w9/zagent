@@ -50,3 +50,4 @@ k8s_resource('bff', resource_deps=['agent-runtime'], labels=['clinical'], port_f
 k8s_resource('web', resource_deps=['bff'], labels=['clinical'], port_forwards=[port_forward(5185, 5173, name='Zagent')])
 k8s_resource('tempo', labels=['neutral'], port_forwards=[port_forward(3284, 3200, name='Tempo')])
 k8s_resource('otel-collector', resource_deps=['tempo'], labels=['neutral'])
+k8s_resource('grafana', resource_deps=['tempo'], labels=['neutral'], port_forwards=[port_forward(3285, 3000, name='Grafana')])

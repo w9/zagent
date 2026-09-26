@@ -49,7 +49,7 @@ them is part of this increment.
 | `evidence-runner` (trusted test Job) | Clinical |
 | `postgres` | Clinical, split by database role |
 | `event-db` (role-pinned PgBouncer) | Neutral |
-| `otel-collector`, `tempo` | Neutral |
+| `otel-collector`, `tempo`, `grafana` | Neutral |
 
 **Namespaces and NetworkPolicy.** One namespace per zone, default-deny ingress and egress in all,
 then explicit allows. The rules that matter:

@@ -555,6 +555,7 @@ simulator.
 | Eval runner | Agent | Case execution, reporting, publishing |
 | Postgres | Split by role | Event log and clinical tables, separated by role and RLS |
 | OTel collector plus Tempo | Neutral | Traces, using GenAI semantic conventions |
+| Grafana | Neutral | Local trace UI over Tempo; loopback Tilt forward only |
 
 The web BFF sits in the clinical zone because it performs display detokenization. The agent
 runtime sits in the agent zone and never holds a real identifier.

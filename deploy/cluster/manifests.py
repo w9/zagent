@@ -19,6 +19,7 @@ APPS = {
     "kb": "neutral",
     "otel-collector": "neutral",
     "tempo": "neutral",
+    "grafana": "neutral",
     "analysis-worker": "clinical",
     "evidence-runner": "clinical",
     "cluster-init": "clinical",
@@ -53,6 +54,7 @@ FLOWS = [
     ("eval-runner", "event-db", 5432),
     ("eval-runner", "privacy", 8006),
     ("otel-collector", "tempo", 4318),
+    ("grafana", "tempo", 3200),
 ]
 FLOWS += [
     (app, "otel-collector", 4318)
@@ -484,6 +486,25 @@ def resources(api_ip="172.30.0.2", mode="replay"):
     )
     tempo["spec"]["template"]["spec"]["securityContext"] = {"fsGroup": 10001}
     deployments.append(tempo)
+    deployments.append(
+        workload(
+            "grafana",
+            "grafana/grafana:11.5.2",
+            ["/run.sh"],
+            [3000],
+            # Anonymous admin is acceptable only because access is a loopback Tilt forward.
+            {
+                "GF_AUTH_ANONYMOUS_ENABLED": "true",
+                "GF_AUTH_ANONYMOUS_ORG_ROLE": "Admin",
+                "GF_AUTH_DISABLE_LOGIN_FORM": "true",
+                "GF_ANALYTICS_REPORTING_ENABLED": "false",
+                "GF_ANALYTICS_CHECK_FOR_UPDATES": "false",
+                "GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES": "false",
+                "GF_NEWS_NEWS_FEED_ENABLED": "false",
+            },
+            config="/etc/grafana/provisioning/datasources",
+        )
+    )
     items.extend(deployments)
     for deployment in deployments:
         name = deployment["metadata"]["name"]
@@ -507,7 +528,11 @@ def resources(api_ip="172.30.0.2", mode="replay"):
             },
         }
         items.append(service)
-    for name, filename in (("otel-collector", "otel.yaml"), ("tempo", "tempo.yaml")):
+    for name, filename in (
+        ("otel-collector", "otel.yaml"),
+        ("tempo", "tempo.yaml"),
+        ("grafana", "grafana.yaml"),
+    ):
         items.append(
             {
                 "apiVersion": "v1",

@@ -30,7 +30,7 @@ case "$action" in
         docker exec "$name" tilt wait --port 10359 --for=create 'uiresource/(Tiltfile)' --timeout=30s
         docker exec "$name" tilt wait --port 10359 --for=condition=Ready 'uiresource/(Tiltfile)' --timeout=60s
         docker exec "$name" tilt wait --port 10359 --for=condition=Ready uiresources --all --timeout=10m
-        printf '\nCluster app: http://localhost:5185\nAPI: http://localhost:8109\nTilt: http://localhost:10359\nTempo: http://localhost:3284\n'
+        printf '\nCluster app: http://localhost:5185\nAPI: http://localhost:8109\nTilt: http://localhost:10359\nTempo: http://localhost:3284\nGrafana: http://localhost:3285\n'
         ;;
     stop)
         if docker container inspect "$name" >/dev/null 2>&1; then docker stop "$name"; fi

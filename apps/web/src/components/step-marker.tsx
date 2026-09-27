@@ -111,7 +111,11 @@ export function StepMarker({ step, viewLink }: { step: StepState; viewLink?: Vie
         ) : (
           <CircleCheck size={14} aria-hidden="true" />
         )}
-        <span className="step-title"><StepSummary step={step} viewLink={viewLink} /></span>
+        <span className="step-title">
+          {step.status === 'running'
+            ? <span className="shimmer"><StepSummary step={step} viewLink={viewLink} /></span>
+            : <StepSummary step={step} viewLink={viewLink} />}
+        </span>
         <span className="step-status">
           {step.status === 'running'
             ? 'In progress'

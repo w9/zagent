@@ -275,16 +275,12 @@ function Chat({
                     className={`message ${message.role}`}
                     data-testid={`${message.role}-message`}
                   >
-                    <div className="message-label">
-                      {message.role === 'assistant' && <Dna size={15} />}
-                      {message.role === 'user' ? 'You' : 'Zagent'}
-                      {message.status === 'failed' && (
-                        <span className="interrupted">Interrupted</span>
-                      )}
-                    </div>
                     <TranscriptText text={message.text} role={message.role} bindings={bindings}
                       viewLink={viewLink}
                       streaming={message.status === 'streaming'} />
+                    {message.status === 'failed' && (
+                      <span className="interrupted">Interrupted</span>
+                    )}
                   </li>
                 )
               })}

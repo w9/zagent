@@ -47,11 +47,7 @@ class Dispatcher:
             for line in lines:
                 if len(line) > 16384:
                     raise ValueError("Execution log line exceeds the ingestion limit")
-                record = await self.jobs.ingest(
-                    lease,
-                    JobRecord.model_validate_json(line),
-                    platform_retries=bool(getattr(self.executor, "platform_retries", False)),
-                )
+                record = await self.jobs.ingest(lease, JobRecord.model_validate_json(line))
                 cursor += 1
                 if record is not None:
                     with self.tracer.start_as_current_span(
@@ -67,11 +63,7 @@ class Dispatcher:
         if hasattr(self.executor, "finalize"):
             await self.jobs.record_terminal(lease, exit_code)
             await self.executor.finalize(lease)
-        await self.jobs.finish(
-            lease,
-            exit_code,
-            platform_retries=bool(getattr(self.executor, "platform_retries", False)),
-        )
+        await self.jobs.finish(lease, exit_code)
 
     async def once(self, session_id: UUID | None = None) -> bool:
         lease = await self.jobs.claim(self.owner, session_id=session_id)
@@ -111,19 +103,10 @@ class Dispatcher:
 
 async def serve() -> None:
     store = await Store.open(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
-    if os.environ.get("ZAGENT_EXECUTOR") == "kubernetes":
-        from zagent.kubernetes_executor import KubernetesExecutor
-
-        executor = KubernetesExecutor(
-            namespace=os.environ.get("ZAGENT_JOB_NAMESPACE", "zagent-clinical"),
-            image=os.environ.get("ZAGENT_JOB_IMAGE", "zagent-backend:plan9"),
-            step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
-        )
-    else:
-        executor = DockerExecutor(
-            project=os.environ.get("COMPOSE_PROJECT_NAME", "zagent-plan4"),
-            step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
-        )
+    executor = DockerExecutor(
+        project=os.environ.get("COMPOSE_PROJECT_NAME", "zagent-plan4"),
+        step_seconds=float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2")),
+    )
     try:
         await Dispatcher(JobStore(ClinicalStore(store, configured_clock())), executor).run()
     finally:

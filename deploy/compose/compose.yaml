@@ -1,9 +1,14 @@
 name: zagent
 
+# Zones: clinical data, the agent, and telemetry are separate internal networks.
+# Services on two zones only serve fixed ports; relays forward one direction.
+x-telemetry: &telemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://collector:4318
+
 services:
   postgres:
     image: postgres:16-alpine
-    networks: [internal]
+    networks: [clinical]
     environment:
       POSTGRES_USER: zagent
       POSTGRES_PASSWORD: zagent
@@ -22,23 +27,25 @@ services:
       context: .
       dockerfile: services/agent/Dockerfile
     environment:
-      DATABASE_URL: postgresql://zagent_runtime:zagent_runtime@postgres:5432/zagent
+      <<: *telemetry
+      DATABASE_URL: postgresql://zagent_runtime:zagent_runtime@event-db:5432/zagent
       ZAGENT_SCRIPT: "${ZAGENT_SCRIPT:-}"
       ZAGENT_AGENT: "${ZAGENT_AGENT:-llm}"
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_GATEWAY_URL: http://gateway:8001
       ZAGENT_TOOLS_URL: http://tools:8002/mcp
       ZAGENT_JOBS_URL: http://jobs:8005/mcp
+      ZAGENT_KB_URL: http://kb:8007/mcp
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
       ZAGENT_DISPLAY_MODE: "0"
       ZAGENT_MIGRATE: "0"
-      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_URL: http://tokenizer:8006
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tokenize.key
     volumes:
       - privacy_tokenize:/run/privacy:ro
-    networks: [internal]
+    networks: [agent]
     depends_on:
-      postgres:
+      event-db:
         condition: service_healthy
       gateway:
         condition: service_healthy
@@ -46,7 +53,9 @@ services:
         condition: service_healthy
       jobs:
         condition: service_healthy
-      privacy:
+      kb:
+        condition: service_healthy
+      tokenizer:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
@@ -60,23 +69,19 @@ services:
       dockerfile: services/agent/Dockerfile
     command: ["uvicorn", "zagent.gateway:app", "--host", "0.0.0.0", "--port", "8001"]
     environment:
+      <<: *telemetry
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_MODEL: "${ZAGENT_MODEL:-openai/gpt-6-luna}"
       ZAGENT_MODEL_ROUTES: "${ZAGENT_MODEL_ROUTES:-}"
-      ZAGENT_LOCAL_INGRESS: "1"
       ZAGENT_GATEWAY_AUDIT: /var/lib/zagent/gateway-audit.sqlite3
-      ZAGENT_PRIVACY_URL: http://privacy:8003
+      ZAGENT_PRIVACY_URL: http://tokenizer:8006
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/gateway.key
     volumes:
       - gateway_audit:/var/lib/zagent
       - privacy_gateway:/run/privacy:ro
-    ports:
-      - "127.0.0.1:${ZAGENT_WEB_PORT:-5173}:5173"
-      - "127.0.0.1:${ZAGENT_AGENT_PORT:-8000}:8000"
-      - "127.0.0.1:${ZAGENT_DB_PORT:-5432}:5432"
-    networks: [internal, egress]
+    networks: [agent, egress]
     depends_on:
-      privacy:
+      tokenizer:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
@@ -90,6 +95,7 @@ services:
       dockerfile: services/agent/Dockerfile
     command: ["uvicorn", "zagent.tools_server:app", "--host", "0.0.0.0", "--port", "8002"]
     environment:
+      <<: *telemetry
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
@@ -97,7 +103,7 @@ services:
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tools.key
     volumes:
       - privacy_tools:/run/privacy:ro
-    networks: [internal]
+    networks: [clinical, agent]
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,6 +121,7 @@ services:
       dockerfile: services/agent/Dockerfile
     command: ["uvicorn", "zagent.jobs_server:app", "--host", "0.0.0.0", "--port", "8005"]
     environment:
+      <<: *telemetry
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
@@ -122,12 +129,27 @@ services:
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tools.key
     volumes:
       - privacy_tools:/run/privacy:ro
-    networks: [internal]
+    networks: [clinical, agent]
     depends_on:
       privacy:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # No database or privacy capability: SOP retrieval only.
+  kb:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.kb_server:app", "--host", "0.0.0.0", "--port", "8007"]
+    environment:
+      <<: *telemetry
+    networks: [agent]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8007/health')"]
       interval: 2s
       timeout: 5s
       retries: 30
@@ -140,6 +162,7 @@ services:
     command: ["python", "-m", "zagent.dispatcher"]
     restart: unless-stopped
     environment:
+      <<: *telemetry
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       COMPOSE_PROJECT_NAME: "${COMPOSE_PROJECT_NAME:-zagent}"
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
@@ -147,11 +170,10 @@ services:
       ZAGENT_JOB_STEP_SECONDS: "${ZAGENT_JOB_STEP_SECONDS:-2}"
       ZAGENT_PRIVACY_URL: http://privacy:8003
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tools.key
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://collector:4318
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - privacy_tools:/run/privacy:ro
-    networks: [internal]
+    networks: [clinical]
     depends_on:
       privacy:
         condition: service_healthy
@@ -163,14 +185,43 @@ services:
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./deploy/compose/otel.yaml:/etc/otelcol/config.yaml:ro
-    networks: [internal]
+    networks: [clinical, agent, telemetry]
+    depends_on:
+      tempo:
+        condition: service_started
+
+  tempo:
+    image: grafana/tempo:2.7.2
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    volumes:
+      - ./deploy/compose/tempo.yaml:/etc/tempo/config.yaml:ro
+    tmpfs:
+      - /var/tempo:mode=1777
+    networks: [telemetry]
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - ./deploy/compose/grafana.yaml:/etc/grafana/provisioning/datasources/tempo.yaml:ro
+    networks: [telemetry]
+    depends_on:
+      tempo:
+        condition: service_started
 
   privacy-init:
     build:
       context: .
       dockerfile: services/agent/Dockerfile
     command: ["python", "-m", "zagent.privacy_init"]
-    networks: [internal]
+    network_mode: none
     volumes:
       - privacy_master:/keys/master
       - privacy_tokenize:/keys/tokenize
@@ -184,12 +235,13 @@ services:
       dockerfile: services/agent/Dockerfile
     command: ["uvicorn", "zagent.privacy_server:app", "--host", "0.0.0.0", "--port", "8003"]
     environment:
+      <<: *telemetry
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
     volumes:
       - privacy_master:/run/privacy:ro
-    networks: [internal]
+    networks: [clinical]
     depends_on:
       postgres:
         condition: service_healthy
@@ -201,26 +253,104 @@ services:
       timeout: 5s
       retries: 30
 
+  # The agent zone's only privacy endpoint: tokenize and tripwire, no resolution routes.
+  tokenizer:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.privacy_server:create_tokenizer_app", "--factory", "--host", "0.0.0.0", "--port", "8006"]
+    environment:
+      <<: *telemetry
+      DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
+      ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
+      ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
+    volumes:
+      - privacy_master:/run/privacy:ro
+    networks: [clinical, agent]
+    depends_on:
+      privacy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Role-pinned proxy: the agent reaches only the event database, as zagent_runtime.
+  event-db:
+    build:
+      context: deploy/compose
+      dockerfile: EventDB.Dockerfile
+    volumes:
+      - ./deploy/compose/event-db:/etc/event-db:ro
+    networks: [clinical, agent]
+    depends_on:
+      privacy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "5432"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Clinical-to-agent only: forwards to the runtime and gateway, never back.
+  display-relay:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["python", "-m", "zagent.relay"]
+    environment:
+      ZAGENT_RELAY_ROUTES: 8000=agent:8000,8001=gateway:8001
+    networks: [clinical, agent]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 2)"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Host loopback ports. The edge network publishes ports but has no outbound NAT.
+  ingress:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["python", "-m", "zagent.relay"]
+    environment:
+      ZAGENT_RELAY_ROUTES: 5173=web:5173,8000=bff:8000,5432=postgres:5432,3000=grafana:3000
+    ports:
+      - "127.0.0.1:${ZAGENT_WEB_PORT:-5173}:5173"
+      - "127.0.0.1:${ZAGENT_AGENT_PORT:-8000}:8000"
+      - "127.0.0.1:${ZAGENT_DB_PORT:-5432}:5432"
+      - "127.0.0.1:${ZAGENT_GRAFANA_PORT:-3000}:3000"
+    networks: [edge, clinical, telemetry]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 5432), 2)"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
   bff:
     build:
       context: .
       dockerfile: services/agent/Dockerfile
     environment:
+      <<: *telemetry
       DATABASE_URL: postgresql://zagent:zagent@postgres:5432/zagent
       ZAGENT_LLM_MODE: "${ZAGENT_LLM_MODE:-replay}"
       ZAGENT_DISPLAY_MODE: "1"
       ZAGENT_MIGRATE: "0"
-      ZAGENT_RUNTIME_URL: http://agent:8000
-      ZAGENT_GATEWAY_URL: http://gateway:8001
+      ZAGENT_RUNTIME_URL: http://display-relay:8000
+      ZAGENT_GATEWAY_URL: http://display-relay:8001
       ZAGENT_JOBS_URL: http://jobs:8005/mcp
       ZAGENT_PRIVACY_URL: http://privacy:8003
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/display.key
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
     volumes:
       - privacy_display:/run/privacy:ro
-    networks: [internal]
+    networks: [clinical]
     depends_on:
       agent:
+        condition: service_healthy
+      display-relay:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
@@ -234,7 +364,7 @@ services:
       dockerfile: apps/web/Dockerfile
     environment:
       AGENT_URL: http://bff:8000
-    networks: [internal]
+    networks: [clinical]
     depends_on:
       bff:
         condition: service_healthy
@@ -254,6 +384,13 @@ volumes:
   privacy_gateway:
 
 networks:
-  internal:
+  clinical:
+    internal: true
+  agent:
+    internal: true
+  telemetry:
     internal: true
   egress:
+  edge:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"

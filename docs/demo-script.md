@@ -8,7 +8,7 @@
 
 ## Pre-production
 
-- Run the stack in live model mode (`make cluster-live` or `make live`). Don't mention the mode on camera.
+- Run the stack in live model mode (`make live`). Don't mention the mode on camera.
 - Use two browser tabs on the same session. Tab B is only used for the stale-edit beat.
 - **Pre-stage the reveal:** in a fresh session, send
   `Give me the metadata of patient NGC-0041872. Show the patient table.` and let it finish. Leave
@@ -170,7 +170,7 @@ recall**, where rates are shown with Wilson confidence intervals. Hold on the re
 |---|---|---|
 | Opening | 15s | Sets up the trust question |
 | Reveal: X-ray | 20s | Tokenization at ingress |
-| Zones cutaway | 30s | NetworkPolicy + egress tripwire |
+| Zones cutaway | 30s | Network zones + egress tripwire |
 | Handles, not rows | 25s | Model never sees data values |
 | One draft, two editors | 20s | Shared versioned draft |
 | Only a human can submit | 30s | No submit tool, hash-bound confirmation |

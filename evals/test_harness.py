@@ -172,7 +172,7 @@ def test_ci_mutates_on_prs_and_bounds_fresh_nightly_calls():
     root = Path(__file__).parents[1]
     workflow = yaml.load((root / ".github/workflows/plan1.yml").read_text(), Loader=yaml.BaseLoader)
     assert "schedule" in workflow["on"]
-    steps = workflow["jobs"]["cluster"]["steps"]
+    steps = workflow["jobs"]["zones"]["steps"]
     assert any("MUTATE=all" in step.get("run", "") for step in steps)
     nightly = workflow["jobs"]["nightly-matrix"]
     assert "schedule" in nightly["if"] and "pull_request" not in nightly["if"]

@@ -38,7 +38,7 @@ send obfuscated identifiers to a provider.
 ```bash
 make evals                    # Full replay quality gate, including retained adversarial findings.
 make evals EVAL_ARGS='--accept-known-findings'  # Separate exact-known-findings regression gate.
-make evals MUTATE=all          # Nine paired enforcement probes; requires the existing k3d cluster.
+make evals MUTATE=all          # Nine paired enforcement probes; requires the running `make up` stack.
 make matrix                   # Replay all three models and both prompt versions, with no key.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
@@ -120,9 +120,10 @@ as findings, not patched away in evaluation setup.
 [PLAN10](../docs/PLAN10.md). Both sides must remain healthy and the expected requirements must
 change from passing to failing. A crash, failed positive control, or surviving mutation fails the
 meta-requirement. Eight probes create and finally drop only their own disposable databases on the
-server named by `ZAGENT_TEST_DATABASE_URL`, whose source database must end in `_test`. The CNI
-probe creates three labeled temporary namespaces, copies the deployed policy definitions, and
-deletes only its copied policies. It leaves the current cluster mode and live policies unchanged.
+server named by `ZAGENT_TEST_DATABASE_URL`, whose source database must end in `_test`. The
+`zones_off` probe starts two fresh containers at the runtime's network position against the
+running Compose stack, the mutant also attached to the clinical network. It never alters the
+running services or their networks.
 Mutation startup requires explicit test mode, replay, and matching dedicated disposable database
 URLs; normal application startup rejects flags. Provider access is refused under mutation.
 
@@ -140,7 +141,7 @@ sample supports neither a reliable ranking nor a general factuality claim.
 uv run zagent evals --filter 'ADV-*' --no-chaos --accept-known-findings
 uv run zagent matrix --mode replay --output docs/evals/plan10/matrix
 uv run zagent matrix --mode replay --baseline docs/evals/plan10/matrix/results.json \
-	--output .cluster/reports/matrix-check
+	--output /tmp/zagent-matrix-check
 ```
 
 Recording is an explicit paid operation requiring the existing external provider key, a test
@@ -361,44 +362,26 @@ sandbox mutation denial, refresh/history, mobile layout, and unchanged submissio
 
 ## Cases And Goldens
 
-### Cluster Verification
+### Network Zone Verification
 
 ```bash
-make cluster
-make cluster-test
-make cluster-evals EVAL_ARGS=--workflow-only
-make cluster-evals
-ZAGENT_WEB_URL=http://127.0.0.1:5185 ZAGENT_AGENT=llm make browser
+make up
+make zones
 ```
 
-These commands preserve existing Compose data and use the persistent `zagent-plan9` cluster.
-The policy gate probes actual pod network namespaces, using ephemeral containers for images
-without Python and fresh Jobs for worker/eval identities. It checks both Service and Pod IP
-denials, positive service/DNS controls, dispatcher API access, and runtime-role rejection of
-clinical tables, role escalation, and owner login through the proxy. Only the LLM gateway can
-reach the public HTTPS control. Workers retain the explicit cluster-DNS exception.
+`make zones` starts a fresh probe container attached to exactly each running Compose service's
+networks, plus a worker-equivalent container with no network. It checks allowed flows as
+positive controls, denials of Postgres, privacy resolution, the BFF, and web by both DNS name and
+IP address from the agent zone, and internet reachability for every service. Only the LLM gateway
+may reach the public HTTPS control. From the runtime position it also checks the runtime role
+through the event database proxy: clinical tables and role escalation are denied, and the proxy
+rejects owner login.
 
 The four deployment requirements (`REQ-PHI-05`, `REQ-PHI-06`, `REQ-ISO-02`, `REQ-META-01`) are
-reported in `.cluster/policy-results.json` and gated independently of the unchanged 29-requirement
+reported in `docs/evals/zones/results.json` and gated independently of the 29-requirement
 behavioral report. A missing positive control fails the deployment gate rather than counting as
-successful isolation. The initial fresh-pod probe detected kube-router's startup exposure;
-Calico policy setup now precedes ordinary workload startup.
-
-`cluster-evals` first runs only the 3,000 database-free `SCOPE-*` samples in an agent-zone Job
-without owner credentials or internet access. A clinical test Job then runs the original tests
-and full harness against `zagent_test`, including controlled local HTTP apps and ProcessExecutor.
-No application policy is widened to let an agent-zone evaluator seed clinical data. Finally,
-the deployed workflow gate runs all 16 ordinary real-agent cases against the real cluster
-services with their unchanged goldens/assertions, plus actual Kubernetes success, domain-failure,
-two-pod retry, log-deduplication, and Tempo trace checks. `--workflow-only` selects that last gate.
-
-Retained artifacts are copied from evidence PVCs into `.cluster/reports/<zone>/<run-id>/`.
-The full run recorded 499 passing backend tests and all 29 behavioral gates passing over 3,405
-trials, with the original 24 scope/provider failures retained. Replay duration was 328.48 seconds;
-the final deployed workflow gate took 46.92 seconds, and the policy gate took 11.36 seconds.
-The full-suite tens-of-seconds goal is still open. These timings do not imply fresh model sampling.
-The CI cluster job starts from a clean checkout, requires these gates and browser checks, and
-uploads only report/test paths, never the credentials or admin kubeconfig in `.cluster/`.
+successful isolation. The CI `zones` job runs this gate and the mutation suite against a fresh
+`make up` stack.
 
 ### Register And Fixtures
 

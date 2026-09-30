@@ -22,7 +22,7 @@ EXPECTED = {
     "guard_off": ["REQ-SCOPE-01"],
     "resume_off": ["REQ-STREAM-02"],
     "drop_events": ["REQ-STREAM-01"],
-    "netpol_off": ["REQ-PHI-05"],
+    "zones_off": ["REQ-PHI-05"],
     "rls_off": ["REQ-ISO-01", "REQ-ISO-02"],
     "validator_off": ["REQ-VALID-01"],
 }
@@ -249,7 +249,7 @@ async def probe(name: str, root: Path) -> dict:
             controls["human_confirm_works"] = response.status_code == 200
             await store.finish_conversation_turn(valid_turn.id, valid_turn.conversation_turn_id)
         else:
-            raise ValueError("Network mutation requires the isolated cluster probe")
+            raise ValueError("The zones mutation requires the running Compose stack probe")
         controls["http_health_after"] = (await client.get("/health")).status_code == 200
     return {
         "healthy": all(controls.values()),
@@ -354,36 +354,26 @@ async def evaluate_mutations(database_url: str, root: Path, selection="all") -> 
     started = time.monotonic()
     results = []
     for name in selected:
-        if name == "netpol_off":
-            async with disposable_database(database_url) as target:
-                process = await asyncio.create_subprocess_exec(
-                    "bash",
-                    str(root.parent / "deploy/cluster/cluster.sh"),
-                    "mutation",
-                    cwd=root.parent,
-                    env={
-                        **os.environ,
-                        "ZAGENT_MUTATION": name,
-                        "ZAGENT_TEST_MODE": "mutation",
-                        "ZAGENT_LLM_MODE": "replay",
-                        "DATABASE_URL": target,
-                        "ZAGENT_TEST_DATABASE_URL": target,
-                        "ZAGENT_CLUSTER_MODE": "replay",
-                    },
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-                stdout, stderr = await process.communicate()
-                if process.returncode:
-                    control = mutant = {
-                        "healthy": False,
-                        "requirements": {},
-                        "error": "cluster_probe_failed",
-                        "diagnostic": stderr.decode()[-2000:],
-                    }
-                else:
-                    response = json.loads(stdout)
-                    control, mutant = response["control"], response["mutant"]
+        if name == "zones_off":
+            process = await asyncio.create_subprocess_exec(
+                sys.executable,
+                str(root.parent / "deploy/compose/zones.py"),
+                "mutation",
+                cwd=root.parent,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+            if process.returncode:
+                control = mutant = {
+                    "healthy": False,
+                    "requirements": {},
+                    "error": "zones_probe_failed",
+                    "diagnostic": stderr.decode()[-2000:],
+                }
+            else:
+                response = json.loads(stdout)
+                control, mutant = response["control"], response["mutant"]
         else:
             control = await run_probe(name, database_url, root, mutate=False)
             mutant = await run_probe(name, database_url, root, mutate=True)

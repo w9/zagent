@@ -90,25 +90,22 @@ jobs:
       - if: always()
         run: make down
 
-  cluster:
+  zones:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
-      ZAGENT_AGENT: llm
-      ZAGENT_WEB_URL: http://127.0.0.1:5185
+      UV_PYTHON: "3.12"
     steps:
       - uses: actions/checkout@v4
-      - name: Bring up isolated k3d and Tilt
-        run: make cluster
-      - name: Verify network policies and database roles
-        run: make cluster-test
       - uses: astral-sh/setup-uv@v6
         with:
           version: "0.12.3"
+      - run: make up
+      - name: Verify network zones and database roles
+        run: make zones
       - name: Detect all nine enforcement mutations
         run: |
-          make db
-          uv run python -m zagent.knowledge
+          uv run --frozen python -m zagent.knowledge
           make evals MUTATE=all EVAL_ARGS='--output docs/evals/plan10'
       - uses: actions/upload-artifact@v4
         if: always()
@@ -116,30 +113,16 @@ jobs:
           name: mutation-evidence
           path: docs/evals/plan10/mutations
           retention-days: 14
-      - name: Replay unchanged evidence and deployed workflows
-        run: make cluster-evals
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
-      - run: npm --prefix apps/web ci
-      - run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
-      - run: make browser
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: cluster-evidence
-          path: |
-            .cluster/policy-results.json
-            .cluster/reports
-            apps/web/test-results
-          include-hidden-files: true
+          name: zones-evidence
+          path: docs/evals/zones
           retention-days: 14
       - if: failure()
-        run: docker logs --tail=100 zagent-plan9-tilt
+        run: docker compose --project-directory . -f deploy/compose/compose.yaml logs --tail=100
       - if: always()
-        run: make cluster-stop
+        run: make down
 
   nightly-matrix:
     if: (github.event_name == 'schedule' && vars.ZAGENT_LIVE_EVALS == 'true') || (github.event_name == 'workflow_dispatch' && inputs.live_matrix)
@@ -198,8 +181,8 @@ jobs:
           retention-days: 30
 
   publish:
-    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.spine.result == 'success' && needs.cluster.result == 'success' && needs.browser.result == 'success'
-    needs: [spine, browser, cluster, nightly-matrix]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.spine.result == 'success' && needs.zones.result == 'success' && needs.browser.result == 'success'
+    needs: [spine, browser, zones, nightly-matrix]
     runs-on: ubuntu-latest
     permissions:
       contents: read

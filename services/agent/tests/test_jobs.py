@@ -337,3 +337,104 @@ async def test_evicted_execution_has_one_visible_retry(store, tmp_path):
         assert len(executor.processes) == 2
     finally:
         executor.close()
+
+
+def test_worker_records_keep_originating_conversation_trace():
+    snapshot = worker_input(app="readqc")
+    snapshot["trace_context"] = {"traceparent": "00-" + "a" * 32 + "-" + "b" * 16 + "-01"}
+    assert {record.traceId for record in execution_records(snapshot)} == {"a" * 32}
+
+
+@pytest.mark.integration
+async def test_confirmed_execution_preserves_originating_trace_context(store):
+    from test_drafts import fixture_draft
+
+    session, drafts, draft = await fixture_draft(store, app_id="readqc")
+    context = {"traceparent": "00-" + "a" * 32 + "-" + "b" * 16 + "-01"}
+    await store.pool.execute(
+        "UPDATE conversation_turns SET trace_context=$2 WHERE session_id=$1", session.id, context
+    )
+    job = await drafts.confirm(session.id, draft.draft_id, draft.content_hash)
+    snapshot = await store.pool.fetchval(
+        "SELECT snapshot FROM privacy.job_inputs WHERE session_id=$1 AND job_id=$2",
+        session.id,
+        job.job_id,
+    )
+    assert snapshot["trace_context"] == context
+
+
+@pytest.mark.integration
+async def test_cleanup_failure_keeps_job_claim_recoverable(store, tmp_path):
+    from test_drafts import fixture_draft
+    from zagent.dispatcher import Dispatcher
+    from zagent.executors import ProcessExecutor
+    from zagent.jobs import JobStore
+
+    class InterruptedCleanup(ProcessExecutor):
+        async def finalize(self, claimed):
+            raise RuntimeError("Cleanup scheduling interrupted")
+
+    class Recovering(ProcessExecutor):
+        ensured = 0
+
+        async def ensure(self, claimed):
+            self.ensured += 1
+
+        async def finalize(self, claimed):
+            pass
+
+    session, drafts, draft = await fixture_draft(store, app_id="readqc")
+    job = await drafts.confirm(session.id, draft.draft_id, draft.content_hash)
+    executor = InterruptedCleanup(tmp_path)
+    recovered = Recovering(tmp_path / "recovered")
+    jobs = JobStore(drafts.clinical)
+    try:
+        with pytest.raises(RuntimeError, match="Cleanup scheduling interrupted"):
+            await Dispatcher(jobs, executor, interval=0.01).once(session.id)
+        assert await store.pool.fetchval(
+            "SELECT completed_at IS NULL FROM job_queue WHERE session_id=$1", session.id
+        )
+        assert (
+            await store.pool.fetchval(
+                "SELECT terminal_exit_code FROM job_queue WHERE session_id=$1", session.id
+            )
+            == 0
+        )
+        await store.pool.execute(
+            "UPDATE job_queue SET lease_until=clock_timestamp()-interval '1 second' "
+            "WHERE session_id=$1",
+            session.id,
+        )
+        assert await Dispatcher(jobs, recovered).once(session.id)
+        assert recovered.ensured == 0
+        result = await jobs.read(session.id, job.job_id)
+        assert result["status"] == "completed"
+        assert len(result["attempts"]) == 1
+        assert await jobs.claim(uuid4(), session_id=session.id) is None
+    finally:
+        executor.close()
+        recovered.close()
+
+
+async def test_knowledge_service_needs_no_database():
+    from zagent.kb_server import create_kb_server
+    from zagent.store import AgentSession
+    from zagent.tools import McpToolClient
+
+    tools = McpToolClient(server=create_kb_server())
+    session = AgentSession(
+        id=uuid4(), conversation_turn_id=uuid4(), message="Find the identity SOP"
+    )
+    result = await tools.call(session, "search_knowledge", {"query": "genotype concordance"})
+    assert result["matches"]
+    match = result["matches"][0]
+    excerpt = await tools.call(
+        session,
+        "read_document",
+        {
+            key: value
+            for key, value in {**match, "version": result["version"]}.items()
+            if key != "text"
+        },
+    )
+    assert excerpt["text"] == match["text"]

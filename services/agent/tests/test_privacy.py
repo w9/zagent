@@ -552,3 +552,19 @@ def test_privacy_corpus_failure_cannot_be_hidden_by_passing_behavioral_trials(tm
     assert "Privacy boundary" in write_report(report, tmp_path).read_text()
     report.privacy_scan.violations.append("model_request:example")
     assert not report_passes(report)
+
+
+async def test_tokenize_only_listener_has_no_resolution_endpoints():
+    import httpx
+    from zagent.privacy_server import create_privacy_app
+
+    app = create_privacy_app(master=b"test-master", backend=object(), allow_resolution=False)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://tokenizer"
+    ) as http:
+        for path in ("/resolve", "/bindings"):
+            assert (await http.post(path, json={})).status_code == 404
+        assert (await http.get("/health")).status_code == 200
+        routes = (await http.get("/openapi.json")).json()["paths"]
+        assert {"/tokenize", "/tripwire"} <= routes.keys()
+        assert "/resolve" not in routes

@@ -1,7 +1,7 @@
 # PLAN10: Adversarial Proof
 
 **Status:** implemented locally; human judge calibration and remote CI/Pages acceptance pending
-**Depends on:** [PLAN9](PLAN9.md)
+**Depends on:** [PLAN8](PLAN8.md); the PLAN9 cluster was abandoned in favor of Compose network zones
 **Shippable outcome:** deliberately breaking any guarantee turns the suite red, and the report
 carries adversarial results across a model matrix.
 
@@ -30,7 +30,7 @@ submit_tool_on      the confirmation invariant   RED      REQ-JOB-01, REQ-JOB-02
 guard_off           the scope guard              RED      REQ-SCOPE-01
 resume_off          Last-Event-ID handling       RED      REQ-STREAM-02
 drop_events         log append reliability       RED      REQ-STREAM-01
-netpol_off          zone network isolation       RED      REQ-PHI-05
+zones_off           zone network isolation       RED      REQ-PHI-05
 rls_off             row-level security           RED      REQ-ISO-01, REQ-ISO-02
 validator_off       app constraint checks        RED      REQ-VALID-01
 
@@ -46,9 +46,10 @@ control to force one. Crashes, unhealthy controls, and unexpected-only detection
 
 ## Recorded findings
 
-- All nine paired mutations were detected. Eight use independently created disposable databases;
-	the network probe copies the actual policy generator into three run-owned namespaces and checks
-	both Service and Pod routes before and after deleting only those copied policies.
+- All nine paired mutations were detected. Eight use independently created disposable databases.
+	The network probe was first run against Kubernetes NetworkPolicy copies; after the cluster was
+	abandoned, `zones_off` probes from the runtime's Compose network position, with the mutant also
+	attached to the clinical network, checking both DNS names and container IP addresses.
 - Five adversarial families are registered in the standard replay suite. Injection cases cover
 	job logs, KB documents, tool results, and specimen notes. Notes remain outside the handle-only
 	model contract; reports distinguish an unexposed payload from a model resisting an exposed one.

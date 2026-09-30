@@ -20,6 +20,9 @@ services:
   privacy:
     environment:
       ZAGENT_LLM_MODE: live
+  tokenizer:
+    environment:
+      ZAGENT_LLM_MODE: live
   jobs:
     environment:
       ZAGENT_LLM_MODE: live

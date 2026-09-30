@@ -9,7 +9,7 @@ MUTATIONS = (
     "guard_off",
     "resume_off",
     "drop_events",
-    "netpol_off",
+    "zones_off",
     "rls_off",
     "validator_off",
 )

@@ -1,10 +1,8 @@
-import asyncio
 import hashlib
 import json
 import os
 import time
 from collections.abc import Iterator
-from uuid import UUID
 
 from opentelemetry import trace as telemetry_trace
 from opentelemetry.propagate import extract
@@ -134,28 +132,9 @@ def execution_records(snapshot: dict, attempt: int = 1) -> Iterator[JobRecord]:
     )
 
 
-async def register_pod(snapshot: dict, pod_uid: str) -> int:
-    import asyncpg
-
-    connection = await asyncpg.connect(os.environ["ZAGENT_JOB_DATABASE_URL"])
-    try:
-        return await connection.fetchval(
-            "SELECT register_worker_pod($1,$2,$3)",
-            snapshot["execution_id"],
-            UUID(pod_uid),
-            snapshot["worker_token"],
-        )
-    finally:
-        await connection.close()
-
-
 def main() -> None:
     snapshot = json.loads(os.environ["ZAGENT_JOB_INPUT"])
-    attempt = (
-        asyncio.run(register_pod(snapshot, os.environ["ZAGENT_JOB_POD_UID"]))
-        if os.environ.get("ZAGENT_JOB_POD_UID")
-        else int(os.environ.get("ZAGENT_JOB_ATTEMPT", "1"))
-    )
+    attempt = int(os.environ.get("ZAGENT_JOB_ATTEMPT", "1"))
     delay = float(os.environ.get("ZAGENT_JOB_STEP_SECONDS", "2"))
     status = "failed"
     for record in execution_records(snapshot, attempt):

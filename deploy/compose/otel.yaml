@@ -6,11 +6,13 @@ receivers:
 processors:
   batch: {}
 exporters:
-  debug:
-    verbosity: basic
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+    tls:
+      insecure: true
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [debug]
+      exporters: [otlphttp/tempo]

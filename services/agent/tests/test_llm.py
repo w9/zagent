@@ -685,8 +685,8 @@ async def test_http_handle_resolution_checks_site_session_and_expiry(database_ur
         assert "expired" in response.json()["detail"]
 
 
-async def test_gateway_fixed_ingress_forwards_tcp_without_protocol_changes():
-    from zagent.gateway import forward_connection
+async def test_relay_forwards_tcp_without_protocol_changes():
+    from zagent.relay import forward_connection
 
     async def echo(reader, writer):
         writer.write(await reader.readexactly(4))

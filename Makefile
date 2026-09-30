@@ -18,23 +18,7 @@ export UV_LINK_MODE = copy
 export DATABASE_URL ZAGENT_TEST_DATABASE_URL ZAGENT_WEB_PORT ZAGENT_AGENT_PORT ZAGENT_DB_PORT ZAGENT_SCRIPT
 export ZAGENT_AGENT ZAGENT_LLM_MODE ZAGENT_MODEL
 
-.PHONY: up live down db install test evals chaos report lint browser transcript logs matrix
-.PHONY: cluster cluster-stop cluster-live cluster-test cluster-evals
-
-cluster:
-	bash deploy/cluster/cluster.sh up
-
-cluster-live:
-	ZAGENT_CLUSTER_MODE=live bash deploy/cluster/cluster.sh up
-
-cluster-stop:
-	bash deploy/cluster/cluster.sh stop
-
-cluster-test:
-	bash deploy/cluster/cluster.sh test
-
-cluster-evals:
-	bash deploy/cluster/cluster.sh evals $(EVAL_ARGS)
+.PHONY: up live down db install test evals chaos report lint browser transcript logs matrix zones
 
 up:
 	$(COMPOSE) up --build -d --wait
@@ -48,7 +32,7 @@ down:
 	$(COMPOSE) down
 
 db:
-	$(COMPOSE) up -d --wait --no-recreate postgres gateway
+	$(COMPOSE) up -d --wait --no-recreate postgres ingress
 
 install:
 	uv sync --frozen
@@ -78,8 +62,8 @@ report: docs/evals/results.json
 	uv run --frozen zagent report $(EVAL_ARGS)
 
 lint:
-	uv run --frozen ruff check services/agent evals deploy/cluster conftest.py
-	uv run --frozen ruff format --check services/agent evals deploy/cluster conftest.py
+	uv run --frozen ruff check services/agent evals deploy/compose conftest.py
+	uv run --frozen ruff format --check services/agent evals deploy/compose conftest.py
 	npm --prefix apps/web run lint
 
 browser:
@@ -90,3 +74,6 @@ transcript:
 
 logs:
 	$(COMPOSE) logs -f
+
+zones:
+	uv run --frozen python deploy/compose/zones.py verify

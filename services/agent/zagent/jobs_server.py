@@ -51,7 +51,7 @@ def create_jobs_server(clinical: ClinicalStore) -> FastMCP:
             meta={"ui": {"resourceUri": "ui://jobs/grid"}} if name == "show_jobs" else None,
         )
 
-    for name in JOB_INPUTS:
+    for name in JOB_INPUTS.keys() - {"search_knowledge", "read_document"}:
         register(name)
 
     @server.tool(

@@ -15,6 +15,11 @@ from zagent.evals.schema import Report
 from zagent.events import normalize_transcript
 from zagent.store import DEFAULT_DATABASE_URL, NotFound, Store
 
+DEFAULT_LEDGER = (
+    Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state"))
+    / "zagent/evaluation-budget.json"
+)
+
 
 async def transcript(session_id: UUID, database_url: str) -> list[dict]:
     store = await Store.open(database_url)
@@ -54,9 +59,7 @@ def main() -> None:
         action="store_true",
         help="Allow only exact documented measured replay findings; never waive invariants",
     )
-    evaluate.add_argument(
-        "--budget-ledger", type=Path, default=Path(".cluster/evaluation-budget.json")
-    )
+    evaluate.add_argument("--budget-ledger", type=Path, default=DEFAULT_LEDGER)
     evaluate.add_argument("--update-golden", action="store_true")
     evaluate.add_argument(
         "--record-missing",
@@ -90,9 +93,7 @@ def main() -> None:
     matrix.add_argument("--output", type=Path, default=Path("docs/evals/plan10/matrix"))
     matrix.add_argument("--budget-usd", type=float)
     matrix.add_argument("--baseline", type=Path, help="Stored matrix result for paired drift")
-    matrix.add_argument(
-        "--budget-ledger", type=Path, default=Path(".cluster/evaluation-budget.json")
-    )
+    matrix.add_argument("--budget-ledger", type=Path, default=DEFAULT_LEDGER)
     args = parser.parse_args()
     logging.basicConfig(level=logging.ERROR)
     try:

@@ -8,8 +8,8 @@ module and cheap to change later, it is the implementer's call, not this documen
 ingress, resolves only at clinical tool/display edges, restricts runtime database credentials,
 and checks outbound requests with a keyed-hash tripwire. X-ray shows actual recorded model
 requests. Draft editing, exact-hash confirmation, synthetic Docker execution, MCP-owned live
-views, SOP retrieval, turn recovery, and persisted session titles are available. Kubernetes Jobs
-and NetworkPolicy remain PLAN9; this local
+views, SOP retrieval, turn recovery, and persisted session titles are available. Compose network
+zones separate clinical, agent, and telemetry services; this local
 development deployment is not a production security certification.
 
 **Contents**
@@ -205,32 +205,39 @@ model routes, and the resulting drift is a reviewable diff.
 
 ## 6. Zones and the privacy boundary
 
-The application has clinical, agent, and neutral zones. PLAN9 maps each to its own namespace,
-with default-deny ingress/egress and explicit NetworkPolicy allows enforced by Calico.
+The application has clinical, agent, and neutral zones. Compose maps them to separate internal
+Docker networks (`clinical`, `agent`, `telemetry`). Two containers on different networks have no
+route to each other, so an allowed cross-zone flow requires a service deliberately attached to both.
 
 ```mermaid
 graph TB
     subgraph clinical["Clinical zone (holds identifiers)"]
         WEB[Web BFF]
         PRIV[Privacy service<br/>token vault]
-        TOOLS[Tools gateway<br/>MCP client + PEP]
         DB[(Postgres<br/>clinical tables, RLS)]
         DISP[Dispatcher]
-        JOBS[Job pods]
+        JOBS[Worker containers<br/>no network]
+    end
+    subgraph bridge["On both clinical and agent networks"]
+        TOOLS[Tools MCP server]
         JMCP[Jobs MCP server]
+        TOK[Tokenizer<br/>tokenize/tripwire only]
+        LOG[Event database endpoint<br/>role-pinned PgBouncer]
+        RELAY[Display relay<br/>one-way TCP]
+        OTEL[OTLP collector]
     end
     subgraph agent["Agent zone (holds no identifiers)"]
         RT[Agent runtime]
         LLM[LLM gateway<br/>+ egress tripwire]
-        EV[Eval runner]
-    end
-      subgraph neutral["Neutral zone"]
-        LOG[Event database endpoint<br/>role-pinned PgBouncer]
         KB[Knowledge base<br/>read-only MCP index]
-        OTEL[OTLP collector and Tempo]
-      end
+    end
+    subgraph telemetry["Telemetry zone"]
+        TEMPO[Tempo + Grafana]
+    end
     EXT((Model provider))
-    WEB <--> RT
+    WEB --> RELAY
+    RELAY --> RT
+    RELAY --> LLM
     WEB <--> PRIV
     RT <--> LLM
     RT <--> TOOLS
@@ -238,7 +245,9 @@ graph TB
     RT <--> LOG
     LOG <--> DB
     RT <--> KB
-    RT -->|tokenize only| PRIV
+    RT -->|tokenize only| TOK
+    LLM -->|tripwire| TOK
+    TOK <--> DB
     TOOLS <--> PRIV
     TOOLS <--> DB
     JMCP <--> PRIV
@@ -246,7 +255,7 @@ graph TB
     DISP --> JOBS
     DISP <--> DB
     LLM --> EXT
-    DISP --> OTEL
+    OTEL --> TEMPO
 ```
 
 **Identifiers are tokenized at ingress and resolved only at the edges that need real values:**
@@ -267,9 +276,9 @@ one: values are `Raw<T>` or `Tokenized<T>`, and only an explicit tokenize step c
 Three layers back the invariant up:
 
 1. **The type boundary** prevents it at compile or validation time.
-2. **NetworkPolicy** denies the agent zone any route to clinical data, and grants internet
-   egress to the LLM gateway alone. This is why the project moves to Kubernetes at all
-   ([PLAN9](PLAN9.md)): the boundary should be enforced, not documented.
+2. **Network zones** deny the agent zone any route to clinical data, and grant internet egress
+   to the LLM gateway alone. The boundary should be enforced, not documented, and a probe from
+   each service's exact network position verifies it.
 3. **An egress tripwire** in the LLM gateway matches keyed hashes of every known identifier on
    every outbound request and fails the request loudly. The gateway holds hashes, never
    identifiers, so the tripwire itself is not a leak.
@@ -282,21 +291,19 @@ time windows rather than dates, because dates are quasi-identifiers and a relati
 what the user meant anyway. And cross-site isolation is enforced by Postgres row-level security
 rather than by query construction, so it holds regardless of what the agent asks for.
 
-The physical database remains in the clinical namespace. The neutral endpoint has one forced
+The physical database is only on the clinical network. The event database endpoint has one forced
 `zagent_runtime` backend mapping, no owner credential, and session pooling; the runtime cannot
-connect to the database Pod/Service directly or read clinical/vault/workflow tables through the
-proxy. Privacy uses separate listeners: 8003 resolves, while 8006 has only tokenization/tripwire
-routes. Agent-zone pods cannot connect to 8003, including by Pod IP, or to the display BFF.
+connect to Postgres directly or read clinical/vault/workflow tables through the proxy. Privacy
+uses separate services: `privacy` (8003, clinical only) resolves, while `tokenizer` (8006) has
+only tokenization/tripwire routes. The agent zone cannot connect to 8003 or the display BFF, by
+name or by container IP. The BFF reaches the runtime and gateway through a one-way relay whose
+listeners forward only into the agent zone.
 
-Only the LLM gateway has public TCP/443 egress among application workloads. Worker policies allow
-clinical Postgres and cluster DNS only. CNI, control-plane services, DNS, and the host's Docker/Tilt
-tooling are trusted infrastructure outside that application claim. Tests pair denials with working
-DNS and explicit allowed routes, including immediate probes from fresh worker/eval pods. Local
-human access uses loopback Tilt port forwards, not an internet-exposed ingress controller.
-
-Calico replaces the initial Flannel/kube-router path after a fresh-pod probe found a pre-policy
-egress window. Its CNI waits for policy setup before normal container startup. This is separate
-from PLAN10's broader policy-mutation and adversarial fault-injection work.
+Docker networks cannot filter by port, so every service attached to both zones is trusted to
+serve only its fixed agent-facing port and never forward. Only the LLM gateway has public TCP/443
+egress among application workloads. Workers run with no network at all. Loopback host access
+goes through an ingress forwarder on an edge network with outbound NAT disabled. Probes pair
+denials with working allowed routes, so a denial cannot pass because a service is down.
 
 ---
 
@@ -412,19 +419,14 @@ The queue lives in Postgres. Rows are claimed with `SKIP LOCKED`, and enqueueing
 same transaction as the job row so the two cannot diverge. A dedicated queue broker would add
 an operational component and a consistency boundary for no benefit at this scale.
 
-The dispatcher targets an `Executor` protocol, with Docker execution under Compose, Kubernetes
-Jobs in the cluster, and a native process implementation for controlled tests. The catalog supplies
+The dispatcher targets an `Executor` protocol, with Docker execution under Compose and a native
+process implementation for controlled tests. The catalog supplies
 command and parameter schema; deployment selects the worker image.
 Lease revisions fence stale monitors; deterministic container names and input fingerprints make
 reconciliation idempotent. Attempt/log sequence uniqueness prevents duplicate ingestion after
 a crash. Synthetic eviction retries once with a distinct attempt name; ordinary failures do not.
-Kubernetes uses a stable Job name across both attempts, platform backoff, and a pod failure rule
-that does not retry domain exit code 2. A database function assigns worker admission identities;
-the monitor reconciles complete per-pod log records and synthesizes an error if a pod dies before
-its terminal log. A one-hour TTL is applied only after durable log ingestion and a terminal
-receipt; recovery uses that receipt if cleanup has already deleted the Job. Clinical worker
-credentials grant that admission function, not arbitrary table access. The cluster dispatcher
-uses scoped API RBAC rather than host-level Docker access.
+A terminal receipt is recorded before cleanup, so recovery completes a job without re-running it
+if cleanup was interrupted.
 
 The worker reads confirmed fixture facts, not mutable query results. Role disagreement causes
 somatic failure; verified-role selection fixes the input without editing clinical records.
@@ -454,10 +456,9 @@ non-key row locks so remote privacy inserts do not deadlock against mutation rec
 
 Trace context is persisted with conversation turns, propagated over HTTP/MCP, and copied into the
 private confirmed input. Dispatcher execution and tokenized log spans join that conversation's
-Tempo trace. Workers emit the same trace ID but do not need network access to the collector.
-Ordinary service edits use Tilt sync and Uvicorn reload with a bounded development shutdown for
-open SSE connections. A separately tracked immutable worker image avoids rebuilding every service
-for the dispatcher's image reference. Compose remains available as an independent development path.
+Tempo trace, viewable in Grafana. Workers emit the same trace ID but do not need network access
+to the collector. A separately tracked immutable worker image avoids rebuilding every service
+for the dispatcher's image reference.
 
 ---
 
@@ -547,15 +548,18 @@ simulator.
 | Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization |
 | Agent runtime | Agent | Conversation turn execution, the scope guard, conversation turn journaling |
 | LLM gateway | Agent | Provider routing, record and replay, egress tripwire. Sole internet egress |
-| Tools gateway | Clinical | MCP client and policy enforcement point |
+| Knowledge base | Agent | Read-only FTS5 index over versioned docs; no database or privacy capability |
+| Tools and jobs MCP servers | Clinical and agent | MCP servers and policy enforcement points |
 | Privacy service | Clinical | Token vault, detector rule set, tokenize and resolve |
-| Dispatcher | Clinical | Claims queue rows, creates Job objects, tails logs |
-| Job pods | Clinical | Single-step analysis containers |
-| Knowledge base | Neutral | Read-only FTS5 index over versioned docs |
-| Eval runner | Agent | Case execution, reporting, publishing |
-| Postgres | Split by role | Event log and clinical tables, separated by role and RLS |
-| OTel collector plus Tempo | Neutral | Traces, using GenAI semantic conventions |
-| Grafana | Neutral | Local trace UI over Tempo; loopback Tilt forward only |
+| Tokenizer | Clinical and agent | Tokenize and tripwire only; no resolve routes |
+| Event database proxy | Clinical and agent | PgBouncer pinned to the `zagent_runtime` role |
+| Display relay | Clinical and agent | One-way TCP forward from the BFF to the runtime and gateway |
+| Dispatcher | Clinical | Claims queue rows, starts worker containers, tails logs |
+| Worker containers | No network | Single-step analysis containers |
+| Postgres | Clinical | Event log and clinical tables, separated by role and RLS |
+| OTel collector | All zones | Receives OTLP traces, using GenAI semantic conventions |
+| Tempo and Grafana | Telemetry | Trace storage and a local UI on a loopback port |
+| Ingress | Edge | Loopback-only host ports; no outbound NAT |
 
 The web BFF sits in the clinical zone because it performs display detokenization. The agent
 runtime sits in the agent zone and never holds a real identifier.
@@ -573,7 +577,7 @@ project are the boundary and the evidence, and neither benefits from stack learn
 | Database | Postgres 16 | Event log, queue, clinical tables and RLS in one component |
 | Streaming | SSE | `Last-Event-ID` is the exact resume primitive required |
 | Frontend | React 19, TypeScript, Vite, TanStack Router, Tailwind, shadcn/ui | Typed view-spec rendering and a small component surface |
-| Local dev | Docker Compose, then k3d and Tilt at PLAN9 | Compose keeps early iteration fast. The cluster arrives when there are zones worth separating |
+| Local dev | Docker Compose with internal networks per zone | One command, and zones are enforced by Docker network isolation without cluster tooling |
 | Evidence | pytest plus an `zagent evals` CLI | One runner, two entry points |
 | Tracing | OpenTelemetry, Tempo | Job logs already arrive as OTel JSONL |
 | Tools and views | MCP, MCP Apps | Extensibility that is real rather than claimed |
@@ -615,7 +619,7 @@ shape of an entry:
   enforced_by:
     - privacy/tokenize.py           # ingress tokenization
     - gateway_llm/tripwire.py       # keyed-hash egress check
-    - deploy/policy/agent-zone.yaml # NetworkPolicy
+    - deploy/compose/compose.yaml   # network zones
   cases: [PHI-001 .. PHI-062]
   mutations: [tokenizer_off, tripwire_off]
 
@@ -649,7 +653,7 @@ how the traceability matrix is generated rather than maintained.
 | 11 | Version-hashed confirmation | Plain confirmation button | Closes the race between render and click |
 | 12 | No submit tool exposed to the model | Submit tool plus policy prompt | Makes unauthorized submission structurally impossible |
 | 13 | Postgres queue with `SKIP LOCKED` | Dedicated broker | One fewer component, and transactional enqueue with the job row |
-| 14 | Kubernetes Jobs for execution | In-process worker pool | Retries, backoff and cleanup come from the platform |
+| 14 | Docker worker containers for execution | Kubernetes Jobs | One bounded retry is simple to own, and a cluster is disproportionate for a demo |
 | 15 | Conversation turn journaling in the event log | Temporal or similar | Multi-step conversation turns need durable progress, and the log already is a journal |
 | 16 | In-house LLM gateway | Off-the-shelf proxy | Record and replay keyed on request hash is a hard requirement |
 | 17 | Immutable SQLite FTS5 knowledge base | Vector database service | Deterministic, pinnable, and line-level citations make groundedness checkable |
@@ -658,4 +662,4 @@ how the traceability matrix is generated rather than maintained.
 | 20 | Lower-bound gates on measured properties | Point estimates | A point estimate overstates what the trials support |
 | 21 | Fault injection as a CI requirement | Trust the suite | A suite that cannot detect a broken build is not evidence |
 | 22 | RLS for cross-site isolation | Query-level filtering | Holds regardless of what the agent asks for |
-| 23 | Compose first, Kubernetes at PLAN9 | Kubernetes from day one | Early iteration speed, and zones only become real once there are two |
+| 23 | Compose network zones | Kubernetes with NetworkPolicy | The zone boundary is enforceable and probeable with Docker networks; a cluster was built and abandoned as overkill |

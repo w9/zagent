@@ -72,7 +72,7 @@ boundary of what the current app claims.
 
 | Target Property | Tier | Enforced by | Evidence |
 |---|---|---|---|
-| Rule-matched identifiers never reach the model provider | Invariant | Ingress tokenization, typed boundary, NetworkPolicy | Property tests, egress tripwire, fault injection |
+| Rule-matched identifiers never reach the model provider | Invariant | Ingress tokenization, typed boundary, network zones | Property tests, egress tripwire, fault injection |
 | No job runs without explicit human confirmation | Invariant | Model has no submit tool. Confirm is user-only and bound to a draft version hash | State machine tests |
 | Streams survive refresh, tab close and reconnect | Invariant | Server-side conversation turns over an append-only event log | Chaos suite with transcript diffing |
 | Cross-site data isolation | Invariant | Postgres row-level security | Policy tests |
@@ -103,7 +103,7 @@ Two controls matter more than the rest:
 
 - **X-ray** puts what the user saw next to what the model saw, token for token. It is how you
   check the privacy boundary with your own eyes instead of trusting a diagram.
-- **Chaos** kills the browser tab or the agent pod mid-stream, then diffs the recovered
+- **Chaos** kills the browser tab or the agent process mid-stream, then diffs the recovered
   transcript against an uninterrupted execution of the same case.
 
 ---
@@ -117,7 +117,7 @@ stack, run `make down` once before `make up` to replace the network layout; volu
 
 ```bash
 git clone https://github.com/w9/zagent && cd zagent
-make up            # Workbench, MCP servers, dispatcher, collector, and Postgres in replay.
+make up            # Workbench, MCP servers, dispatcher, tracing, and Postgres in replay.
 # Open http://localhost:5173
 ```
 
@@ -204,45 +204,34 @@ One optional title call
 uses at most 80 output tokens and a 15-second timeout after the first meaningful exchange.
 A guard refusal stops before any main-agent, title, or clinical tool call.
 
-Only the gateway joins the internet-facing network. The web, BFF, privacy service, agent, MCP
-service, and database stay on an internal network. Fixed TCP forwards on the gateway publish
-loopback-only web, BFF API, and database ports. A one-shot `privacy-init` container generates
-private capability files in Docker volumes and exits; it does not contain the provider key.
+A one-shot `privacy-init` container generates private capability files in Docker volumes and
+exits; it does not contain the provider key.
 
-### Local Kubernetes
+### Network Zones
 
 ```bash
-make cluster       # Replay, no provider key; app at http://localhost:5185.
-make cluster-test  # Enforced network policies, positive controls, and database roles.
-make cluster-evals EVAL_ARGS=--workflow-only  # Existing goldens through deployed services.
-make cluster-evals # Full keyless regression harness plus deployed workflows.
-make cluster-stop  # Stops Tilt and k3d; preserves database, audit, and evidence volumes.
+make up     # Clinical, agent, and telemetry zones; Grafana at http://localhost:3000.
+make zones  # Probe every service's network position; writes docs/evals/zones/results.json.
 ```
 
-The bootstrap packages pinned k3d, kubectl, and Tilt in a Docker tools image; no host Python,
-Node, or Kubernetes installation is needed. It requires Docker, Git, Make, and Bash on Linux
-(including a Lima Linux VM), with access to the Docker socket. First startup downloads images
-and dependencies. The cluster is named `zagent-plan9`, separate from Compose, with its own storage
-and kubeconfig. It does not switch the default Kubernetes context or prune Docker images.
+Compose separates three internal networks. The **clinical** zone holds Postgres, the privacy
+service, the BFF, web, and the dispatcher. The **agent** zone holds the runtime, the LLM gateway,
+and the knowledge service. Only the gateway also joins the internet-facing `egress` network.
+The **telemetry** zone holds Tempo and Grafana.
 
-Tilt forwards the web app on **5185**, API on **8109**, Tempo on **3284**, and its dashboard on
-**10359**, all on loopback. VS Code may assign a different browser-side port when forwarding a
-remote workspace. Python edits reload in place; frontend edits use Vite HMR. Worker code,
-dependencies, schemas, migrations, and MCP App bundles rebuild their images. Local images are
-imported directly and checked on both nodes, never pushed to a public registry.
+Services on both clinical and agent networks serve only fixed agent-facing ports: the tools and
+jobs MCP servers, a tokenize-only privacy listener (`tokenizer`, no resolve routes), a PgBouncer
+event database proxy pinned to `zagent_runtime`, and the OTLP collector. The runtime never
+connects to clinical Postgres, privacy resolution, or the BFF. The BFF reaches the runtime and
+gateway through `display-relay`, a one-way TCP forwarder with no route back. An `ingress`
+forwarder publishes loopback-only web, BFF API, database, and Grafana ports from an edge network
+without outbound NAT.
 
-Clinical, agent, and neutral namespaces use default-deny NetworkPolicies enforced by Calico.
-The runtime reaches only a role-pinned event database proxy, never clinical Postgres directly.
-Privacy resolution is on a separate, blocked listener; the agent-facing listener has no resolve
-routes. Only the LLM gateway has public HTTPS egress. Workers can reach Postgres and cluster DNS,
-not privacy, the display API, the Kubernetes API, or public hosts. Cluster infrastructure and DNS
-are trusted prerequisites, not application workloads covered by the gateway-only egress claim.
-
-`make cluster-live` mounts the same external OpenRouter key file used by Compose. Only the gateway
-receives it as a Kubernetes Secret. Generated passwords, privacy capabilities, and the admin
-kubeconfig live under owner-only, ignored `.cluster/`; keep that directory when stopping the
-cluster. Do not publish it. Reports are under `.cluster/reports/`, and the policy report is
-`.cluster/policy-results.json`. See [PLAN9](docs/PLAN9.md) for measured evidence and limits.
+`make zones` starts a probe container attached to exactly each running service's networks. It
+checks allowed flows, denials of clinical data by name and IP address, gateway-only internet
+egress, and the runtime role through the proxy (REQ-PHI-05, REQ-PHI-06, REQ-ISO-02,
+REQ-META-01). Docker networks cannot filter ports, so dual-homed services are trusted not to
+forward. When upgrading an existing stack, run `make down` once to replace the network layout.
 
 The Compose dispatcher mounts the Docker socket, which grants host-level Docker control. It is
 a trusted local development service, not a production isolation boundary. Workers run as a
@@ -250,9 +239,6 @@ non-root user with no network, no mounted secrets, a read-only root filesystem, 
 limits. Their raw synthetic inputs/stdout remain in the clinical execution environment; logs
 are tokenized before database ingestion or telemetry export. Completed containers are retained
 for restart reconciliation and audit. Do not delete active execution containers manually.
-The cluster dispatcher instead has namespace-scoped Job/log RBAC and no Docker socket. Kubernetes
-owns retry/backoff; cleanup starts after logs have been durably ingested. Both execution adapters
-share the same confirmation, queue fencing, privacy, and visible attempt-history contracts.
 
 ```bash
 make test          # Python tests, client/component tests, build, lint.
@@ -303,7 +289,7 @@ requests are not stored there. Provider response text is tokenized before casset
 Compose is the reference deployment for the capability split. Native test servers use an
 in-process privacy vault over the dedicated test database. Native live gateway processes require
 `ZAGENT_PRIVACY_URL` and their gateway capability file; unconfigured provider access fails closed.
-`make db` starts Postgres, privacy initialization, the privacy service, and gateway ingress.
+`make db` starts Postgres and the loopback ingress.
 Choose free ports for host-side servers; the configured published ports are already reserved.
 
 The runtime remains single-owner, protected by a database advisory lock. Browser disconnections
@@ -450,10 +436,10 @@ regression gate for exact, reviewed-in-source measured failures without waiving 
 changing quality thresholds. See [the evaluation guide](evals/README.md#plan10-adversarial-evidence)
 for reproducible commands, budgets, and limitations.
 
-For comparison, this is the retained PLAN9 baseline before adding the adversarial cases:
+For comparison, this is the retained pre-PLAN10 baseline before adding the adversarial cases:
 
 ```
-$ make evals  # PLAN9 baseline
+$ make evals  # pre-PLAN10 baseline
 
 Requirement          Tier       Gate          Trials     95% Wilson CI
 REQ-STREAM-01        invariant  PASS          11/11      [74.1%, 100.0%]
@@ -523,13 +509,13 @@ overstates what the evidence can carry.
 
 **Invariant rows count trials too.** Zero tripwire hits in 310 calls bounds the violation rate
 below about 1% at 95% confidence. That is the honest reading, and it is why the invariants also
-get property tests and network policy tests rather than resting on trial counts.
+get property tests and network zone probes rather than resting on trial counts.
 
 **The suite is tested against itself.** PLAN2 self-tests corrupt the reducer and skip a resume
 event, then require named diffs and a failed stream gate. PLAN10 independently disables nine
 enforcement mechanisms and requires the expected requirement failures, healthy positive controls,
 and startup rejection outside an explicit replay-only disposable test configuration. Its network
-mutation uses run-owned namespaces and copied policies, never the live deployment's policies.
+mutation attaches a fresh probe to the clinical zone, never altering the running services.
 A green suite that cannot detect a broken build is not evidence.
 
 Replay makes the suite free and deterministic, with no provider key in CI. HTTP-case repetitions
@@ -555,8 +541,8 @@ the browser resolves data through a session-scoped endpoint. MCP dispatch valida
 allowlists tools, bounds results, and writes an audit log. Clinical queries run under fixed
 per-site Postgres roles. The privacy service owns detection and the vault; the BFF and clinical
 tools resolve at their respective edges. The gateway owns provider routing, record/replay,
-token-only request recording, and the keyed-hash tripwire. The optional k3d deployment adds
-enforced namespace NetworkPolicies, a role-pinned event database endpoint, and Tempo tracing.
+token-only request recording, and the keyed-hash tripwire. Compose network zones keep the agent
+from any route to clinical data, behind a role-pinned event database proxy, with Tempo tracing.
 
 Before the tool loop, the scope guard reads recent conversation and the latest draft state.
 It and the main agent share one hashed scope-policy fragment. Refusals have a closed reason code
@@ -582,7 +568,7 @@ quality weaknesses remain visible even when regression gates pass.
 | [PLAN6](docs/PLAN6.md) | The privacy boundary: tokenization, tripwire, X-ray | Complete |
 | [PLAN7](docs/PLAN7.md) | Drafts, confirmation, view references, session titles | Complete |
 | [PLAN8](docs/PLAN8.md) | Execution, MCP Apps, SOP retrieval, turn recovery | Complete |
-| [PLAN9](docs/PLAN9.md) | The cluster: k3d, zones, enforced network policy | Implemented; full-replay latency target open |
+| PLAN9 | The cluster: k3d, zones, enforced network policy | Abandoned; zones and tracing moved to Compose |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
 
@@ -592,7 +578,7 @@ quality weaknesses remain visible even when regression gates pass.
 
 Python 3.12, FastAPI and Pydantic v2 (managed with uv), Postgres 16, React 19 with TypeScript
 and Vite, TanStack Router, Tailwind with shadcn/ui. SSE for streaming. Docker Compose for
-local development, k3d and Tilt from PLAN9. OpenTelemetry for tracing. MCP for tool and view
+local development. OpenTelemetry for tracing. MCP for tool and view
 delivery.
 
 Choices and the reasoning behind them are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#stack).

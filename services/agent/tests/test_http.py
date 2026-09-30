@@ -162,3 +162,26 @@ async def test_invalid_view_fails_without_changing_existing_surface(api):
     after = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
     assert after["views"] == before["views"]
     assert after["steps"][-1]["status"] == "failed"
+
+
+def test_deployment_service_name_wins_over_imported_app_factory(monkeypatch):
+    import os
+    import subprocess
+    import sys
+
+    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:1")
+    monkeypatch.setenv("OTEL_SERVICE_NAME", "zagent-agent-runtime")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from zagent.app import app; "
+            "from opentelemetry import trace; "
+            "assert trace.get_tracer_provider().resource.attributes['service.name'] "
+            "== 'zagent-agent-runtime'",
+        ],
+        env=os.environ.copy(),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

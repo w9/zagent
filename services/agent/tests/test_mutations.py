@@ -126,7 +126,7 @@ def test_mutation_gateway_cannot_enable_provider_access():
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("name", [name for name in MUTATIONS if name != "netpol_off"])
+@pytest.mark.parametrize("name", [name for name in MUTATIONS if name != "zones_off"])
 async def test_paired_mutation_experiments_detect_the_removed_guarantee(database_url, name):
     from pathlib import Path
 
@@ -147,24 +147,6 @@ def test_crashes_and_missing_controls_do_not_count_as_detected_mutations():
     crashed = {"healthy": False, "requirements": {"REQ-PHI-02": False}}
     assert compare_mutation("tokenizer_off", control, crashed)["status"] == "invalid"
     assert compare_mutation("tokenizer_off", control, control)["status"] == "survived"
-
-
-def test_network_mutation_uses_only_run_owned_namespace_copies(monkeypatch):
-    from pathlib import Path
-
-    monkeypatch.syspath_prepend(str(Path(__file__).parents[3] / "deploy/cluster"))
-    from mutation import assert_owned, isolated_resources
-
-    identity = "b" * 32
-    namespaces, objects = isolated_resources(identity, "test-worker")
-    assert set(namespaces).isdisjoint(namespaces.values())
-    assert all(
-        item["metadata"].get("namespace") in namespaces.values()
-        for item in objects
-        if item["kind"] != "Namespace"
-    )
-    with pytest.raises(ValueError, match="non-test namespace"):
-        assert_owned("zagent-clinical", identity)
 
 
 def test_mutation_report_fails_survivors_and_keeps_paired_observations(tmp_path):

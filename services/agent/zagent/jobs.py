@@ -1,4 +1,3 @@
-import secrets
 from datetime import datetime
 from uuid import UUID
 
@@ -67,7 +66,6 @@ class JobStore:
             specimen["kind"] = selection["selection_roles"].get(specimen["id"], specimen["kind"])
         return {
             "execution_id": f"{session_id}:{job_id}",
-            "worker_token": secrets.token_urlsafe(32),
             "job_id": job_id,
             "app_id": content.app_id,
             "parameters": content.parameters,
@@ -223,9 +221,7 @@ class JobStore:
                 seconds,
             )
 
-    async def ingest(
-        self, lease: JobLease, source: JobRecord, *, platform_retries: bool = False
-    ) -> JobRecord | None:
+    async def ingest(self, lease: JobLease, source: JobRecord) -> JobRecord | None:
         protected = await self.store.privacy.tokenize(
             lease.session_id,
             Raw(value=source.model_dump()),
@@ -239,20 +235,11 @@ class JobStore:
             raise ValueError("Unknown execution state")
         if not isinstance(progress, (float, int)) or not 0 <= progress <= 1:
             raise ValueError("Invalid execution progress")
-        attempt = record.attributes.get("job.attempt") if platform_retries else lease.attempt
+        attempt = lease.attempt
         if type(attempt) is not int or not 1 <= attempt <= 2:
             raise ValueError("Invalid execution attempt")
         async with self.store.pool.acquire() as connection, connection.transaction():
             await self.fence(connection, lease)
-            if platform_retries:
-                await connection.execute(
-                    """INSERT INTO job_attempts (session_id,job_id,attempt,execution_name)
-                       VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING""",
-                    lease.session_id,
-                    lease.job_id,
-                    attempt,
-                    f"zagent-job-{lease.session_id.hex}-{lease.job_id}-{attempt}",
-                )
             duplicate = await connection.fetchval(
                 """SELECT 1 FROM job_logs WHERE session_id=$1 AND job_id=$2
                    AND attempt=$3 AND worker_sequence=$4""",
@@ -301,7 +288,7 @@ class JobStore:
                 lease.session_id,
                 lease.job_id,
                 attempt,
-                "evicted" if platform_retries and state == "retrying" else state,
+                state,
             )
             await self.notify(connection, lease.session_id)
             return record
@@ -323,9 +310,7 @@ class JobStore:
                 exit_code,
             )
 
-    async def finish(
-        self, lease: JobLease, exit_code: int, *, platform_retries: bool = False
-    ) -> None:
+    async def finish(self, lease: JobLease, exit_code: int) -> None:
         async with self.store.pool.acquire() as connection, connection.transaction():
             await self.fence(connection, lease)
             state = await connection.fetchval(
@@ -338,7 +323,7 @@ class JobStore:
                 lease.session_id,
                 lease.job_id,
             )
-            retry = not platform_retries and exit_code in {75, 137} and attempt < 2
+            retry = exit_code in {75, 137} and attempt < 2
             final = (
                 "retrying"
                 if retry

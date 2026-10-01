@@ -1,0 +1,347 @@
+/*
+ * Design tokens. The only file in apps/web where raw design values may appear.
+ * How to use them: docs/DESIGN.md.
+ *
+ * Layers:
+ *   1. Primitives (:root, plain custom properties): fixed palette, never used by components.
+ *   2. Semantic roles (@theme): the only colors, sizes and spacing that exist as utilities.
+ *      Role-scoped namespaces mean `bg-surface` exists but `text-surface` does not.
+ *   3. Dark theme ([data-theme='dark']): remaps semantic roles to other primitives.
+ */
+
+/* 1. Primitives. Format: oklch(lightness chroma hue). */
+:root {
+  /* Neutral, green-tinted gray */
+  --sage-0: oklch(1 0 0);
+  --sage-25: oklch(0.988 0.003 165);
+  --sage-50: oklch(0.975 0.004 165);
+  --sage-100: oklch(0.955 0.006 165);
+  --sage-150: oklch(0.932 0.008 165);
+  --sage-200: oklch(0.905 0.009 165);
+  --sage-300: oklch(0.85 0.011 165);
+  --sage-400: oklch(0.72 0.014 165);
+  --sage-500: oklch(0.64 0.016 165);
+  --sage-600: oklch(0.525 0.017 165);
+  --sage-700: oklch(0.44 0.016 165);
+  --sage-800: oklch(0.35 0.015 165);
+  --sage-850: oklch(0.3 0.014 165);
+  --sage-900: oklch(0.255 0.012 165);
+  --sage-925: oklch(0.225 0.011 165);
+  --sage-950: oklch(0.195 0.01 165);
+  --sage-975: oklch(0.165 0.009 165);
+
+  /* Brand */
+  --green-50: oklch(0.97 0.018 167);
+  --green-100: oklch(0.94 0.032 167);
+  --green-200: oklch(0.89 0.052 167);
+  --green-300: oklch(0.81 0.075 167);
+  --green-400: oklch(0.71 0.092 167);
+  --green-500: oklch(0.62 0.098 167);
+  --green-600: oklch(0.505 0.086 167);
+  --green-700: oklch(0.435 0.076 167);
+  --green-800: oklch(0.365 0.062 167);
+  --green-900: oklch(0.295 0.048 167);
+  --green-950: oklch(0.225 0.036 167);
+
+  /* Danger */
+  --red-50: oklch(0.968 0.012 27);
+  --red-100: oklch(0.935 0.027 27);
+  --red-200: oklch(0.88 0.06 27);
+  --red-300: oklch(0.8 0.095 27);
+  --red-400: oklch(0.7 0.13 27);
+  --red-500: oklch(0.62 0.15 27);
+  --red-600: oklch(0.54 0.14 27);
+  --red-700: oklch(0.47 0.125 27);
+  --red-800: oklch(0.4 0.105 27);
+  --red-900: oklch(0.32 0.08 27);
+  --red-950: oklch(0.24 0.055 27);
+
+  /* Warning */
+  --amber-50: oklch(0.975 0.022 80);
+  --amber-100: oklch(0.95 0.04 80);
+  --amber-200: oklch(0.905 0.08 80);
+  --amber-300: oklch(0.84 0.105 80);
+  --amber-400: oklch(0.77 0.12 80);
+  --amber-500: oklch(0.69 0.12 80);
+  --amber-600: oklch(0.6 0.11 80);
+  --amber-700: oklch(0.515 0.098 80);
+  --amber-800: oklch(0.435 0.084 80);
+  --amber-900: oklch(0.355 0.066 80);
+  --amber-950: oklch(0.27 0.048 80);
+
+  /* Privacy highlight */
+  --yellow-50: oklch(0.98 0.03 100);
+  --yellow-100: oklch(0.955 0.065 100);
+  --yellow-200: oklch(0.92 0.095 100);
+  --yellow-300: oklch(0.87 0.115 100);
+  --yellow-400: oklch(0.8 0.12 100);
+  --yellow-500: oklch(0.72 0.115 100);
+  --yellow-600: oklch(0.62 0.1 100);
+  --yellow-700: oklch(0.52 0.086 100);
+  --yellow-800: oklch(0.43 0.072 100);
+  --yellow-900: oklch(0.35 0.058 100);
+  --yellow-950: oklch(0.27 0.044 100);
+
+  /* Info */
+  --blue-50: oklch(0.97 0.01 252);
+  --blue-100: oklch(0.94 0.02 252);
+  --blue-200: oklch(0.89 0.035 252);
+  --blue-300: oklch(0.81 0.055 252);
+  --blue-400: oklch(0.71 0.075 252);
+  --blue-500: oklch(0.62 0.085 252);
+  --blue-600: oklch(0.53 0.085 252);
+  --blue-700: oklch(0.46 0.075 252);
+  --blue-800: oklch(0.39 0.062 252);
+  --blue-900: oklch(0.31 0.048 252);
+  --blue-950: oklch(0.235 0.035 252);
+
+  /* Theme-dependent values that are not utilities */
+  --shadow-ink: oklch(0.255 0.02 165 / 0.08);
+  --shadow-ink-strong: oklch(0.255 0.02 165 / 0.16);
+  --chart-1: oklch(0.58 0.085 165);
+  --chart-2: oklch(0.6 0.115 41);
+  --chart-3: oklch(0.58 0.075 252);
+  --chart-4: oklch(0.66 0.1 88);
+  --chart-5: oklch(0.55 0.08 330);
+  --chart-6: oklch(0.6 0.08 210);
+}
+
+/* 2. Semantic roles. `static` keeps every variable emitted, for runtime reads (charts, MCP apps). */
+@theme static {
+  --*: initial;
+
+  /* Backgrounds: bg-* */
+  --background-color-surface: var(--sage-0);
+  --background-color-subtle: var(--sage-25);
+  --background-color-muted: var(--sage-100);
+  --background-color-hover: var(--sage-100);
+  --background-color-selected: var(--green-100);
+  --background-color-inverse: var(--sage-900);
+  --background-color-overlay: oklch(0.255 0.02 165 / 0.35);
+  --background-color-accent: var(--green-600);
+  --background-color-accent-hover: var(--green-700);
+  --background-color-accent-subtle: var(--green-50);
+  --background-color-danger-subtle: var(--red-50);
+  --background-color-warning-subtle: var(--amber-50);
+  --background-color-info-subtle: var(--blue-50);
+  --background-color-success-subtle: var(--green-50);
+  --background-color-privacy: var(--yellow-100);
+  --background-color-privacy-selected: var(--green-200);
+
+  /* Text and icons: text-* */
+  --text-color-strong: var(--sage-900);
+  --text-color-default: var(--sage-800);
+  --text-color-muted: var(--sage-600);
+  --text-color-disabled: var(--sage-400);
+  --text-color-inverse: var(--sage-25);
+  --text-color-on-accent: var(--sage-0);
+  --text-color-accent: var(--green-700);
+  --text-color-danger: var(--red-700);
+  --text-color-warning: var(--amber-800);
+  --text-color-info: var(--blue-700);
+  --text-color-success: var(--green-700);
+  --text-color-privacy: var(--yellow-900);
+
+  /* Borders and dividers: border-*, divide-* */
+  --border-color-subtle: var(--sage-150);
+  --border-color-default: var(--sage-200);
+  --border-color-strong: var(--sage-300);
+  --border-color-control: var(--sage-500);
+  --border-color-accent: var(--green-600);
+  --border-color-danger: var(--red-300);
+  --border-color-warning: var(--amber-300);
+  --border-color-info: var(--blue-200);
+  --border-color-success: var(--green-300);
+  --border-color-privacy: var(--yellow-500);
+
+  /* Focus indicator: outline-* */
+  --outline-color-focus: var(--green-600);
+
+  /* Typefaces: font-* */
+  --font-sans: 'DM Sans Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Newsreader', ui-serif, Georgia, serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --default-font-family: var(--font-sans);
+  --default-mono-font-family: var(--font-mono);
+
+  /* Type scale: text-* (size and line height together) */
+  --text-xs: 11px;
+  --text-xs--line-height: 16px;
+  --text-sm: 12px;
+  --text-sm--line-height: 18px;
+  --text-base: 13px;
+  --text-base--line-height: 20px;
+  --text-md: 14px;
+  --text-md--line-height: 24px;
+  --text-lg: 16px;
+  --text-lg--line-height: 24px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 36px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --tracking-normal: 0em;
+  --tracking-caps: 0.06em;
+
+  /* Spacing: p-*, m-*, gap-*, inset-*, w-*, h-*, size-*. Closed scale on a 4px grid. */
+  --spacing-0: 0px;
+  --spacing-0\.5: 2px;
+  --spacing-1: 4px;
+  --spacing-1\.5: 6px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-24: 96px;
+
+  /* Layout and control dimensions */
+  --width-sidebar: 240px;
+  --width-sidebar-wide: 272px;
+  --width-drawer: 288px;
+  --height-bar: 56px;
+  --height-control-sm: 28px;
+  --height-control: 32px;
+  --height-control-lg: 40px;
+  --size-control-sm: 28px;
+  --size-control: 32px;
+  --size-control-lg: 40px;
+  --size-icon-sm: 14px;
+  --size-icon: 16px;
+  --size-icon-lg: 20px;
+  --max-width-prose: 720px;
+
+  /* Viewport breakpoints: app shell only (tablet:, desktop:, wide:, ultra:) */
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1280px;
+  --breakpoint-wide: 1920px;
+  --breakpoint-ultra: 2560px;
+
+  /* Container query breakpoints: components (@narrow:, @medium:, @wide:) */
+  --container-narrow: 360px;
+  --container-medium: 560px;
+  --container-wide: 800px;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* Elevation: floating layers only */
+  --shadow-sm: 0 1px 2px var(--shadow-ink);
+  --shadow-md: 0 1px 2px var(--shadow-ink), 0 6px 16px var(--shadow-ink);
+  --shadow-lg: 0 2px 6px var(--shadow-ink), 0 16px 40px var(--shadow-ink-strong);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: var(--ease-out);
+  --animate-enter: enter 200ms var(--ease-out) both;
+  --animate-fade: fade 200ms var(--ease-out) both;
+  --animate-pulse: pulse 1.4s ease-in-out infinite;
+  --animate-spin: spin 1s linear infinite;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.35;
+    }
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+/* Touch screens get larger controls. */
+@media (pointer: coarse) {
+  :root {
+    --height-control-sm: 36px;
+    --height-control: 40px;
+    --height-control-lg: 44px;
+    --size-control-sm: 36px;
+    --size-control: 40px;
+    --size-control-lg: 44px;
+  }
+}
+
+/* 3. Dark theme: same roles, different primitives. */
+[data-theme='dark'] {
+  --background-color-surface: var(--sage-925);
+  --background-color-subtle: var(--sage-950);
+  --background-color-muted: var(--sage-850);
+  --background-color-hover: var(--sage-900);
+  --background-color-selected: var(--green-900);
+  --background-color-inverse: var(--sage-100);
+  --background-color-overlay: oklch(0 0 0 / 0.55);
+  --background-color-accent: var(--green-600);
+  --background-color-accent-hover: var(--green-700);
+  --background-color-accent-subtle: var(--green-950);
+  --background-color-danger-subtle: var(--red-950);
+  --background-color-warning-subtle: var(--amber-950);
+  --background-color-info-subtle: var(--blue-950);
+  --background-color-success-subtle: var(--green-950);
+  --background-color-privacy: var(--yellow-900);
+  --background-color-privacy-selected: var(--green-800);
+
+  --text-color-strong: var(--sage-50);
+  --text-color-default: var(--sage-150);
+  --text-color-muted: var(--sage-400);
+  --text-color-disabled: var(--sage-600);
+  --text-color-inverse: var(--sage-900);
+  --text-color-on-accent: var(--sage-0);
+  --text-color-accent: var(--green-300);
+  --text-color-danger: var(--red-300);
+  --text-color-warning: var(--amber-300);
+  --text-color-info: var(--blue-300);
+  --text-color-success: var(--green-300);
+  --text-color-privacy: var(--yellow-100);
+
+  --border-color-subtle: var(--sage-850);
+  --border-color-default: var(--sage-800);
+  --border-color-strong: var(--sage-700);
+  --border-color-control: var(--sage-600);
+  --border-color-accent: var(--green-500);
+  --border-color-danger: var(--red-800);
+  --border-color-warning: var(--amber-800);
+  --border-color-info: var(--blue-800);
+  --border-color-success: var(--green-800);
+  --border-color-privacy: var(--yellow-600);
+
+  --outline-color-focus: var(--green-400);
+
+  --shadow-ink: oklch(0 0 0 / 0.3);
+  --shadow-ink-strong: oklch(0 0 0 / 0.5);
+  --chart-1: oklch(0.72 0.085 165);
+  --chart-2: oklch(0.72 0.11 41);
+  --chart-3: oklch(0.72 0.075 252);
+  --chart-4: oklch(0.78 0.1 88);
+  --chart-5: oklch(0.7 0.08 330);
+  --chart-6: oklch(0.72 0.08 210);
+}

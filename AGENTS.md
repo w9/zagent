@@ -19,6 +19,19 @@ Guidance for coding agents in this repository. Product overview and full configu
 - `make lint`: ruff and oxlint.
 - `make browser`: Playwright against `ZAGENT_WEB_URL` (default `http://127.0.0.1:5173`).
 
+## Web UI
+
+- Follow [docs/DESIGN.md](docs/DESIGN.md) for all work in `apps/web` and
+  `services/agent/zagent/job_ui`. Cite rule IDs (for example `COLOR-02`) when a rule shapes a
+  change.
+- Raw design values live only in `apps/web/src/design/tokens.css`. The Tailwind theme is reset, so
+  only token utilities exist; a class that compiles to nothing is a bug.
+- Tailwind only sees complete class strings; never build class names with `${}`.
+- The token specimen is `/specimen.html` on the Vite dev server. Check token changes there in both
+  themes.
+- Confirm UI changes visually with Playwright, in light and dark, at the viewport widths listed in
+  DESIGN.md section 9.
+
 ## Running several clones side by side
 
 `deploy/compose/compose.yaml` sets `name: zagent`, so without an override every clone shares one

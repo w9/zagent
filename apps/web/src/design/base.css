@@ -52,3 +52,22 @@
     }
   }
 }
+
+/* Running work: a highlight sweeps across the text. Static under reduced motion. */
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 35%,
+    var(--shimmer-highlight) 50%,
+    currentColor 65%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: var(--animate-shimmer);
+
+  @media (prefers-reduced-motion: reduce) {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}

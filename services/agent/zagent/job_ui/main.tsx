@@ -1,4 +1,4 @@
-import { App } from '@modelcontextprotocol/ext-apps'
+import { App, applyDocumentTheme, applyHostStyleVariables } from '@modelcontextprotocol/ext-apps'
 import { Activity, Clock3, Pause, Play, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -13,28 +13,60 @@ type Job = {
 }
 type Payload = { jobs: Job[]; error?: string }
 const protocol = new App({ name: 'Zagent analysis jobs', version: '1.0.0' }, {}, { autoResize: false })
+// Styled only with MCP Apps host variables (docs/DESIGN.md section 6). Fallbacks are the light theme.
 const style = document.createElement('style')
 style.textContent = `
-@font-face{font-family:Workbench;src:url(${font}) format('woff2');font-weight:100 900}
-:root{font:14px Workbench,sans-serif;letter-spacing:0;color:#253036;background:#fafbfa;color-scheme:light}
-*{box-sizing:border-box}body{margin:0}button,select{font:inherit}button{cursor:pointer}
-main{padding:16px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));align-items:start}
-.job{min-width:0;background:white;border:1px solid #dce2df;border-radius:6px;padding:16px}
-main.single .job{border:0;padding:0;background:transparent}.heading{display:flex;gap:12px;justify-content:space-between;align-items:start}
-h1{font-size:18px;line-height:1.3;margin:4px 0 10px;font-weight:600;overflow-wrap:anywhere}
-.identity{font-size:12px;color:#67746f;display:flex;align-items:center;gap:6px}.state{text-transform:capitalize;font-size:12px;white-space:nowrap;padding:4px 7px;border:1px solid #cad5d0;border-radius:4px;color:#31594c;background:#f0f6f3}
-.state.failed{color:#973f38;background:#fdf1ef;border-color:#edccc6}.state.completed{color:#217152;background:#edf9f2}.state.retrying{color:#8c641e;background:#fff8e6}
-.progress{display:flex;gap:12px;align-items:center;margin:14px 0}progress{width:100%;height:8px;accent-color:#258279}.percent{font-variant-numeric:tabular-nums;min-width:4ch;text-align:right;font-size:12px}
-.facts{display:flex;flex-wrap:wrap;gap:12px;color:#66756f;font-size:12px}.facts span{display:flex;align-items:center;gap:5px}
-.detail{font-size:13px;line-height:1.6;overflow-wrap:anywhere;min-height:3em}.params{display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 0;border-top:1px solid #e2e7e4;font-size:12px;color:#55645d}.params b{font-weight:500;color:#233f34}
-.history{border-top:1px solid #e2e7e4;padding:10px 0;font-size:12px}.history p{margin:5px 0;color:#58685f}
-.log-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #dce2df;padding:12px 0 8px}.log-heading h2{font-size:13px;font-weight:600;margin:0;white-space:nowrap}
-.log-tools{display:flex;gap:8px;align-items:center;min-width:0}.log-tools select{max-width:160px;min-width:0;background:white;border:1px solid #dce2df;border-radius:4px;padding:4px;font-size:11px}.log-tools button{width:28px;height:28px;display:grid;place-items:center;border:1px solid #dce2df;border-radius:4px;background:white;color:#436056}
-.logs{height:240px;overflow:auto;overscroll-behavior:contain;background:#f2f5f3;border:1px solid #dce2df;border-radius:4px;padding:8px}
-.line{display:grid;grid-template-columns:3ch 1fr;gap:10px;font:11px/1.65 monospace;padding:3px 0;overflow-wrap:anywhere}.line-number{color:#86938a}.ERROR{color:#a13c32}.WARN{color:#8d651d}.empty,.error{padding:24px;color:#66756f}.error{color:#973f38;display:flex;gap:8px}.tail-note{font-size:11px;color:#718278;margin-top:8px}
-@media(max-width:360px){main{padding:10px}.job{padding:10px}.log-tools select{max-width:128px}h1{font-size:16px}.logs{height:230px}}
+@font-face{font-family:'DM Sans Variable';src:url(${font}) format('woff2');font-weight:100 900}
+:root{
+--bg:var(--color-background-primary,#ffffff);--bg-subtle:var(--color-background-secondary,#f9fcfa);--bg-muted:var(--color-background-tertiary,#edf1ef);
+--fg:var(--color-text-primary,#343d39);--fg-muted:var(--color-text-secondary,#626e68);
+--line:var(--color-border-primary,#dae2de);--line-subtle:var(--color-border-secondary,#e4eae7);--accent:var(--color-ring-primary,#28745a);
+--danger:var(--color-text-danger,#943932);--danger-bg:var(--color-background-danger,#fdf2f0);--danger-line:var(--color-border-danger,#f5a69d);
+--warning:var(--color-text-warning,#694b0d);--warning-bg:var(--color-background-warning,#fff6e7);--warning-line:var(--color-border-warning,#efc379);
+--success:var(--color-text-success,#1c5e48);--success-bg:var(--color-background-success,#eaf9f2);--success-line:var(--color-border-success,#91d1b7);
+--radius-sm:var(--border-radius-sm,4px);--radius-md:var(--border-radius-md,6px);
+--xs:var(--font-text-xs-size,11px)/var(--font-text-xs-line-height,16px);--sm:var(--font-text-sm-size,12px)/var(--font-text-sm-line-height,18px);
+--md:var(--font-text-md-size,13px)/var(--font-text-md-line-height,20px);--heading:var(--font-heading-md-size,16px)/var(--font-heading-md-line-height,24px);
+--sans:var(--font-sans,'DM Sans Variable',sans-serif);--mono:var(--font-mono,ui-monospace,monospace);
+font:var(--md) var(--sans);letter-spacing:0;color:var(--fg);background:var(--bg-subtle);color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box}body{margin:0}button,select{font:inherit;color:inherit}button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));align-items:start}
+.job{min-width:0;background:var(--bg);border:1px solid var(--line-subtle);border-radius:var(--radius-md);padding:16px}
+.heading{display:flex;gap:12px;justify-content:space-between;align-items:start}
+h1{font:600 var(--heading) var(--sans);margin:4px 0 8px;color:var(--fg);overflow-wrap:anywhere}
+.identity{font:var(--xs) var(--mono);color:var(--fg-muted);display:flex;align-items:center;gap:6px;overflow-wrap:anywhere}
+.state{text-transform:capitalize;font:500 var(--xs) var(--sans);white-space:nowrap;padding:2px 6px;border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--fg);background:var(--bg-muted)}
+.state.running{color:var(--accent);border-color:var(--accent);background:var(--bg)}
+.state.failed{color:var(--danger);background:var(--danger-bg);border-color:var(--danger-line)}
+.state.completed{color:var(--success);background:var(--success-bg);border-color:var(--success-line)}
+.state.retrying{color:var(--warning);background:var(--warning-bg);border-color:var(--warning-line)}
+.progress{display:flex;gap:12px;align-items:center;margin:12px 0}progress{width:100%;height:6px;accent-color:var(--accent)}
+.percent{font:var(--sm) var(--mono);font-variant-numeric:tabular-nums;min-width:4ch;text-align:right}
+.facts{display:flex;flex-wrap:wrap;gap:12px;color:var(--fg-muted);font:var(--sm) var(--sans)}.facts span{display:flex;align-items:center;gap:6px}
+.detail{overflow-wrap:anywhere;min-height:3em;margin:0 0 12px}
+.params{display:flex;flex-wrap:wrap;gap:4px 16px;padding:12px 0;border-top:1px solid var(--line-subtle);font:var(--sm) var(--sans);color:var(--fg-muted)}.params b{font-weight:500;color:var(--fg)}
+.history{border-top:1px solid var(--line-subtle);padding:12px 0;font:var(--sm) var(--sans)}.history summary{cursor:pointer;color:var(--fg)}.history p{margin:4px 0;color:var(--fg-muted)}
+.log-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line-subtle);padding:12px 0 8px}.log-heading h2{font:600 var(--md) var(--sans);margin:0;white-space:nowrap}
+.log-tools{display:flex;gap:8px;align-items:center;min-width:0}
+.log-tools select{max-width:160px;min-width:0;height:28px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);padding:0 4px;font:var(--sm) var(--sans)}
+.log-tools button{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--bg);color:var(--fg)}
+.logs{height:240px;overflow:auto;overscroll-behavior:contain;background:var(--bg-subtle);border:1px solid var(--line-subtle);border-radius:var(--radius-sm);padding:8px}
+.line{display:grid;grid-template-columns:3ch 1fr;gap:12px;font:var(--xs) var(--mono);padding:2px 0;overflow-wrap:anywhere}.line-number{color:var(--fg-muted)}
+.ERROR{color:var(--danger)}.WARN{color:var(--warning)}
+.empty,.error{padding:24px;color:var(--fg-muted)}.error{color:var(--danger);display:flex;gap:8px}.tail-note{font:var(--xs) var(--sans);color:var(--fg-muted);margin-top:8px}
+@media(pointer:coarse){.log-tools select{height:36px}.log-tools button{width:36px;height:36px}}
+@media(max-width:360px){.job{padding:12px}.log-tools select{max-width:128px}}
 `
 document.head.append(style)
+
+function applyHostContext() {
+  const context = protocol.getHostContext()
+  if (context?.theme) applyDocumentTheme(context.theme)
+  if (context?.styles?.variables) applyHostStyleVariables(context.styles.variables)
+}
+protocol.onhostcontextchanged = applyHostContext
 
 function JobCard({ job, clock }: { job: Job; clock: number }) {
   const [follow, setFollow] = useState(true)
@@ -62,7 +94,7 @@ function JobsApp() {
   const [clock, setClock] = useState(Date.now())
   useEffect(() => {
     protocol.ontoolresult = (result) => setData(result.structuredContent as Payload)
-    protocol.connect().catch(() => setData({ jobs: [], error: 'Host connection unavailable' }))
+    protocol.connect().then(applyHostContext, () => setData({ jobs: [], error: 'Host connection unavailable' }))
     const timer = window.setInterval(() => setClock(Date.now()), 1000)
     return () => { window.clearInterval(timer); void protocol.close() }
   }, [])

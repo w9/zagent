@@ -20,7 +20,7 @@ const isAllowed = (list: string[], file: string) =>
   list.some((entry) => (entry.endsWith('/') ? file.startsWith(entry) : file === entry))
 
 const classFunctions = new Set(['cn', 'clsx', 'cx'])
-const classProperty = /^(class|className|\w+ClassName)$/
+const classProperty = /^(class|className|\w+ClassNames?)$/
 const iconPackages = /^(react-icons|@heroicons\/|@radix-ui\/react-icons|@tabler\/|@phosphor-icons\/|@fortawesome\/)/
 const rawColor = /(^|[^\w&])#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})(?![\w-])|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color-mix)\(/i
 const rawLength = /(^|[^\w.$-])-?(?:\d+\.?\d*|\.\d+)(?:px|rem|em|vh|vw|dvh|svh|lvh|ms|pt)\b/
@@ -137,6 +137,7 @@ function lintScript(source: SourceFile, reportAt: Reporter) {
         collect(span.expression)
       })
     } else if (ts.isParenthesizedExpression(node) || ts.isJsxExpression(node)) collect(node.expression)
+    else if (ts.isArrowFunction(node) && !ts.isBlock(node.body)) collect(node.body)
     else if (ts.isConditionalExpression(node)) {
       collect(node.whenTrue)
       collect(node.whenFalse)
@@ -152,6 +153,14 @@ function lintScript(source: SourceFile, reportAt: Reporter) {
       for (const property of node.properties) {
         if (ts.isPropertyAssignment(property) && ts.isStringLiteral(property.name)) add(property.name)
       }
+    }
+  }
+
+  // A `…ClassNames` map holds classes in its values; anything else named like a class is a class list.
+  const collectNamed = (node: ts.Expression): void => {
+    if (!ts.isObjectLiteralExpression(node)) return collect(node)
+    for (const property of node.properties) {
+      if (ts.isPropertyAssignment(property)) collectNamed(property.initializer)
     }
   }
 
@@ -201,7 +210,7 @@ function lintScript(source: SourceFile, reportAt: Reporter) {
     }
     if ((ts.isPropertyAssignment(node) || ts.isVariableDeclaration(node)) && node.initializer) {
       const name = ts.isPropertyAssignment(node) ? propertyName(node) : node.name.getText(sf)
-      if (name && classProperty.test(name)) collect(node.initializer)
+      if (name && classProperty.test(name)) collectNamed(node.initializer)
     }
     ts.forEachChild(node, visitClassContexts)
   }

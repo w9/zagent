@@ -65,6 +65,7 @@ lint:
 	uv run --frozen ruff check services/agent evals deploy/compose conftest.py
 	uv run --frozen ruff format --check services/agent evals deploy/compose conftest.py
 	npm --prefix apps/web run lint
+	npm --prefix apps/web run lint:design
 
 browser:
 	npm --prefix apps/web run test:e2e

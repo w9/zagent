@@ -5,6 +5,7 @@ import { __unstable__loadDesignSystem } from 'tailwindcss'
 
 export const webRoot = fileURLToPath(new URL('../../', import.meta.url))
 export const tokensPath = path.join(webRoot, 'src/design/tokens.css')
+export const stylesPath = path.join(webRoot, 'src/design/styles.css')
 export const designDocPath = path.join(webRoot, '../../docs/DESIGN.md')
 
 export type Theme = 'light' | 'dark'
@@ -55,11 +56,11 @@ export function roles(tokens: Tokens, namespace: string): string[] {
   return [...tokens.theme.keys()].filter((name) => name.startsWith(prefix)).map((name) => name.slice(prefix.length))
 }
 
-/** Tailwind compiled with the app's tokens: the authority on which classes exist. */
+/** Tailwind compiled with the app stylesheet: the authority on which classes exist. */
 export async function loadTailwind() {
   const tailwindRoot = path.join(webRoot, 'node_modules/tailwindcss')
-  return __unstable__loadDesignSystem(`@import 'tailwindcss';\n@import './tokens.css';`, {
-    base: path.dirname(tokensPath),
+  return __unstable__loadDesignSystem(readFileSync(stylesPath, 'utf8'), {
+    base: path.dirname(stylesPath),
     async loadStylesheet(id, base) {
       const file =
         id === 'tailwindcss'

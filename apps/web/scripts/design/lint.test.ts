@@ -69,6 +69,8 @@ const cases: [string, string, string, string[]][] = [
   ],
   ['cn object keys', component, "cn({ 'bg-white': active })", ['TOKEN-02']],
   ['className property in data', component, "const rows = [{ className: 'bg-white' }]", ['TOKEN-02']],
+  ['class map values', component, "const toneClassNames = { danger: 'text-danger', bad: 'text-red-500' }", ['TOKEN-02']],
+  ['class function result', component, "const paneClassName = (open: boolean) => (open ? 'block' : 'text-red-500')", ['TOKEN-02']],
   ['user-facing text is not a class', component, "const label = 'Sticky header row'", []],
 ]
 

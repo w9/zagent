@@ -19,9 +19,10 @@ function color(name: string, theme: Theme): Rgb {
 // COLOR-05: which foregrounds may sit on which backgrounds. Keep in step with DESIGN.md 2.1.
 const neutralBackgrounds = ['surface', 'subtle', 'muted', 'hover', 'selected', 'accent-subtle']
 const statuses = ['danger', 'warning', 'info', 'success']
+const statusBackgrounds = statuses.map((status) => `${status}-subtle`)
 const textPairs: [string, string[]][] = [
-  ['strong', [...neutralBackgrounds, 'privacy-selected']],
-  ['default', [...neutralBackgrounds, 'privacy-selected']],
+  ['strong', [...neutralBackgrounds, ...statusBackgrounds, 'privacy-selected']],
+  ['default', [...neutralBackgrounds, ...statusBackgrounds, 'privacy-selected']],
   ['muted', neutralBackgrounds],
   ['accent', neutralBackgrounds],
   ...statuses.map((status): [string, string[]] => [status, ['surface', 'subtle', `${status}-subtle`]]),

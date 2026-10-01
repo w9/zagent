@@ -94,7 +94,7 @@ Families: `font-sans` (default), `font-mono`, `font-serif`.
 ### 2.3 Spacing and dimensions
 
 Spacing is a closed 4px scale: `0`, `0.5`, `1`, `1.5`, `2`, `3`, `4`, `5`, `6`, `8`, `10`, `12`,
-`16`, `24`. Rhythm:
+`16`, `24`, and for large sizes and limits `32`, `48`, `64`, `96`. Rhythm:
 
 | Steps | Between |
 |---|---|
@@ -105,7 +105,7 @@ Spacing is a closed 4px scale: `0`, `0.5`, `1`, `1.5`, `2`, `3`, `4`, `5`, `6`, 
 
 Named dimensions: `h-bar` (top bar and panel headers), `h-control-sm|control|control-lg` and
 `size-control-*` (controls; larger on touch screens), `size-icon-sm|icon|icon-lg`, `w-sidebar`,
-`w-sidebar-wide`, `w-drawer`, `max-w-prose`.
+`w-sidebar-wide`, `w-drawer`, `h-chart`, `max-w-prose`.
 
 ### 2.4 Shape, elevation, motion
 
@@ -115,7 +115,8 @@ Named dimensions: `h-bar` (top bar and panel headers), `h-control-sm|control|con
 - Shadows: `shadow-sm` (floating buttons), `shadow-md` (tooltips, popovers, menus), `shadow-lg`
   (drawers, dialogs).
 - Motion: `transition-colors` (default duration and easing), `animate-enter` (new content),
-  `animate-fade` (surface swaps), `animate-pulse` (live indicators), `animate-spin` (spinners).
+  `animate-fade` (surface swaps), `animate-pulse` (live indicators), `animate-spin` (spinners),
+  `shimmer` (the title of running work).
 
 ### 2.5 Breakpoints
 
@@ -137,8 +138,9 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
   `[lint]`
 - **TOKEN-04** Class names are complete string literals, never built with `${}` or `+`, so Tailwind
   can see them. Pick between literals instead. Class strings live only in `className` attributes,
-  `cn()`, `clsx()` and `cva()` calls, or properties and variables named `className` or
-  `…ClassName`; those are what the checks read. `[lint]`
+  `cn()`, `clsx()` and `cva()` calls, or properties, variables and arrow functions named
+  `className` or `…ClassName`; a `…ClassNames` object maps keys to class strings. Those are what
+  the checks read. `[lint]`
 - **TOKEN-05** Every color role and type size has a row in section 2 saying what it is for.
   `[test]`
 
@@ -167,8 +169,9 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 
 - **SPACE-01** Spacing follows the rhythm table in 2.3; siblings of the same kind use the same gap.
   `[review]`
-- **SPACE-02** Panel content insets: `px-4` below `tablet:`, `px-6` from `tablet:`. Headers,
-  lists and content in one panel share the same left edge. `[visual]`
+- **SPACE-02** Panel content insets: `px-4`, and `px-6` once the panel is `@medium` wide. Every
+  panel is an `@container`. Headers, lists and content in one panel share the same left edge.
+  `[visual]`
 - **LAYOUT-01** The app shell follows the contract in section 4 at every breakpoint. `[visual]`
 - **LAYOUT-02** Only the app shell (`src/components/shell/`) uses viewport variants; other
   components adapt with container queries. `[lint]`
@@ -229,8 +232,8 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 
 ### Domain
 
-- **DOMAIN-01** Privacy tokens always render through the privacy token component with the
-  `privacy` roles, the same in chat, X-ray and tables. `[review]`
+- **DOMAIN-01** Privacy values always render through `PrivacyText` with the `privacy` roles, the
+  same in chat, X-ray and tables. `[review]`
 - **DOMAIN-02** Refusals use `info`, never `danger`: refusing is correct behavior, not a failure.
   `[review]`
 - **DOMAIN-03** Status mapping. Conversation turn: idle neutral, responding `accent` with pulse,
@@ -278,43 +281,46 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 
 ## 5. Component inventory
 
-Primitives live in `src/components/ui/`. Each row has a story file next to the component.
+Each component has a story file next to it. Story data lives in `src/components/fixtures.ts`.
 
-| Component | Variants | Required states and stress cases |
-|---|---|---|
-| Button | primary, secondary, ghost, danger × sm, md, lg | hover, active, focus, disabled, loading, long label |
-| IconButton | secondary, ghost × sm, md | hover, active, focus, disabled; tooltip |
-| TextField, TextArea, Select, Checkbox | — | hover, focus, disabled, invalid with message |
-| Badge | neutral, accent, danger, warning, info, success | long text, with icon |
-| StatusDot | same roles; live (pulsing) | reduced motion |
-| Tooltip | — | long text, edge of viewport |
-| Tabs | underline, segmented | overflow with many tabs, counts |
-| Drawer | — | open, focus trap, long content |
-| Notice | danger, warning, info, success | with action, long text |
-| EmptyState | — | narrow container |
-| PrivacyToken | default, selected | wrapping inside prose, inside a table cell |
-| AppShell, TopBar | — | every viewport in section 4 |
-| SessionList, SessionItem | — | empty, many, selected, renaming, very long title |
-| Transcript, Message | user, assistant | streaming, interrupted, Markdown with code and tables |
-| StepMarker | running, done, failed | expanded with tool input and output |
-| RefusalChip, ViewReference | — | long text |
-| Composer | — | empty, multiline, sending, disabled |
-| WorkingSurface, ViewNavigation | — | no views, many views, long titles |
-| TableView | — | loading, empty, error, 200 rows, wide columns, nulls |
-| ChartView | each mark type | loading, empty, error, many categories |
-| DraftFormView | — | invalid fields, conflict, submitted |
-| McpAppView | — | loading, error, both themes |
-| XrayPanel | — | no requests, long requests, privacy tokens |
+| Folder | Component | Variants | States and stress cases in stories |
+|---|---|---|---|
+| `ui/` | Button | primary, secondary, ghost, danger × sm, md, lg | disabled, loading, long label in a narrow box |
+| `ui/` | IconButton | ghost, secondary, primary × sm, md; pressed | disabled; tooltip |
+| `ui/` | Tooltip | — | open, long text |
+| `ui/` | Field, Input, Select, Textarea, Checkbox | — | hint, error, disabled, two columns from `@medium` |
+| `ui/` | Badge | neutral, accent, danger, warning, info, success | icon, long text in a narrow box |
+| `ui/` | StatusDot | same tones; live | reduced motion |
+| `ui/` | Notice | danger, warning, info, success | title, action, long text in a narrow box |
+| `ui/` | Tabs | underline, with icon and count | many tabs overflowing |
+| `ui/` | Drawer | — | open with the session list |
+| `ui/` | EmptyState | display (serif), quiet | action, narrow box |
+| `ui/` | PanelHeader, Eyebrow, Spinner | — | long subtitle (truncated with its full value) |
+| `shell/` | AppShell, TopBar, Wordmark, ThemeToggle | — | every viewport in section 4; X-ray on; drawer open; error |
+| `shell/` | SessionLayout | chat or surface tab | every viewport in section 4 |
+| `shell/` | SessionList | — | empty, many, creating, very long title |
+| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting |
+| `chat/` | TranscriptText, PrivacyText | user, assistant; md, sm | streaming, Markdown with code, tables and links |
+| `chat/` | StepMarker | running, complete, failed | expanded, with a view link |
+| `chat/` | RefusalChip, ViewReference, TurnStatus, Composer | — | in the chat panel stories |
+| `surface/` | WorkingSurface, ViewHeader | — | no views, unavailable view, chart, table |
+| `surface/views/` | TableView | inline, from a handle | loading, empty, error, nulls, booleans |
+| `surface/views/` | ChartView | each mark type | loading, error |
+| `surface/views/` | DraftEditor | — | editing, needs review, submitted |
+| `surface/` | McpAppFrame, McpAppView | — | running job, no jobs, both themes |
+| `xray/` | XrayContent, XrayPanel | — | requests with privacy values, nothing recorded |
 
 ---
 
 ## 6. Themes and embedded apps
 
-- The theme control writes the preference to `localStorage`; an inline script in `index.html`
-  applies it before paint.
+- `src/lib/theme.ts` owns the theme: `startTheme()` applies the saved preference and follows the
+  OS; the theme control calls `setPreference()`; `useTheme()` reports the current theme to code
+  that reads tokens at runtime. An inline script in `index.html` repeats the resolution before
+  paint.
 - Embedded MCP apps (`services/agent/zagent/job_ui/`) style themselves only with the standard MCP
-  Apps host variables, with fallbacks. The host sends `theme` and these variables in the host
-  context, and sends them again when the theme changes:
+  Apps host variables, with light fallbacks. `McpAppFrame` sends `theme` and these variables in the
+  host context, and again whenever the theme changes:
 
 | MCP Apps variable | Zagent token |
 |---|---|
@@ -354,13 +360,14 @@ Primitives live in `src/components/ui/`. Each row has a story file next to the c
 
 | Check | Command | Covers |
 |---|---|---|
-| Lexical | `npm --prefix apps/web run lint:design [paths…]` | `[lint]` rules |
+| Lexical | `npm --prefix apps/web run lint:design [paths…]` (part of `make lint`) | `[lint]` rules |
 | Unit | `npm --prefix apps/web test` | `[test]` rules; the lint's own fixtures |
 | Visual | `npm --prefix apps/web run test:design` | `[visual]` rules over every story |
 
-The checks live in `apps/web/scripts/design/`. Tailwind's compiler, loaded with `tokens.css`,
-decides whether a class exists. The unit tests also fail when a `[lint]` rule in this file has no
-implementation or fixture, or when a color role or type size is missing from section 2.
+The checks live in `apps/web/scripts/design/`. Tailwind's compiler, loaded with the app
+stylesheet (`src/design/styles.css`), decides whether a class exists. The unit tests also fail
+when a `[lint]` rule in this file has no implementation or fixture, or when a color role or type
+size is missing from section 2.
 
 Storybook (`npm --prefix apps/web run storybook`, port 6006) has a theme switch and the viewport
 presets below. The visual check builds Storybook, then renders every story at each viewport in
@@ -379,7 +386,7 @@ Each width is the narrowest of its breakpoint range, where layouts are most cram
 is checked for LAYOUT-03, LAYOUT-04, A11Y-01, A11Y-02 and MOTION-02; STATE-02 is checked by
 tabbing through each story at `desktop-1440`. Then the page is compared with its baseline in
 `apps/web/.design-baselines/<story>/<viewport>-<theme>.png`, which is untracked until the design
-is stable.
+is stable. Any changed pixel fails; only anti-aliasing noise is tolerated.
 
 - Filter: `npm --prefix apps/web run test:design -- -g "phone-360 design-system-tokens"`.
 - A new story's first run records its baselines and reports them as missing; the next run

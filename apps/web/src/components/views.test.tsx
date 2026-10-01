@@ -3,19 +3,19 @@ import userEvent from '@testing-library/user-event'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { ViewRenderer } from './view-renderer'
-import { StepMarker } from './step-marker'
-import { RefusalChip } from './refusal-chip'
-import { XrayContent } from './xray-panel'
-import { TranscriptText } from './transcript-text'
+import { ViewRenderer } from './surface/view-renderer'
+import { StepMarker } from './chat/step-marker'
+import { RefusalChip } from './chat/refusal-chip'
+import { XrayContent } from './xray/xray-panel'
+import { TranscriptText } from './chat/transcript-text'
 import type { XrayData } from '../lib/api'
-import { DraftEditor } from './views/draft_form.view'
-import type { CatalogApp } from './views/draft_form.view'
+import { DraftEditor } from './surface/views/draft_form.view'
+import type { CatalogApp } from './surface/views/draft_form.view'
 import type { DraftState } from '../lib/events'
 import catalog from '../../../../services/agent/zagent/catalog.json'
 import { validateViewSpec } from '../lib/views'
 import type { ChartSpec, TableData, TableSpec } from '../lib/views'
-import type { HandleResolver } from './views/table.view'
+import type { HandleResolver } from './surface/views/table.view'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
@@ -40,7 +40,7 @@ describe('assistant Markdown', () => {
     const { container, rerender, unmount } = render(<TranscriptText role="assistant" text="" streaming />)
     for (let length = 1; length <= text.length; length += 1) {
       rerender(<TranscriptText role="assistant" text={text.slice(0, length)} streaming />)
-      expect(container.querySelector('.stream-cursor')).toBeTruthy()
+      expect(container.querySelector('[data-testid="stream-cursor"]')).toBeTruthy()
       expect(container.querySelector('script,img')).toBeNull()
       if (/[a-z0-9]/i.test(text.slice(0, length))) expect(container.textContent?.length).toBeGreaterThan(0)
     }
@@ -277,7 +277,7 @@ describe('additive table handle source', () => {
       .mockRejectedValueOnce(new Error('Query unavailable'))
       .mockResolvedValueOnce({ rows: [['SPC-0003', 90, true]], row_count: 3 })
     render(<ViewRenderer spec={handleSpec} resolveHandle={resolver} />)
-    expect(screen.getByRole('status').textContent).toBe('Loading data...')
+    expect(screen.getByRole('status').textContent).toBe('Loading data…')
     await screen.findByText('Query unavailable')
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByText('SPC-0003')
@@ -326,30 +326,30 @@ it('starts steps collapsed and retains the open state on completion', async () =
     status: 'running' as const,
   }
   const { container, rerender } = render(<StepMarker step={step} />)
-  const details = container.querySelector('details')!
-  expect(details.open).toBe(false)
-  await userEvent.click(container.querySelector('summary')!)
-  expect(details.open).toBe(true)
+  const toggle = screen.getByRole('button', { name: 'Step details' })
+  expect(toggle.getAttribute('aria-expanded')).toBe('false')
+  await userEvent.click(toggle)
+  expect(toggle.getAttribute('aria-expanded')).toBe('true')
   rerender(
     <StepMarker
       step={{ ...step, status: 'complete', detail: '14 specimens reviewed.' }}
     />,
   )
-  expect(details.open).toBe(true)
+  expect(container.querySelector('[data-testid="step-marker"]')!.getAttribute('data-open')).toBe('true')
   expect(screen.getByText('14 specimens reviewed.')).toBeTruthy()
 })
 
 it('shows tool names, arguments, and correction errors inside a collapsed step', async () => {
-  const { container } = render(<StepMarker step={{
+  render(<StepMarker step={{
     id: 'step-1', seq: 2, title: 'Agent step 1', detail: '', status: 'complete',
     tools: [{
       call_id: 'call-1', name: 'find_specimens', arguments: '{"received_within":"bad"}',
       result: { error: { code: 'invalid_arguments', message: 'Use a relative window' } },
     }],
   }} />)
-  expect(container.querySelector('details')!.open).toBe(false)
+  expect(screen.getByRole('button', { name: 'Step details' }).getAttribute('aria-expanded')).toBe('false')
   expect(screen.getByText('Specimen search failed')).toBeTruthy()
-  await userEvent.click(container.querySelector('summary')!)
+  await userEvent.click(screen.getByRole('button', { name: 'Step details' }))
   expect(screen.getByText('find_specimens')).toBeTruthy()
   expect(screen.getByText(/"received_within": "bad"/)).toBeTruthy()
   expect(screen.getByText(/Use a relative window/)).toBeTruthy()
@@ -366,8 +366,8 @@ it('links a published view title from its step summary', () => {
       result: { ok: true, view_id: 'view-0001', kind: 'table', title: 'Recent specimens' },
     }],
   }} />)
-  expect(container.querySelector('.step-title')!.textContent).toBe('Published “Recent specimens”')
-  expect(container.querySelector('.step-title a[data-view-id="view-0001"]')!.textContent).toBe('Recent specimens')
+  expect(container.querySelector('[data-testid="step-title"]')!.textContent).toBe('Published “Recent specimens”')
+  expect(container.querySelector('[data-testid="step-title"] a[data-view-id="view-0001"]')!.textContent).toBe('Recent specimens')
 })
 
 it('renders only well-formed agent view links as in-app links', () => {

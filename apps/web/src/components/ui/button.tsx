@@ -1,36 +1,54 @@
-import { Slot } from '@radix-ui/react-slot'
 import { cva } from 'class-variance-authority'
 import type { VariantProps } from 'class-variance-authority'
+import type { LucideIcon } from 'lucide-react'
 import type { ComponentProps } from 'react'
 import { cn } from '../../lib/utils'
+import { Spinner } from './spinner'
 
-const variants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-40 [&_svg]:size-4 [&_svg]:shrink-0',
+const buttonVariants = cva(
+  'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-icon',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-white hover:bg-primary/90',
-        ghost: 'text-muted-foreground hover:bg-accent hover:text-foreground',
+        primary: 'bg-accent text-on-accent hover:bg-accent-hover active:bg-accent-hover',
+        secondary: 'border border-default bg-surface text-default hover:border-strong hover:bg-hover active:bg-muted',
+        ghost: 'text-muted hover:bg-hover hover:text-default active:bg-muted',
+        danger: 'border border-danger bg-surface text-danger hover:bg-danger-subtle active:bg-danger-subtle',
       },
-      size: { default: 'h-9 px-3', icon: 'size-9' },
+      size: {
+        sm: 'h-control-sm px-2 text-sm [&_svg]:size-icon-sm',
+        md: 'h-control px-3 text-base',
+        lg: 'h-control-lg px-4 text-base',
+      },
     },
-    defaultVariants: { variant: 'default', size: 'default' },
+    defaultVariants: { variant: 'secondary', size: 'md' },
   },
 )
 
+export type ButtonProps = ComponentProps<'button'> &
+  VariantProps<typeof buttonVariants> & { icon?: LucideIcon; loading?: boolean }
+
 export function Button({
-  className,
   variant,
   size,
-  asChild = false,
+  icon: Icon,
+  loading = false,
+  disabled,
+  type = 'button',
+  className,
+  children,
   ...props
-}: ComponentProps<'button'> &
-  VariantProps<typeof variants> & { asChild?: boolean }) {
-  const Component = asChild ? Slot : 'button'
+}: ButtonProps) {
   return (
-    <Component
-      className={cn(variants({ variant, size }), className)}
+    <button
+      type={type}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      className={cn(buttonVariants({ variant, size }), className)}
       {...props}
-    />
+    >
+      {loading ? <Spinner /> : Icon && <Icon aria-hidden />}
+      {children}
+    </button>
   )
 }

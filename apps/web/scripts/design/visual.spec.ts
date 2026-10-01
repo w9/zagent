@@ -45,8 +45,10 @@ function layoutProblems(page: Page, minTarget: number): Promise<string[]> {
       const box = element.getBoundingClientRect()
       const style = getComputedStyle(element)
       if (box.width === 0 || style.visibility === 'hidden') continue
-      // WCAG 2.5.8 exempts links inside text, and boxes whose label is the target.
-      if (style.display === 'inline' || (element.matches('[type=checkbox], [type=radio]') && element.closest('label'))) {
+      // WCAG 2.5.8 exempts targets inside a sentence, and boxes whose label is the target.
+      const inText = style.display.startsWith('inline') &&
+        (element.parentElement?.textContent ?? '').trim().length > (element.textContent ?? '').trim().length
+      if (inText || (element.matches('[type=checkbox], [type=radio]') && element.closest('label'))) {
         continue
       }
       if (box.width < minTarget || box.height < minTarget) {
@@ -67,7 +69,8 @@ async function focusProblems(page: Page): Promise<string[]> {
     await page.keyboard.press('Tab')
     const focused = await page.evaluate(() => {
       const element = document.activeElement
-      if (!element || element === document.body) return null
+      // Focus inside an embedded app is that app's concern.
+      if (!element || element === document.body || element.tagName === 'IFRAME') return null
       const style = getComputedStyle(element)
       return {
         key: element.outerHTML.slice(0, 120),
@@ -110,9 +113,10 @@ for (const viewport of viewports) {
           const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches)
           expect.soft(await layoutProblems(page, coarse ? 36 : 24)).toEqual([])
           expect.soft(await axeProblems(page)).toEqual([])
-          if (viewport.name === 'desktop-1440') expect.soft(await focusProblems(page)).toEqual([])
+          // Screenshot unfocused, and before tabbing, which scrolls focused elements into view.
           await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
           await expect.soft(page).toHaveScreenshot([story.id, `${viewport.name}-${theme}.png`], { fullPage: true })
+          if (viewport.name === 'desktop-1440') expect.soft(await focusProblems(page)).toEqual([])
         })
       }
     }

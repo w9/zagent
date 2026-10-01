@@ -10,7 +10,8 @@ export default defineConfig({
   outputDir: 'test-results/design',
   fullyParallel: true,
   reporter: 'list',
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.002 } },
+  // Any changed pixel fails; the per-pixel colour threshold absorbs anti-aliasing noise.
+  expect: { toHaveScreenshot: { maxDiffPixels: 0 } },
   use: {
     baseURL: `http://127.0.0.1:${port}`,
     browserName: 'chromium',

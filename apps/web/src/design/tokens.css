@@ -103,6 +103,7 @@
   /* Theme-dependent values that are not utilities */
   --shadow-ink: oklch(0.255 0.02 165 / 0.08);
   --shadow-ink-strong: oklch(0.255 0.02 165 / 0.16);
+  --shimmer-highlight: var(--sage-300);
   --chart-1: oklch(0.58 0.085 165);
   --chart-2: oklch(0.6 0.115 41);
   --chart-3: oklch(0.58 0.075 252);
@@ -211,6 +212,10 @@
   --spacing-12: 48px;
   --spacing-16: 64px;
   --spacing-24: 96px;
+  --spacing-32: 128px;
+  --spacing-48: 192px;
+  --spacing-64: 256px;
+  --spacing-96: 384px;
 
   /* Layout and control dimensions */
   --width-sidebar: 240px;
@@ -226,6 +231,7 @@
   --size-icon-sm: 14px;
   --size-icon: 16px;
   --size-icon-lg: 20px;
+  --height-chart: 280px;
   --max-width-prose: 720px;
 
   /* Viewport breakpoints: app shell only (tablet:, desktop:, wide:, ultra:) */
@@ -259,6 +265,7 @@
   --animate-fade: fade 200ms var(--ease-out) both;
   --animate-pulse: pulse 1.4s ease-in-out infinite;
   --animate-spin: spin 1s linear infinite;
+  --animate-shimmer: shimmer 2s linear infinite;
 
   @keyframes enter {
     from {
@@ -279,6 +286,14 @@
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 100% 0;
+    }
+    to {
+      background-position: 0 0;
     }
   }
 }
@@ -341,6 +356,7 @@
 
   --shadow-ink: oklch(0 0 0 / 0.3);
   --shadow-ink-strong: oklch(0 0 0 / 0.5);
+  --shimmer-highlight: var(--sage-50);
   --chart-1: oklch(0.72 0.085 165);
   --chart-2: oklch(0.72 0.11 41);
   --chart-3: oklch(0.72 0.075 252);

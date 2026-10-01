@@ -11,8 +11,8 @@
     "lint:design": "node scripts/design/lint.ts",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "storybook": "storybook dev --port 6006 --host 127.0.0.1 --no-open",
-    "build:storybook": "storybook build --test --quiet --output-dir storybook-static",
+    "storybook": "npm run build:mcp && storybook dev --port 6006 --host 127.0.0.1 --no-open",
+    "build:storybook": "npm run build:mcp && storybook build --test --quiet --output-dir storybook-static",
     "test:design": "npm run build:storybook && playwright test -c playwright.design.config.ts",
     "preview": "vite preview"
   },

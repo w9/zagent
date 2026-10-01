@@ -113,7 +113,7 @@ test('assistant Markdown streams safely without changing transcript or view navi
   for (const viewport of viewports) {
     await page.setViewportSize(viewport)
     await expect.poll(() => answer.evaluate((element) => {
-      const regions = [...element.querySelectorAll('pre,.markdown-table')]
+      const regions = [...element.querySelectorAll('pre,[data-testid="markdown-table"]')]
       return document.documentElement.scrollWidth <= innerWidth && regions.every((region) => {
         const bounds = region.getBoundingClientRect()
         return bounds.width > 0 && bounds.left >= 0 && bounds.right <= innerWidth + 1
@@ -126,7 +126,7 @@ test('assistant Markdown streams safely without changing transcript or view navi
   await page.reload()
   await expect(answer).toContainText('Arin **Vellorin**')
   expect(await answer.innerHTML()).toBe(completed)
-  await page.locator('a.view-reference').click()
+  await page.getByTestId('view-reference').click()
   await expect(page).toHaveURL(/view=validated-view/)
   await expect(page.getByRole('cell', { name: 'published-value', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /X-ray/ }).click()
@@ -136,7 +136,7 @@ test('assistant Markdown streams safely without changing transcript or view navi
   const modelTab = page.getByRole('tab', { name: 'Model', exact: true })
   if (await modelTab.isVisible()) await modelTab.click()
   const model = page.getByRole('region', { name: 'Model-visible requests' })
-  expect(await model.locator('.xray-message pre').textContent()).toBe(text)
+  expect(await model.locator('[data-testid="xray-message"] pre').textContent()).toBe(text)
   await expect(model.locator('strong,table,a,img,script')).toHaveCount(0)
   await expect(model.locator('[data-token="[PT_1]"][aria-pressed="true"]').first()).toBeVisible()
   expect(writes).toEqual([])
@@ -156,8 +156,8 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   await send(page, 'What specimens came in yesterday for patient NGC-0041872?')
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
   const step = page.getByTestId('step-marker').filter({ hasText: 'find_specimens' }).first()
-  expect(await step.getAttribute('open')).toBeNull()
-  await step.locator('summary').click()
+  await expect(step).toHaveAttribute('data-open', 'false')
+  await step.getByRole('button', { name: 'Step details' }).click()
   await expect(step).toContainText('query-0002')
   await expect(step).toContainText('Arguments')
   await expect(step).toContainText('Result')
@@ -168,7 +168,7 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   const firstView = await page.getByTestId('active-view').getAttribute('data-view-id')
   const chatTab = page.getByRole('tab', { name: 'Conversation', exact: true })
   if (await chatTab.isVisible()) await chatTab.click()
-  await page.locator(`a.view-link[data-view-id="${firstView}"]`).first().click()
+  await page.locator(`a[data-testid="view-link"][data-view-id="${firstView}"]`).first().click()
   await expect(page).toHaveURL(new RegExp(`view=${firstView}`))
   await page.reload()
   await expect(page.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
@@ -183,10 +183,10 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
   await surface(page)
   await expect(page.getByTestId('view-position')).toHaveText('View 3 of 3')
-  await expect(page.locator('.chart-canvas svg')).toBeVisible()
-  await expect(page.locator('.chart-canvas .mark-rect.role-mark path')).toHaveCount(3)
+  await expect(page.locator('[data-testid="chart-canvas"] svg')).toBeVisible()
+  await expect(page.locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
   await page.reload()
-  await expect(page.locator('.chart-canvas .mark-rect.role-mark path')).toHaveCount(3)
+  await expect(page.locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
 
   const viewports = testInfo.project.name === 'mobile'
     ? [{ width: 390, height: 844 }, { width: 320, height: 568 }]
@@ -194,13 +194,13 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   for (const viewport of viewports) {
     await page.setViewportSize(viewport)
     await expect.poll(() => page.evaluate(() => {
-      const chart = document.querySelector('.chart-canvas svg')!.getBoundingClientRect()
-      const panel = document.querySelector('.surface-content')!.getBoundingClientRect()
+      const chart = document.querySelector('[data-testid="chart-canvas"] svg')!.getBoundingClientRect()
+      const panel = document.querySelector('[data-testid="active-view"]')!.getBoundingClientRect()
       return chart.width > 100 && chart.height > 200 && chart.left >= panel.left
         && chart.right <= panel.right + 1 && document.documentElement.scrollWidth <= innerWidth
     })).toBe(true)
     const visiblePixels = await page.evaluate(async () => {
-      const svg = document.querySelector('.chart-canvas svg')!
+      const svg = document.querySelector('[data-testid="chart-canvas"] svg')!
       const bounds = svg.getBoundingClientRect()
       const image = new Image()
       image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`
@@ -226,11 +226,11 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   await expect(page.getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
   const beforeNavigation = await (await request.get(`/api/sessions/${session.id}/snapshot`)).json()
   if (await chatTab.isVisible()) await chatTab.click()
-  await page.locator(`a.view-link[data-view-id="${firstView}"]`).first().click()
+  await page.locator(`a[data-testid="view-link"][data-view-id="${firstView}"]`).first().click()
   await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', firstView!)
   if (await chatTab.isVisible()) await chatTab.click()
   const chartView = beforeNavigation.views[2].id
-  await page.locator(`a.view-link[data-view-id="${chartView}"]`).first().click()
+  await page.locator(`a[data-testid="view-link"][data-view-id="${chartView}"]`).first().click()
   await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', chartView)
   await page.goBack()
   await surface(page)
@@ -243,7 +243,7 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   const emptySession = await (await request.post('/api/sessions')).json()
   await page.goto(`/sessions/${emptySession.id}?view=${chartView}&panel=surface`)
   await expect(page.getByRole('alert')).toContainText('View unavailable')
-  await expect(page.locator('.chart-canvas')).toHaveCount(0)
+  await expect(page.locator('[data-testid="chart-canvas"]')).toHaveCount(0)
   expect(errors).toEqual([])
 })
 
@@ -336,7 +336,7 @@ test('X-ray links resolved identifiers to the actual token-only model requests',
   await expect(modelPane).toContainText('[PT_1]')
   await expect(modelPane).not.toContainText('NGC-0041872')
   await expect(modelPane).not.toContainText('Mira Vellorin')
-  await expect(modelPane.locator('.privacy-token[aria-pressed="true"]:visible').first()).toBeVisible()
+  await expect(modelPane.locator('[data-token][aria-pressed="true"]:visible').first()).toBeVisible()
   const xray = await (await request.get(`/api/sessions/${session.id}/xray`)).json()
   expect(xray.requests.length).toBeGreaterThan(1)
   expect(JSON.stringify(xray.requests)).not.toContain('NGC-0041872')

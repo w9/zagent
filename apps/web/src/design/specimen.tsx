@@ -125,7 +125,7 @@ function ThemeColumn({ theme }: { theme: 'light' | 'dark' }) {
           <button className="inline-flex h-control items-center rounded-md px-3 text-sm font-medium text-muted outline-2 outline-offset-2 outline-focus">
             Focused
           </button>
-          <button disabled className="inline-flex h-control items-center rounded-md bg-accent px-3 text-sm font-medium text-on-accent opacity-50">
+          <button disabled className="inline-flex h-control items-center rounded-md bg-accent px-3 text-sm font-medium text-on-accent disabled:opacity-50">
             Disabled
           </button>
         </div>

@@ -27,8 +27,8 @@
     background: var(--background-color-privacy-selected);
   }
   :focus-visible {
-    outline: 2px solid var(--outline-color-focus);
-    outline-offset: 2px;
+    outline: var(--focus-ring-width) solid var(--outline-color-focus);
+    outline-offset: var(--focus-ring-offset);
   }
   button:not(:disabled),
   [role='button']:not([aria-disabled='true']),
@@ -41,15 +41,14 @@
     accent-color: var(--background-color-accent);
   }
   svg.lucide {
-    stroke-width: 1.75;
+    stroke-width: var(--icon-stroke-width);
   }
   @media (prefers-reduced-motion: reduce) {
     *,
     ::before,
     ::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
+      animation: none !important;
+      transition: none !important;
     }
   }
 }

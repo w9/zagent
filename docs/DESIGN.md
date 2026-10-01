@@ -136,9 +136,12 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 - **TOKEN-03** No arbitrary values (`p-[13px]`, `bg-[#fff]`, `text-(--x)`). Exception:
   `grid-cols-[…]` and `grid-rows-[…]` in shell layout, using only `fr`, `minmax`, `auto` and tokens.
   `[lint]`
-- **TOKEN-04** Class names are complete string literals, never built with `${}`, so Tailwind can
-  see them. Pick between literals instead. `[lint]`
-- **TOKEN-05** A new token comes with a row in section 2 saying what it is for. `[review]`
+- **TOKEN-04** Class names are complete string literals, never built with `${}` or `+`, so Tailwind
+  can see them. Pick between literals instead. Class strings live only in `className` attributes,
+  `cn()`, `clsx()` and `cva()` calls, or properties and variables named `className` or
+  `…ClassName`; those are what the checks read. `[lint]`
+- **TOKEN-05** Every color role and type size has a row in section 2 saying what it is for.
+  `[test]`
 
 ### Color
 
@@ -168,7 +171,7 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 - **SPACE-02** Panel content insets: `px-4` below `tablet:`, `px-6` from `tablet:`. Headers,
   lists and content in one panel share the same left edge. `[visual]`
 - **LAYOUT-01** The app shell follows the contract in section 4 at every breakpoint. `[visual]`
-- **LAYOUT-02** Only the app shell (AppShell, TopBar, sidebar) uses viewport variants; other
+- **LAYOUT-02** Only the app shell (`src/components/shell/`) uses viewport variants; other
   components adapt with container queries. `[lint]`
 - **LAYOUT-03** No horizontal page overflow at any viewport. Only designated regions scroll:
   session list, transcript, working-surface content, table and code blocks (both axes), X-ray
@@ -241,7 +244,8 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
   `dark`, `system`; default `system`) is resolved before first paint, and `system` follows the OS
   live. `[test]`
 - **THEME-02** Components never branch on theme: no `dark:` variant, no theme checks in render
-  code. Charts and MCP apps read tokens at runtime and re-read on theme change. `[lint]`
+  code. Only the theme module (`src/lib/theme.ts`) sets `data-theme` or reads the OS preference.
+  Charts and MCP apps read tokens at runtime and re-read on theme change. `[lint]`
 - **THEME-03** Every story is verified in both themes. `[visual]`
 
 ### Components
@@ -351,9 +355,13 @@ Primitives live in `src/components/ui/`. Each row has a story file next to the c
 
 | Check | Command | Covers |
 |---|---|---|
-| Lexical | `npm --prefix apps/web run lint:design` (part of `make lint`) | `[lint]` rules |
-| Tokens | `npm --prefix apps/web test` | COLOR-05, scale integrity, THEME-01 |
+| Lexical | `npm --prefix apps/web run lint:design [paths…]` | `[lint]` rules |
+| Unit | `npm --prefix apps/web test` | `[test]` rules; the lint's own fixtures |
 | Visual | `npm --prefix apps/web run test:design` | `[visual]` rules over every story |
+
+The checks live in `apps/web/scripts/design/`. Tailwind's compiler, loaded with `tokens.css`,
+decides whether a class exists. The unit tests also fail when a `[lint]` rule in this file has no
+implementation or fixture, or when a color role or type size is missing from section 2.
 
 The visual check renders every story at 360, 768, 1024, 1440, 1920 and 2560px wide, in light and
 dark, and checks overflow, target size, focus visibility and accessibility, then compares against

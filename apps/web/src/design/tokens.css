@@ -95,6 +95,11 @@
   --blue-900: oklch(0.31 0.048 252);
   --blue-950: oklch(0.235 0.035 252);
 
+  /* Theme-independent values that are not utilities */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --icon-stroke-width: 1.75;
+
   /* Theme-dependent values that are not utilities */
   --shadow-ink: oklch(0.255 0.02 165 / 0.08);
   --shadow-ink-strong: oklch(0.255 0.02 165 / 0.16);

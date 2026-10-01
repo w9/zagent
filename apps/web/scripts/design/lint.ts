@@ -12,8 +12,8 @@ type Reporter = (line: number, column: number, rule: string, message: string) =>
 // Files allowed to break one rule, relative to apps/web. A trailing slash allows a directory.
 const allow = {
   serif: ['src/components/shell/wordmark.tsx', 'src/components/ui/empty-state.tsx', 'src/design/specimen.tsx'],
-  viewport: ['src/components/shell/', 'src/design/specimen.tsx'],
-  theme: ['src/lib/theme.ts', 'src/design/specimen.tsx', '.storybook/'],
+  viewport: ['src/components/shell/'],
+  theme: ['src/lib/theme.ts', '.storybook/'],
   iconOnly: ['src/components/ui/icon-button.tsx'],
 }
 const isAllowed = (list: string[], file: string) =>

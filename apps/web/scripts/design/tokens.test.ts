@@ -34,7 +34,6 @@ const nonTextPairs: [string, string[]][] = [
   ['--border-color-accent', ['surface', 'subtle']],
   ['--outline-color-focus', ['surface', 'subtle', 'muted']],
 ]
-const exemptText = ['disabled']
 const exemptBackground = ['overlay']
 
 describe('primitives', () => {
@@ -98,7 +97,7 @@ describe('semantic colors', () => {
   test('the contrast policy covers every text and background role', () => {
     const coveredText = new Set(textPairs.map(([text]) => text))
     const coveredBackground = new Set(textPairs.flatMap(([, backgrounds]) => backgrounds))
-    expect(roles(tokens, 'text-color').filter((role) => !coveredText.has(role) && !exemptText.includes(role))).toEqual([])
+    expect(roles(tokens, 'text-color').filter((role) => !coveredText.has(role))).toEqual([])
     expect(
       roles(tokens, 'background-color').filter((role) => !coveredBackground.has(role) && !exemptBackground.includes(role)),
     ).toEqual([])

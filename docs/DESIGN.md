@@ -59,7 +59,6 @@ Color namespaces are role-scoped: `bg-surface` exists, `text-surface` does not.
 | `strong` | Headings, selected labels, values that must stand out |
 | `default` | Body text and UI labels |
 | `muted` | Secondary text, metadata, placeholders, inactive icons |
-| `disabled` | Disabled controls only (exempt from contrast) |
 | `inverse` | Text on `bg-inverse` |
 | `on-accent` | Text and icons on `bg-accent` |
 | `accent` | Links, active navigation |
@@ -207,8 +206,8 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 ### Accessibility
 
 - **A11Y-01** Automated accessibility checks pass on every story in both themes. `[visual]`
-- **A11Y-02** Targets are at least 24×24px; on touch screens controls use the larger control
-  tokens automatically. `[visual]`
+- **A11Y-02** Targets are at least 24×24px, and 36×36px on touch screens, where the control tokens
+  grow automatically. Links inside text and checkboxes inside their label are exempt. `[visual]`
 - **A11Y-03** Icon-only buttons have an accessible name and a tooltip with the same text.
   `[lint]`
 - **A11Y-04** Color is never the only signal (see COLOR-04). `[review]`
@@ -321,7 +320,7 @@ Primitives live in `src/components/ui/`. Each row has a story file next to the c
 |---|---|
 | `--color-background-primary` / `secondary` / `tertiary` / `inverse` | `bg-surface` / `subtle` / `muted` / `inverse` |
 | `--color-background-{info,danger,success,warning}` | `bg-*-subtle` |
-| `--color-text-primary` / `secondary` / `tertiary` / `inverse` / `disabled` | `text-default` / `muted` / `muted` / `inverse` / `disabled` |
+| `--color-text-primary` / `secondary` / `tertiary` / `inverse` / `disabled` | `text-default` / `muted` / `muted` / `inverse` / `muted` |
 | `--color-text-{info,danger,success,warning}` | matching `text-*` |
 | `--color-border-primary` / `secondary` / `tertiary` | `border-default` / `subtle` / `subtle` |
 | `--color-border-{info,danger,success,warning}` | matching `border-*` |
@@ -347,7 +346,7 @@ Primitives live in `src/components/ui/`. Each row has a story file next to the c
 
 1. Change `tokens.css` or this file first, in the same commit as the code that needs it.
 2. Keep both themes in step: a new semantic role gets a light and a dark value.
-3. Run the checks below; review the token specimen story in both themes.
+3. Run the checks below; review the `Design system/Tokens` story in both themes.
 
 ---
 
@@ -363,6 +362,27 @@ The checks live in `apps/web/scripts/design/`. Tailwind's compiler, loaded with 
 decides whether a class exists. The unit tests also fail when a `[lint]` rule in this file has no
 implementation or fixture, or when a color role or type size is missing from section 2.
 
-The visual check renders every story at 360, 768, 1024, 1440, 1920 and 2560px wide, in light and
-dark, and checks overflow, target size, focus visibility and accessibility, then compares against
-local screenshot baselines (untracked until the design is stable).
+Storybook (`npm --prefix apps/web run storybook`, port 6006) has a theme switch and the viewport
+presets below. The visual check builds Storybook, then renders every story at each viewport in
+[matrix.ts](../apps/web/src/design/matrix.ts), in light and dark, with reduced motion:
+
+| Viewport | Size | Touch |
+|---|---|---|
+| `phone-360` | 360×780 | yes |
+| `tablet-768` | 768×1024 | yes |
+| `desktop-1280` | 1280×800 | no |
+| `desktop-1440` | 1440×900 | no |
+| `wide-1920` | 1920×1080 | no |
+| `ultra-2560` | 2560×1440 | no |
+
+Each width is the narrowest of its breakpoint range, where layouts are most cramped. Every render
+is checked for LAYOUT-03, LAYOUT-04, A11Y-01, A11Y-02 and MOTION-02; STATE-02 is checked by
+tabbing through each story at `desktop-1440`. Then the page is compared with its baseline in
+`apps/web/.design-baselines/<story>/<viewport>-<theme>.png`, which is untracked until the design
+is stable.
+
+- Filter: `npm --prefix apps/web run test:design -- -g "phone-360 design-system-tokens"`.
+- A new story's first run records its baselines and reports them as missing; the next run
+  compares.
+- Accept an intended change: `npm --prefix apps/web run test:design -- --update-snapshots=changed`.
+- Failures, with actual and diff images, are in `apps/web/test-results/design/`.

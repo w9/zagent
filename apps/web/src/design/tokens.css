@@ -137,7 +137,6 @@
   --text-color-strong: var(--sage-900);
   --text-color-default: var(--sage-800);
   --text-color-muted: var(--sage-600);
-  --text-color-disabled: var(--sage-400);
   --text-color-inverse: var(--sage-25);
   --text-color-on-accent: var(--sage-0);
   --text-color-accent: var(--green-700);
@@ -318,7 +317,6 @@
   --text-color-strong: var(--sage-50);
   --text-color-default: var(--sage-150);
   --text-color-muted: var(--sage-400);
-  --text-color-disabled: var(--sage-600);
   --text-color-inverse: var(--sage-900);
   --text-color-on-accent: var(--sage-0);
   --text-color-accent: var(--green-300);

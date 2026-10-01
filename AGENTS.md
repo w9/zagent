@@ -30,10 +30,11 @@ Guidance for coding agents in this repository. Product overview and full configu
 - Design checks live in `apps/web/scripts/design/`: `npm --prefix apps/web run lint:design` for
   the lexical rules, `npm --prefix apps/web test` for tokens and contrast. New UI code must lint
   clean; legacy files fail until the UI rewrite replaces them.
-- The token specimen is `/specimen.html` on the Vite dev server. Check token changes there in both
-  themes.
-- Confirm UI changes visually with Playwright, in light and dark, at the viewport widths listed in
-  DESIGN.md section 9.
+- Storybook: `npm --prefix apps/web run storybook` (port 6006). The token overview is the
+  `Design system/Tokens` story; check token changes there in both themes.
+- Confirm UI changes with `npm --prefix apps/web run test:design`, which checks every story at
+  every viewport in both themes and compares screenshots. Look at the screenshots, not just the
+  result. Details in DESIGN.md section 9.
 
 ## Running several clones side by side
 

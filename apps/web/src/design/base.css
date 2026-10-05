@@ -1,0 +1,73 @@
+/* Element defaults. Values come from tokens.css; see docs/DESIGN.md. */
+@layer base {
+  html {
+    color-scheme: light;
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    color: var(--text-color-default);
+    background: var(--background-color-surface);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+  }
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border-color-subtle);
+  }
+  ::placeholder {
+    color: var(--text-color-muted);
+  }
+  ::selection {
+    background: var(--background-color-privacy-selected);
+  }
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--outline-color-focus);
+    outline-offset: var(--focus-ring-offset);
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary {
+    cursor: pointer;
+  }
+  input[type='checkbox'],
+  input[type='radio'],
+  progress {
+    accent-color: var(--background-color-accent);
+  }
+  svg.lucide {
+    stroke-width: var(--icon-stroke-width);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+/* Running work: a highlight sweeps across the text. Static under reduced motion. */
+@utility shimmer {
+  background-image: linear-gradient(
+    90deg,
+    currentColor 35%,
+    var(--shimmer-highlight) 50%,
+    currentColor 65%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: var(--animate-shimmer);
+
+  @media (prefers-reduced-motion: reduce) {
+    background-image: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}

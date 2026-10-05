@@ -96,13 +96,13 @@ async function interruptibleProxy(target: string) {
 async function assertLayout(page: Page) {
   const result = await page.evaluate(() => {
     const composer = document
-      .querySelector('.composer')!
+      .querySelector('[data-testid="composer"]')!
       .getBoundingClientRect()
     const header = document
-      .querySelector('.chat-heading')!
+      .querySelector('#conversation-panel > header')!
       .getBoundingClientRect()
     const footer = document
-      .querySelector('.composer-footer')!
+      .querySelector('[data-testid="composer-footer"]')!
       .getBoundingClientRect()
     return {
       overflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -285,10 +285,8 @@ test('view history survives refresh, pauses following, and rejects invalid specs
     page.getByRole('heading', { name: 'Intake quality checks', exact: true }),
   ).toBeVisible()
   await expect(page.getByTestId('step-marker')).toHaveCount(2)
-  expect(
-    await page.getByTestId('step-marker').first().getAttribute('open'),
-  ).toBeNull()
-  await page.getByTestId('step-marker').first().locator('summary').click()
+  await expect(page.getByTestId('step-marker').first()).toHaveAttribute('data-open', 'false')
+  await page.getByTestId('step-marker').first().getByRole('button', { name: 'Step details' }).click()
   await expect(
     page.getByText('14 synthetic specimens; 6 displayed in this snapshot.'),
   ).toBeVisible()
@@ -383,12 +381,12 @@ test('mobile working surface retains selection and both panels remain accessible
     await page.setViewportSize(viewport)
     const layout = await page.evaluate(() => {
       const content = document
-        .querySelector('.surface-content')!
+        .querySelector('[data-testid="active-view"]')!
         .getBoundingClientRect()
       const navigation = document
-        .querySelector('.view-navigation')!
+        .querySelector('nav[aria-label="View navigation"]')!
         .getBoundingClientRect()
-      const scroll = document.querySelector('.data-table-scroll')!
+      const scroll = document.querySelector('[data-testid="table-scroll"]')!
       return {
         noPageOverflow: document.documentElement.scrollWidth <= innerWidth,
         noOverlap: content.top >= navigation.bottom,

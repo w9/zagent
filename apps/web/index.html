@@ -6,6 +6,17 @@
     <meta name="theme-color" content="#267359" />
     <meta name="description" content="Zagent, a synthetic clinical genomics workspace." />
     <title>Zagent | Clinical Genomics</title>
+    <script>
+      try {
+        var saved = localStorage.getItem('zagent.theme')
+      } catch (error) {}
+      document.documentElement.dataset.theme =
+        saved === 'light' || saved === 'dark'
+          ? saved
+          : matchMedia('(prefers-color-scheme: dark)').matches
+            ? 'dark'
+            : 'light'
+    </script>
   </head>
   <body>
     <div id="root"></div>

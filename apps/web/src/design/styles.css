@@ -1,0 +1,6 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './base.css';
+
+/* The design checks contain deliberately invalid classes. */
+@source not '../../scripts';

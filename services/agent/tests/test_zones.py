@@ -23,9 +23,22 @@ def test_agent_zone_shares_no_network_with_clinical_data():
     assert bridges == {"tools", "jobs", "tokenizer", "event-db", "collector", "display-relay"}
 
 
+def test_knowledge_zone_is_reachable_only_through_the_broker():
+    assert service_networks("kb") == {"knowledge"}
+    assert COMPOSE["services"]["kb-publish"]["network_mode"] == "none"
+    members = {name for name in COMPOSE["services"] if "knowledge" in service_networks(name)}
+    assert members - {"kb"} == {"mcp-broker", "collector"}
+    assert service_networks("mcp-broker") == {"agent", "knowledge"}
+    agent = COMPOSE["services"]["agent"]["environment"]
+    assert agent["ZAGENT_BROKER_URL"].startswith("http://mcp-broker:")
+    assert not any("kb:" in str(value) for value in agent.values())
+
+
 def test_only_gateway_has_internet_egress():
     networks = COMPOSE["networks"]
-    assert all(networks[name]["internal"] for name in ("clinical", "agent", "telemetry"))
+    assert all(
+        networks[name]["internal"] for name in ("clinical", "agent", "knowledge", "telemetry")
+    )
     options = networks["edge"]["driver_opts"]
     assert options["com.docker.network.bridge.enable_ip_masquerade"] == "false"
     assert [name for name in COMPOSE["services"] if "egress" in service_networks(name)] == [
@@ -54,22 +67,37 @@ def test_agent_reaches_privacy_and_events_only_through_restricted_endpoints():
 
 def test_zone_targets_deny_clinical_data_by_name_and_address():
     zones = runpy.run_path(str(ROOT / "deploy/compose/zones.py"))
+    clinical = ("postgres", "privacy", "bff", "web")
+    agent_services = ("agent", "gateway", "tools", "jobs", "tokenizer", "event-db")
     running = {
-        name: {"NetworkSettings": {"Networks": {"zagent_clinical": {"IPAddress": f"10.0.0.{i}"}}}}
-        for i, name in enumerate(("postgres", "privacy", "bff", "web"), start=1)
+        name: {"NetworkSettings": {"Networks": {"zagent_any": {"IPAddress": f"10.0.0.{i}"}}}}
+        for i, name in enumerate((*clinical, "kb", *agent_services), start=1)
     }
-    for source in ("agent", "gateway", "kb", "worker"):
+    address = {name: f"10.0.0.{i}" for i, name in enumerate(running, start=1)}
+
+    def denied(source):
+        return {
+            target["host"]
+            for target in zones["targets_for"](source, running)
+            if not target["allowed"]
+        }
+
+    for source in ("agent", "gateway", "kb", "mcp-broker", "worker"):
+        assert {*clinical, *(address[name] for name in clinical)} <= denied(source)
         targets = zones["targets_for"](source, running)
-        denied = {target["host"] for target in targets if not target["allowed"]}
-        assert {"postgres", "privacy", "bff", "web"} <= denied
-        assert {f"10.0.0.{i}" for i in range(1, 5)} <= denied
         internet = next(target for target in targets if target["name"] == "internet")
         assert internet["allowed"] is (source == "gateway")
+    for source in ("agent", "gateway", "worker"):
+        assert {"kb", address["kb"]} <= denied(source)
+    assert {*agent_services, *(address[name] for name in agent_services)} <= denied("kb")
     assert not any(
-        target["host"] in {"postgres", "privacy"}
+        target["host"] in {"postgres", "privacy", "kb"}
         for target in zones["targets_for"]("agent", running)
         if target["allowed"]
     )
+    broker = zones["targets_for"]("mcp-broker", running)
+    allowed = {target["host"] for target in broker if target["allowed"]}
+    assert allowed == {"kb", "tokenizer", "collector"}
 
 
 def test_network_probe_requires_matching_positive_and_negative_results(monkeypatch):

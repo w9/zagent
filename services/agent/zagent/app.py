@@ -56,7 +56,7 @@ class Settings(BaseModel):
         default_factory=lambda: os.environ.get("ZAGENT_TOOLS_URL", "http://127.0.0.1:8002/mcp")
     )
     jobs_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_JOBS_URL"))
-    kb_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_KB_URL"))
+    broker_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_BROKER_URL"))
     site_id: str = "northgate"
     display_mode: bool = Field(
         default_factory=lambda: os.environ.get("ZAGENT_DISPLAY_MODE", "1") == "1"
@@ -132,7 +132,9 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                             McpToolClient(
                                 url=settings.tools_url,
                                 jobs_url=settings.jobs_url,
-                                kb_url=settings.kb_url,
+                                knowledge=McpToolClient(url=settings.broker_url)
+                                if settings.broker_url
+                                else None,
                             ),
                         ),
                         max_tokens=settings.agent_max_tokens,

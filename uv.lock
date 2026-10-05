@@ -8,6 +8,12 @@ resolution-markers = [
     "python_full_version < '3.14' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "zagent",
+    "zknowledge",
+]
+
 [[package]]
 name = "annotated-doc"
 version = "0.0.5"
@@ -1743,6 +1749,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
+    { name = "zknowledge" },
 ]
 
 [package.metadata]
@@ -1772,4 +1779,30 @@ dev = [
     { name = "pytest", specifier = ">=8,<10" },
     { name = "pytest-asyncio", specifier = ">=0.25,<2" },
     { name = "ruff", specifier = ">=0.11,<1" },
+    { name = "zknowledge", editable = "services/knowledge" },
+]
+
+[[package]]
+name = "zknowledge"
+version = "0.1.0"
+source = { editable = "services/knowledge" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "mcp" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-instrumentation-fastapi" },
+    { name = "opentelemetry-sdk" },
+    { name = "pydantic" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "mcp", specifier = ">=1.20,<2" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.30,<2" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.51b0,<1" },
+    { name = "opentelemetry-sdk", specifier = ">=1.30,<2" },
+    { name = "pydantic", specifier = ">=2.10,<3" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.34,<1" },
 ]

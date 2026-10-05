@@ -1,0 +1,58 @@
+[
+  {
+    "name": "read_document",
+    "description": "Read at most 30 lines of a document from the snapshot named by version.",
+    "inputSchema": {
+      "properties": {
+        "document": {
+          "maxLength": 100,
+          "pattern": "^[a-z0-9-]+$",
+          "title": "Document",
+          "type": "string"
+        },
+        "start_line": {
+          "minimum": 1,
+          "title": "Start Line",
+          "type": "integer"
+        },
+        "end_line": {
+          "minimum": 1,
+          "title": "End Line",
+          "type": "integer"
+        },
+        "version": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "start_line",
+        "end_line",
+        "version"
+      ],
+      "title": "read_documentArguments",
+      "type": "object"
+    }
+  },
+  {
+    "name": "search_knowledge",
+    "description": "Search published knowledge. Returns line matches and the snapshot version.",
+    "inputSchema": {
+      "properties": {
+        "query": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Query",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "title": "search_knowledgeArguments",
+      "type": "object"
+    }
+  }
+]

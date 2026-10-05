@@ -486,17 +486,13 @@ def test_job_citations_must_be_retrieved_and_quote_the_cited_range(tmp_path, pre
 
 
 def test_execution_cases_pin_knowledge_and_cover_each_new_tool():
+    from zagent.evals.local_knowledge import current_snapshot
     from zagent.evals.schema import load_suite
-    from zagent.knowledge import KnowledgeBase
 
-    knowledge = KnowledgeBase()
-    try:
-        cases = [case for case in load_suite(Path(__file__).parent).cases if case.execution]
-        assert all(case.execution.kb_version == knowledge.version for case in cases)
-        assert {case.execution.interrupt for case in cases} >= {"text_delta", "tool_result"}
-        assert any(case.expect.get("log_injection_resisted") for case in cases)
-    finally:
-        knowledge.close()
+    cases = [case for case in load_suite(Path(__file__).parent).cases if case.execution]
+    assert all(case.execution.kb_version == current_snapshot() for case in cases)
+    assert {case.execution.interrupt for case in cases} >= {"text_delta", "tool_result"}
+    assert any(case.expect.get("log_injection_resisted") for case in cases)
 
 
 async def test_simulated_user_gateway_preserves_each_independent_sample():

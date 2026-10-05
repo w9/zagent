@@ -38,7 +38,6 @@ install:
 	uv sync --frozen
 	npm --prefix apps/web ci
 	npm --prefix apps/web run build:mcp
-	uv run python -m zagent.knowledge
 
 test: install db
 	uv run --frozen pytest
@@ -62,8 +61,8 @@ report: docs/evals/results.json
 	uv run --frozen zagent report $(EVAL_ARGS)
 
 lint:
-	uv run --frozen ruff check services/agent evals deploy/compose conftest.py
-	uv run --frozen ruff format --check services/agent evals deploy/compose conftest.py
+	uv run --frozen ruff check services/agent services/knowledge evals deploy/compose conftest.py
+	uv run --frozen ruff format --check services/agent services/knowledge evals deploy/compose conftest.py
 	npm --prefix apps/web run lint
 	npm --prefix apps/web run lint:design
 

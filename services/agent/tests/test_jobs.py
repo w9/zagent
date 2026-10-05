@@ -58,32 +58,6 @@ def test_eviction_retries_once_and_long_jobs_have_more_progress():
     assert [item.sequence for item in long] == list(range(1, len(long) + 1))
 
 
-def test_knowledge_index_is_versioned_read_only_and_line_exact(tmp_path):
-    from importlib.resources import files
-    from pathlib import Path
-
-    from zagent.knowledge import KnowledgeBase, build_index, source_version
-
-    source = Path(str(files("zagent").joinpath("sops")))
-    path = tmp_path / "knowledge.sqlite3"
-    version = build_index(source, path)
-    knowledge = KnowledgeBase(path)
-    try:
-        assert version == source_version(source) == knowledge.version
-        hits = knowledge.search("genotype concordance")
-        match = hits["matches"][0]
-        excerpt = knowledge.read(match["document"], match["start_line"], match["end_line"], version)
-        assert excerpt["text"] == match["text"]
-        with pytest.raises(ValueError, match="version mismatch"):
-            knowledge.read(match["document"], 1, 2, "old")
-        import sqlite3
-
-        with pytest.raises(sqlite3.OperationalError):
-            knowledge.connection.execute("DELETE FROM lines")
-    finally:
-        knowledge.close()
-
-
 @pytest.mark.integration
 async def test_lease_takeover_deduplicates_logs_and_fences_stale_dispatcher(store):
     from test_drafts import fixture_draft
@@ -176,6 +150,7 @@ async def test_live_job_handles_keep_identity_and_session_scope(store):
 @pytest.mark.integration
 async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
     from test_drafts import fixture_draft
+    from zagent.evals.local_knowledge import local_broker
     from zagent.job_tools import JobsTools
     from zagent.jobs import JobStore
     from zagent.tools import ClinicalTools
@@ -196,12 +171,12 @@ async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
     )
     assert result["status"] == "failed"
     assert result["logs"][-1]["code"] == "genotype_concordance_failed"
-    found = await tools.dispatch(
-        session.id, turn.conversation_turn_id, "search_knowledge", {"query": "genotype concordance"}
+    knowledge = local_broker(store.privacy)
+    found = await knowledge.dispatch(
+        session.id, "search_knowledge", {"query": "genotype concordance"}
     )
-    excerpt = await tools.dispatch(
+    excerpt = await knowledge.dispatch(
         session.id,
-        turn.conversation_turn_id,
         "read_document",
         {
             "document": "specimen-identity",
@@ -414,27 +389,3 @@ async def test_cleanup_failure_keeps_job_claim_recoverable(store, tmp_path):
     finally:
         executor.close()
         recovered.close()
-
-
-async def test_knowledge_service_needs_no_database():
-    from zagent.kb_server import create_kb_server
-    from zagent.store import AgentSession
-    from zagent.tools import McpToolClient
-
-    tools = McpToolClient(server=create_kb_server())
-    session = AgentSession(
-        id=uuid4(), conversation_turn_id=uuid4(), message="Find the identity SOP"
-    )
-    result = await tools.call(session, "search_knowledge", {"query": "genotype concordance"})
-    assert result["matches"]
-    match = result["matches"][0]
-    excerpt = await tools.call(
-        session,
-        "read_document",
-        {
-            key: value
-            for key, value in {**match, "version": result["version"]}.items()
-            if key != "text"
-        },
-    )
-    assert excerpt["text"] == match["text"]

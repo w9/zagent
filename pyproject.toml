@@ -31,7 +31,19 @@ dependencies = [
 zagent = "zagent.cli:main"
 
 [dependency-groups]
-dev = ["hypothesis>=6,<7", "pytest>=8,<10", "pytest-asyncio>=0.25,<2", "ruff>=0.11,<1"]
+dev = [
+    "hypothesis>=6,<7",
+    "pytest>=8,<10",
+    "pytest-asyncio>=0.25,<2",
+    "ruff>=0.11,<1",
+    "zknowledge",
+]
+
+[tool.uv.workspace]
+members = ["services/knowledge"]
+
+[tool.uv.sources]
+zknowledge = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["services/agent/zagent"]
@@ -40,7 +52,7 @@ packages = ["services/agent/zagent"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
-testpaths = ["services/agent/tests", "evals"]
+testpaths = ["services/agent/tests", "services/knowledge/tests", "evals"]
 markers = ["integration: requires Postgres", "chaos: seeded SSE interruption trials"]
 
 [tool.ruff]

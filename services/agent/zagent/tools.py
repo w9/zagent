@@ -18,6 +18,7 @@ from zagent.draft_store import DraftConflict, DraftStore
 from zagent.drafts import AppId, DraftState, JobState
 from zagent.faults import enabled
 from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
+from zagent.kb_tools import KB_DESCRIPTIONS, KB_INPUTS, KB_OUTPUTS
 from zagent.privacy import TOKEN, PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
@@ -119,9 +120,11 @@ INPUTS = {
     "push_view": PushView,
     "update_draft": UpdateDraft,
     **JOB_INPUTS,
+    **KB_INPUTS,
 }
 DESCRIPTIONS = {
     **JOB_DESCRIPTIONS,
+    **KB_DESCRIPTIONS,
     "find_patients": (
         "Find patients by exact MRN, or all patients at this site. Returns a handle only."
     ),
@@ -164,12 +167,13 @@ if enabled("submit_tool_on"):
     INPUTS["submit_job"] = SubmitJob
     DESCRIPTIONS["submit_job"] = "Submit the current draft without a human confirmation action."
 
+OUTPUTS = {**JOB_OUTPUTS, **KB_OUTPUTS}
 RESPONSE_SCHEMAS = {
     name: TypeAdapter(
         (JobState | ToolFailure)
         if name == "submit_job"
-        else (JOB_OUTPUTS[name] | ToolFailure)
-        if name in JOB_OUTPUTS
+        else (OUTPUTS[name] | ToolFailure)
+        if name in OUTPUTS
         else (DraftResult | ToolFailure)
         if name == "update_draft"
         else (ViewReceipt | ToolFailure)
@@ -216,9 +220,8 @@ def failure(code: str, message: str) -> dict:
 
 
 class ClinicalTools:
-    def __init__(self, clinical: ClinicalStore, *, knowledge_path=None):
+    def __init__(self, clinical: ClinicalStore):
         self.clinical = clinical
-        self.knowledge_path = knowledge_path
 
     async def dispatch(
         self,
@@ -301,7 +304,7 @@ class ClinicalTools:
         *,
         conversation_turn_id: UUID | None = None,
     ) -> dict:
-        if name not in INPUTS:
+        if name not in INPUTS or name in KB_INPUTS:
             return failure("unknown_tool", "Tool is not allowlisted")
         try:
             params = INPUTS[name].model_validate(arguments)
@@ -313,7 +316,7 @@ class ClinicalTools:
                     )
                 ).model_dump()
             if name in JOB_INPUTS:
-                return await JobsTools(self.clinical, knowledge_path=self.knowledge_path).dispatch(
+                return await JobsTools(self.clinical).dispatch(
                     session_id, conversation_turn_id, name, arguments
                 )
             if name == "update_draft":
@@ -428,8 +431,8 @@ class ClinicalTools:
         ).model_dump()
 
 
-def create_mcp_server(clinical: ClinicalStore, *, knowledge_path=None) -> FastMCP:
-    backend = ClinicalTools(clinical, knowledge_path=knowledge_path)
+def create_mcp_server(clinical: ClinicalStore) -> FastMCP:
+    backend = ClinicalTools(clinical)
     server = FastMCP("zagent-clinical", host="0.0.0.0", stateless_http=True, json_response=True)
 
     def register(name: str) -> None:
@@ -450,7 +453,8 @@ def create_mcp_server(clinical: ClinicalStore, *, knowledge_path=None) -> FastMC
         server.add_tool(invoke, name=name, description=DESCRIPTIONS[name])
 
     for name in INPUTS:
-        register(name)
+        if name not in KB_INPUTS:
+            register(name)
     return server
 
 
@@ -467,14 +471,14 @@ class McpToolClient:
         url: str | None = None,
         server: FastMCP | None = None,
         jobs_url: str | None = None,
-        kb_url: str | None = None,
+        knowledge: "McpToolClient | None" = None,
     ):
         if (url is None) == (server is None):
             raise ValueError("Provide either an MCP URL or an in-process MCP server")
         self.url = url
         self.server = server
         self.jobs_url = jobs_url
-        self.kb_url = kb_url
+        self.knowledge = knowledge
 
     @asynccontextmanager
     async def connection(self) -> AsyncIterator[ClientSession]:
@@ -495,10 +499,8 @@ class McpToolClient:
     async def call(
         self, session: AgentSession, name: str, arguments: dict, *, operation_id: str | None = None
     ) -> dict:
-        if name in {"search_knowledge", "read_document"} and self.kb_url:
-            return await McpToolClient(url=self.kb_url).call(
-                session, name, arguments, operation_id=operation_id
-            )
+        if name in KB_INPUTS and self.knowledge is not None:
+            return await self.knowledge.call(session, name, arguments, operation_id=operation_id)
         if name in JOB_INPUTS and self.jobs_url:
             return await McpToolClient(url=self.jobs_url).call(
                 session, name, arguments, operation_id=operation_id
@@ -516,6 +518,17 @@ class McpToolClient:
         if result.isError or result.structuredContent is None:
             return failure("unavailable", "MCP tool execution failed")
         return result.structuredContent
+
+    async def invoke(self, name: str, arguments: dict, *, meta: dict | None = None) -> dict:
+        async with self.connection() as client:
+            result = await client.call_tool(name, arguments, meta=meta)
+        if result.isError or result.structuredContent is None:
+            raise ValueError(f"MCP tool {name} failed")
+        return result.structuredContent
+
+    async def tool_schemas(self) -> dict[str, dict]:
+        async with self.connection() as client:
+            return {tool.name: tool.inputSchema for tool in (await client.list_tools()).tools}
 
     async def resource(self, uri: str) -> str:
         async with self.connection() as client:

@@ -1,6 +1,6 @@
 name: zagent
 
-# Zones: clinical data, the agent, and telemetry are separate internal networks.
+# Zones: clinical data, the agent, knowledge and telemetry are separate internal networks.
 # Services on two zones only serve fixed ports; relays forward one direction.
 x-telemetry: &telemetry
   OTEL_EXPORTER_OTLP_ENDPOINT: http://collector:4318
@@ -35,7 +35,7 @@ services:
       ZAGENT_GATEWAY_URL: http://gateway:8001
       ZAGENT_TOOLS_URL: http://tools:8002/mcp
       ZAGENT_JOBS_URL: http://jobs:8005/mcp
-      ZAGENT_KB_URL: http://kb:8007/mcp
+      ZAGENT_BROKER_URL: http://mcp-broker:8008/mcp
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
       ZAGENT_DISPLAY_MODE: "0"
       ZAGENT_MIGRATE: "0"
@@ -53,7 +53,7 @@ services:
         condition: service_healthy
       jobs:
         condition: service_healthy
-      kb:
+      mcp-broker:
         condition: service_healthy
       tokenizer:
         condition: service_healthy
@@ -139,17 +139,57 @@ services:
       timeout: 5s
       retries: 30
 
-  # No database or privacy capability: SOP retrieval only.
+  # Knowledge team: publishes snapshots offline and serves them only on the knowledge zone.
+  kb-publish:
+    build:
+      context: .
+      dockerfile: services/knowledge/Dockerfile
+    command: ["kb-publish", "--target", "/var/lib/zknowledge/snapshots"]
+    network_mode: none
+    volumes:
+      - kb_snapshots:/var/lib/zknowledge/snapshots
+
   kb:
     build:
       context: .
-      dockerfile: services/agent/Dockerfile
-    command: ["uvicorn", "zagent.kb_server:app", "--host", "0.0.0.0", "--port", "8007"]
+      dockerfile: services/knowledge/Dockerfile
     environment:
       <<: *telemetry
-    networks: [agent]
+      ZKNOWLEDGE_SNAPSHOTS: /var/lib/zknowledge/snapshots
+    volumes:
+      - kb_snapshots:/var/lib/zknowledge/snapshots:ro
+    networks: [knowledge]
+    depends_on:
+      kb-publish:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8007/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # The agent zone's only route to knowledge: contract pinning and tokenization.
+  mcp-broker:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["uvicorn", "zagent.broker:app", "--host", "0.0.0.0", "--port", "8008"]
+    environment:
+      <<: *telemetry
+      ZAGENT_KB_URL: http://kb:8007/mcp
+      ZAGENT_KB_SNAPSHOT: "${ZAGENT_KB_SNAPSHOT:-}"
+      ZAGENT_PRIVACY_URL: http://tokenizer:8006
+      ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tokenize.key
+    volumes:
+      - privacy_tokenize:/run/privacy:ro
+    networks: [agent, knowledge]
+    depends_on:
+      kb:
+        condition: service_healthy
+      tokenizer:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8008/health')"]
       interval: 2s
       timeout: 5s
       retries: 30
@@ -185,7 +225,7 @@ services:
     command: ["--config=/etc/otelcol/config.yaml"]
     volumes:
       - ./deploy/compose/otel.yaml:/etc/otelcol/config.yaml:ro
-    networks: [clinical, agent, telemetry]
+    networks: [clinical, agent, knowledge, telemetry]
     depends_on:
       tempo:
         condition: service_started
@@ -377,6 +417,7 @@ services:
 volumes:
   postgres_data:
   gateway_audit:
+  kb_snapshots:
   privacy_master:
   privacy_tokenize:
   privacy_display:
@@ -387,6 +428,8 @@ networks:
   clinical:
     internal: true
   agent:
+    internal: true
+  knowledge:
     internal: true
   telemetry:
     internal: true

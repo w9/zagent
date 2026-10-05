@@ -3,8 +3,21 @@ import json
 import os
 import re
 import sqlite3
-from importlib.resources import files
 from pathlib import Path
+
+CURRENT = "current"
+SNAPSHOT_ID = re.compile(r"^[a-f0-9]{64}$")
+DEFAULT_SNAPSHOTS = "/var/lib/zknowledge/snapshots"
+
+
+class SnapshotUnavailable(ValueError):
+    pass
+
+
+def corpus_root() -> Path:
+    return Path(
+        os.environ.get("ZKNOWLEDGE_CORPUS", str(Path(__file__).resolve().parents[1] / "corpus"))
+    )
 
 
 def source_version(source: Path) -> str:
@@ -12,36 +25,42 @@ def source_version(source: Path) -> str:
     return hashlib.sha256(json.dumps(content, ensure_ascii=True).encode()).hexdigest()
 
 
-def build_index(source: Path, target: Path) -> str:
+def build_snapshot(source: Path, snapshots: Path, *, current: bool = True) -> str:
     version = source_version(source)
-    target.parent.mkdir(parents=True, exist_ok=True)
+    snapshots.mkdir(parents=True, exist_ok=True)
+    target = snapshots / f"{version}.sqlite3"
     temporary = target.with_suffix(".building")
     temporary.unlink(missing_ok=True)
-    with sqlite3.connect(temporary) as connection:
-        connection.execute("CREATE TABLE metadata (version TEXT NOT NULL)")
-        connection.execute("INSERT INTO metadata VALUES (?)", (version,))
-        connection.execute(
-            "CREATE VIRTUAL TABLE lines USING fts5(document UNINDEXED, number UNINDEXED, text)"
-        )
-        for path in sorted(source.glob("*.md")):
-            connection.executemany(
-                "INSERT INTO lines VALUES (?, ?, ?)",
-                [
-                    (path.stem, number, text)
-                    for number, text in enumerate(path.read_text().splitlines(), 1)
-                ],
+    connection = sqlite3.connect(temporary)
+    try:
+        with connection:
+            connection.execute("CREATE TABLE metadata (version TEXT NOT NULL)")
+            connection.execute("INSERT INTO metadata VALUES (?)", (version,))
+            connection.execute(
+                "CREATE VIRTUAL TABLE lines USING fts5(document UNINDEXED, number UNINDEXED, text)"
             )
+            for path in sorted(source.glob("*.md")):
+                connection.executemany(
+                    "INSERT INTO lines VALUES (?, ?, ?)",
+                    [
+                        (path.stem, number, text)
+                        for number, text in enumerate(path.read_text().splitlines(), 1)
+                    ],
+                )
+    finally:
+        connection.close()
     temporary.replace(target)
+    if current:
+        pointer = snapshots / f"{CURRENT}.building"
+        pointer.write_text(version + "\n")
+        pointer.replace(snapshots / CURRENT)
     return version
 
 
-class KnowledgeBase:
-    def __init__(self, path: Path | None = None):
-        self.path = path or Path(
-            os.environ.get("ZAGENT_KB_PATH", str(files("zagent").joinpath("knowledge.sqlite3")))
-        )
+class Snapshot:
+    def __init__(self, path: Path):
         self.connection = sqlite3.connect(
-            self.path.resolve().as_uri() + "?mode=ro&immutable=1", uri=True
+            path.resolve().as_uri() + "?mode=ro&immutable=1", uri=True
         )
         self.version = self.connection.execute("SELECT version FROM metadata").fetchone()[0]
 
@@ -87,7 +106,23 @@ class KnowledgeBase:
         self.connection.close()
 
 
-if __name__ == "__main__":
-    source = Path(str(files("zagent").joinpath("sops")))
-    target = Path(str(files("zagent").joinpath("knowledge.sqlite3")))
-    print("Built knowledge index " + build_index(source, target))
+class SnapshotStore:
+    def __init__(self, directory: Path):
+        self.directory = directory
+
+    @classmethod
+    def configured(cls) -> "SnapshotStore":
+        return cls(Path(os.environ.get("ZKNOWLEDGE_SNAPSHOTS", DEFAULT_SNAPSHOTS)))
+
+    def current(self) -> str:
+        try:
+            return (self.directory / CURRENT).read_text().strip()
+        except OSError:
+            raise SnapshotUnavailable("No knowledge snapshot has been published") from None
+
+    def open(self, snapshot: str | None = None) -> Snapshot:
+        identifier = snapshot or self.current()
+        path = self.directory / f"{identifier}.sqlite3"
+        if not SNAPSHOT_ID.fullmatch(identifier) or not path.is_file():
+            raise SnapshotUnavailable("Knowledge snapshot is unavailable")
+        return Snapshot(path)

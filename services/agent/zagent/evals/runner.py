@@ -25,6 +25,7 @@ from zagent.evals.assertions import (
     validate_expectations,
 )
 from zagent.evals.environment import PausedAgent, local_api
+from zagent.evals.local_knowledge import local_tools
 from zagent.evals.privacy import evaluate_detector, private_gateway, scan_privacy_corpus
 from zagent.evals.schema import (
     Case,
@@ -41,7 +42,7 @@ from zagent.gateway import configured_gateway
 from zagent.llm import CompletionRequest, canonical_json, normalized_request
 from zagent.scope import SCOPE_POLICY_HASH
 from zagent.store import Store
-from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
+from zagent.tools import ToolsGateway
 
 
 class ChaosPlan(StrictModel):
@@ -120,7 +121,7 @@ async def case_agent(
         agent = LlmAgent(
             store,
             private_gateway(mode, store.privacy, record_missing=record_missing),
-            ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical))),
+            ToolsGateway(store, local_tools(clinical)),
             route=case.agent.removeprefix("llm:"),
         )
         yield (

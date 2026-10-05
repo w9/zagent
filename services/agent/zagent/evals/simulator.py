@@ -9,13 +9,14 @@ from zagent.agent import MAIN_TOOLS, SYSTEM_PROMPT, LlmAgent
 from zagent.cohort import FROZEN_NOW, ClinicalStore
 from zagent.evals.assertions import check_case, render_transcript
 from zagent.evals.environment import local_api
+from zagent.evals.local_knowledge import local_tools
 from zagent.evals.privacy import private_gateway
 from zagent.evals.schema import Case, Provenance, TrialResult
 from zagent.llm import CompletionRequest, ModelRoute, canonical_json, normalized_request
 from zagent.privacy import Tokenized
 from zagent.scope import SCOPE_POLICY_HASH
 from zagent.store import Store
-from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
+from zagent.tools import ToolsGateway
 
 SIMULATOR_MODEL = "deepseek/deepseek-v4.1-flash"
 SIMULATOR_PROMPT = """You simulate a user editing a genomics analysis draft with an assistant.
@@ -75,7 +76,7 @@ async def evaluate_simulated_users(
             agent = LlmAgent(
                 store,
                 sampled,
-                ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical))),
+                ToolsGateway(store, local_tools(clinical)),
             )
             try:
                 async with local_api(database_url, agent) as environment:

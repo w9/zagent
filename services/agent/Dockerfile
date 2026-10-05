@@ -11,9 +11,9 @@ COPY --from=ghcr.io/astral-sh/uv:0.12.3 /uv /bin/uv
 WORKDIR /app
 ENV UV_LINK_MODE=copy PYTHONUNBUFFERED=1 PATH="/app/.venv/bin:$PATH"
 COPY pyproject.toml uv.lock ./
+COPY services/knowledge/pyproject.toml ./services/knowledge/pyproject.toml
 COPY services/agent/zagent ./services/agent/zagent
 COPY --from=job-ui /build/services/agent/zagent/resources/jobs.html ./services/agent/zagent/resources/jobs.html
 RUN uv sync --frozen --no-dev
-RUN python -m zagent.knowledge
 EXPOSE 8000
 CMD ["uvicorn", "zagent.app:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -9,7 +9,7 @@ ingress, resolves only at clinical tool/display edges, restricts runtime databas
 and checks outbound requests with a keyed-hash tripwire. X-ray shows actual recorded model
 requests. Draft editing, exact-hash confirmation, synthetic Docker execution, MCP-owned live
 views, SOP retrieval, turn recovery, and persisted session titles are available. Compose network
-zones separate clinical, agent, and telemetry services; this local
+zones separate clinical, agent, knowledge, and telemetry services; this local
 development deployment is not a production security certification.
 
 **Contents**
@@ -229,7 +229,12 @@ graph TB
     subgraph agent["Agent zone (holds no identifiers)"]
         RT[Agent runtime]
         LLM[LLM gateway<br/>+ egress tripwire]
-        KB[Knowledge base<br/>read-only MCP index]
+    end
+    subgraph bridgeKnowledge["On both agent and knowledge networks"]
+        BRK[MCP broker<br/>contract pin + tokenize]
+    end
+    subgraph knowledge["Knowledge zone (separately owned)"]
+        KB[Knowledge MCP server<br/>immutable snapshots]
     end
     subgraph telemetry["Telemetry zone"]
         TEMPO[Tempo + Grafana]
@@ -244,7 +249,9 @@ graph TB
     RT <--> JMCP
     RT <--> LOG
     LOG <--> DB
-    RT <--> KB
+    RT <--> BRK
+    BRK <--> KB
+    BRK -->|tokenize only| TOK
     RT -->|tokenize only| TOK
     LLM -->|tripwire| TOK
     TOK <--> DB
@@ -482,12 +489,21 @@ user input. They are tokenized, and they are never interpreted as instructions.
 
 ## 12. Knowledge base
 
-An immutable SQLite file with an FTS5 index, built in CI from versioned Markdown sources and
-baked into the image. It is served read-only over MCP.
+A separately owned service in its own `knowledge` zone (PLAN12). Its package,
+`services/knowledge` (`zknowledge`), imports nothing from the agent and publishes its MCP tool
+contract as JSON. An offline `kb-publish` job builds immutable SQLite FTS5 snapshots from
+versioned sources into a volume; the server serves the current snapshot or any retained snapshot
+named in request metadata, and every result carries its snapshot ID.
 
-`make install` and the backend image build create the index. A digest of ordered source names
-and contents is its version. `search_knowledge` returns matching line numbers; `read_document`
-requires that version and at most thirty lines. Execution cases pin the digest and fail on drift.
+The agent zone reaches it only through `mcp-broker`, which sits on the agent and knowledge
+networks. The broker exposes agent-owned tool definitions, pins a hash of the upstream input
+schemas and disables the tools when it changes, forwards a configured snapshot, bounds time, and
+validates results. Results are tokenized as external content before they enter the agent zone,
+so the agent no longer relies on the corpus being free of identifiers.
+
+A digest of ordered source names and contents is a snapshot's ID. `search_knowledge` returns
+matching line numbers; `read_document` requires that ID and at most thirty lines. Execution cases
+pin the digest and fail on drift.
 
 Immutability buys determinism: a KB version is a build artifact, so a retrieval result is
 reproducible and the eval report can pin it. Indexing at line granularity lets answers cite
@@ -548,7 +564,8 @@ simulator.
 | Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization |
 | Agent runtime | Agent | Conversation turn execution, the scope guard, conversation turn journaling |
 | LLM gateway | Agent | Provider routing, record and replay, egress tripwire. Sole internet egress |
-| Knowledge base | Agent | Read-only FTS5 index over versioned docs; no database or privacy capability |
+| Knowledge MCP server | Knowledge | Separately owned package serving immutable snapshots; no route to other zones |
+| MCP broker | Agent and knowledge | Only agent-zone route to knowledge: contract pinning, snapshot forwarding, tokenization |
 | Tools and jobs MCP servers | Clinical and agent | MCP servers and policy enforcement points |
 | Privacy service | Clinical | Token vault, detector rule set, tokenize and resolve |
 | Tokenizer | Clinical and agent | Tokenize and tripwire only; no resolve routes |
@@ -663,3 +680,4 @@ how the traceability matrix is generated rather than maintained.
 | 21 | Fault injection as a CI requirement | Trust the suite | A suite that cannot detect a broken build is not evidence |
 | 22 | RLS for cross-site isolation | Query-level filtering | Holds regardless of what the agent asks for |
 | 23 | Compose network zones | Kubernetes with NetworkPolicy | The zone boundary is enforceable and probeable with Docker networks; a cluster was built and abandoned as overkill |
+| 24 | Knowledge as a separately owned zone behind a broker | Index baked into the agent image | A real knowledge service has another owner, release cycle and content; guarantees belong at the boundary |

@@ -15,5 +15,4 @@ playwright-report/
 test-results/
 docs/evals/
 *.egg-info/
-services/agent/zagent/knowledge.sqlite3
 services/agent/zagent/resources/jobs.html

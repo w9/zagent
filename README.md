@@ -210,27 +210,32 @@ exits; it does not contain the provider key.
 ### Network Zones
 
 ```bash
-make up     # Clinical, agent, and telemetry zones; Grafana at http://localhost:3000.
+make up     # Clinical, agent, knowledge, and telemetry zones; Grafana at http://localhost:3000.
 make zones  # Probe every service's network position; writes docs/evals/zones/results.json.
 ```
 
-Compose separates three internal networks. The **clinical** zone holds Postgres, the privacy
-service, the BFF, web, and the dispatcher. The **agent** zone holds the runtime, the LLM gateway,
-and the knowledge service. Only the gateway also joins the internet-facing `egress` network.
+Compose separates four internal networks. The **clinical** zone holds Postgres, the privacy
+service, the BFF, web, and the dispatcher. The **agent** zone holds the runtime and the LLM
+gateway. Only the gateway also joins the internet-facing `egress` network. The **knowledge** zone
+holds the separately owned knowledge service, whose snapshots are published by an offline job.
 The **telemetry** zone holds Tempo and Grafana.
 
 Services on both clinical and agent networks serve only fixed agent-facing ports: the tools and
 jobs MCP servers, a tokenize-only privacy listener (`tokenizer`, no resolve routes), a PgBouncer
-event database proxy pinned to `zagent_runtime`, and the OTLP collector. The runtime never
-connects to clinical Postgres, privacy resolution, or the BFF. The BFF reaches the runtime and
+event database proxy pinned to `zagent_runtime`, and the OTLP collector. `mcp-broker` alone joins
+the agent and knowledge networks; it pins the knowledge tool contract and tokenizes results
+before they reach the runtime. The runtime never
+connects to clinical Postgres, privacy resolution, the BFF, or the knowledge service. The BFF
+reaches the runtime and
 gateway through `display-relay`, a one-way TCP forwarder with no route back. An `ingress`
 forwarder publishes loopback-only web, BFF API, database, and Grafana ports from an edge network
 without outbound NAT.
 
 `make zones` starts a probe container attached to exactly each running service's networks. It
 checks allowed flows, denials of clinical data by name and IP address, gateway-only internet
-egress, and the runtime role through the proxy (REQ-PHI-05, REQ-PHI-06, REQ-ISO-02,
-REQ-META-01). Docker networks cannot filter ports, so dual-homed services are trusted not to
+egress, knowledge-zone isolation, and the runtime role through the proxy (REQ-PHI-05,
+REQ-PHI-06, REQ-KB-01, REQ-ISO-02, REQ-META-01). Docker networks cannot filter ports, so
+dual-homed services are trusted not to
 forward. When upgrading an existing stack, run `make down` once to replace the network layout.
 
 The Compose dispatcher mounts the Docker socket, which grants host-level Docker control. It is
@@ -571,6 +576,7 @@ quality weaknesses remain visible even when regression gates pass.
 | PLAN9 | The cluster: k3d, zones, enforced network policy | Abandoned; zones and tracing moved to Compose |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
+| [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Stage 1 of 4 (relocation) implemented |
 
 ---
 

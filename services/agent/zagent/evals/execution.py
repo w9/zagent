@@ -10,16 +10,16 @@ from zagent.cohort import FROZEN_NOW, ClinicalStore
 from zagent.dispatcher import Dispatcher
 from zagent.evals.assertions import ASSERTIONS, check_case, render_transcript, view_invariants
 from zagent.evals.environment import local_api
+from zagent.evals.local_knowledge import current_snapshot, local_tools
 from zagent.evals.privacy import private_gateway
 from zagent.evals.schema import Provenance, TrialResult
 from zagent.evals.simulator import SampleGateway
 from zagent.executors import ProcessExecutor
 from zagent.jobs import JobStore
-from zagent.knowledge import KnowledgeBase
 from zagent.llm import CompletionRequest, canonical_json, normalized_request
 from zagent.scope import SCOPE_POLICY_HASH
 from zagent.store import Store
-from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
+from zagent.tools import ToolsGateway
 
 
 class InterruptOnce:
@@ -78,9 +78,7 @@ async def evaluate_execution(
         await store.migrate(seed=False)
         clinical = ClinicalStore(store, lambda: FROZEN_NOW)
         await clinical.seed()
-        knowledge = KnowledgeBase()
-        version = knowledge.version
-        knowledge.close()
+        version = current_snapshot()
         if version != case.execution.kb_version:
             raise ValueError("Recorded execution case requires a different knowledge version")
         gateway = private_gateway(mode, store.privacy, record_missing=record_missing)
@@ -91,7 +89,7 @@ async def evaluate_execution(
             agent = LlmAgent(
                 store,
                 sampled,
-                ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical))),
+                ToolsGateway(store, local_tools(clinical)),
             )
             interrupted = asyncio.Event()
 

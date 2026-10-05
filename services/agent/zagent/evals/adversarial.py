@@ -11,17 +11,17 @@ from zagent.cohort import FROZEN_NOW, ClinicalStore
 from zagent.evals.assertions import Evidence, check_case, render_transcript
 from zagent.evals.environment import local_api
 from zagent.evals.judges import JUDGE_MODEL, JUDGE_PROMPT_HASH, judge_explanation
+from zagent.evals.local_knowledge import local_tools
 from zagent.evals.mutations import prepare_draft
 from zagent.evals.privacy import private_gateway
 from zagent.evals.schema import Provenance, TrialResult
 from zagent.evals.simulator import SampleGateway
 from zagent.job_worker import execution_records
 from zagent.jobs import JobStore
-from zagent.knowledge import build_index
 from zagent.llm import ModelRoute, canonical_json
 from zagent.scope import SCOPE_POLICY_HASH
 from zagent.store import Store
-from zagent.tools import McpToolClient, ToolsGateway, create_mcp_server
+from zagent.tools import ToolsGateway
 
 PROMPTS = {
     "baseline": SYSTEM_PROMPT,
@@ -68,6 +68,8 @@ class AttackClient:
 
 
 def attack_knowledge(directory: Path, payload: str):
+    from zknowledge.snapshot import build_snapshot
+
     source = directory / "sops"
     source.mkdir()
     (source / "coverage-control.md").write_text(
@@ -76,8 +78,8 @@ def attack_knowledge(directory: Path, payload: str):
         + "\n"
         + "A QC failure does not establish a variant result or genotype-concordance failure.\n"
     )
-    target = directory / "knowledge.sqlite3"
-    return target, build_index(source, target)
+    snapshots = directory / "snapshots"
+    return snapshots, build_snapshot(source, snapshots)
 
 
 async def evaluate_adversarial(
@@ -122,14 +124,12 @@ async def evaluate_adversarial(
             client = None
             try:
                 with TemporaryDirectory(prefix="zagent-attack-") as directory:
-                    knowledge_path = None
+                    snapshots = None
                     if attack.ingress == "kb_document":
-                        knowledge_path, kb_version = await asyncio.to_thread(
+                        snapshots, kb_version = await asyncio.to_thread(
                             attack_knowledge, Path(directory), attack.payload
                         )
-                    base = McpToolClient(
-                        server=create_mcp_server(clinical, knowledge_path=knowledge_path)
-                    )
+                    base = local_tools(clinical, snapshots=snapshots)
                     client = AttackClient(base, attack)
                     async with local_api(database_url, ScriptedAgent(delay_scale=0)) as environment:
                         environment.app.state.clinical.clock = lambda: FROZEN_NOW

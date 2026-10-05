@@ -11,8 +11,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = os.environ.get("COMPOSE_PROJECT_NAME", "zagent")
 INTERNET = ("1.1.1.1", 443)
-AGENT_ZONE = ("agent", "gateway", "kb")
+AGENT_ZONE = ("agent", "gateway")
+KNOWLEDGE_ZONE = ("kb",)
+KNOWLEDGE_BRIDGE = "mcp-broker"
 CLINICAL_DATA = (("postgres", 5432), ("privacy", 8003), ("bff", 8000), ("web", 5173))
+KNOWLEDGE_DATA = (("kb", 8007),)
+AGENT_SERVICES = (
+    ("agent", 8000),
+    ("gateway", 8001),
+    ("tools", 8002),
+    ("jobs", 8005),
+    ("tokenizer", 8006),
+    ("event-db", 5432),
+)
 RUNTIME_DATABASE = "postgresql://zagent_runtime:zagent_runtime@event-db:5432/zagent"
 COLLECTOR = ("collector", 4318)
 FLOWS = {
@@ -20,12 +31,13 @@ FLOWS = {
         ("gateway", 8001),
         ("tools", 8002),
         ("jobs", 8005),
-        ("kb", 8007),
+        (KNOWLEDGE_BRIDGE, 8008),
         ("tokenizer", 8006),
         ("event-db", 5432),
         COLLECTOR,
     ],
     "gateway": [("tokenizer", 8006), COLLECTOR],
+    KNOWLEDGE_BRIDGE: [("kb", 8007), ("tokenizer", 8006), COLLECTOR],
     "kb": [COLLECTOR],
     "tokenizer": [("postgres", 5432), COLLECTOR],
     "event-db": [("postgres", 5432)],
@@ -80,6 +92,20 @@ def addresses(container: dict) -> list[str]:
     ]
 
 
+def denied_for(source: str) -> tuple[tuple[str, int], ...]:
+    if source in AGENT_ZONE or source == "worker":
+        return CLINICAL_DATA + KNOWLEDGE_DATA
+    if source in KNOWLEDGE_ZONE:
+        return CLINICAL_DATA + AGENT_SERVICES
+    if source == KNOWLEDGE_BRIDGE:
+        return CLINICAL_DATA
+    return ()
+
+
+def denial_names(services: tuple[tuple[str, int], ...]) -> set[str]:
+    return {f"deny-{target}-{kind}" for target, _port in services for kind in ("name", "ip")}
+
+
 def targets_for(source: str, running: dict[str, dict]) -> list[dict]:
     targets = [
         {"name": f"allow-{host}-{port}", "host": host, "port": port, "allowed": True}
@@ -93,15 +119,14 @@ def targets_for(source: str, running: dict[str, dict]) -> list[dict]:
             "allowed": source == "gateway",
         }
     )
-    if source in AGENT_ZONE or source == "worker":
-        for target, port in CLINICAL_DATA:
-            targets.append(
-                {"name": f"deny-{target}-name", "host": target, "port": port, "allowed": False}
-            )
-            targets += [
-                {"name": f"deny-{target}-ip", "host": address, "port": port, "allowed": False}
-                for address in addresses(running[target])
-            ]
+    for target, port in denied_for(source):
+        targets.append(
+            {"name": f"deny-{target}-name", "host": target, "port": port, "allowed": False}
+        )
+        targets += [
+            {"name": f"deny-{target}-ip", "host": address, "port": port, "allowed": False}
+            for address in addresses(running[target])
+        ]
     return targets
 
 
@@ -149,11 +174,18 @@ def verify() -> None:
     denials = [
         check
         for source, check in checks
-        if source in AGENT_ZONE and check["name"].startswith("deny-")
+        if source in AGENT_ZONE and check["name"] in denial_names(CLINICAL_DATA)
+    ]
+    knowledge = [
+        check
+        for source, check in checks
+        if source in (*KNOWLEDGE_ZONE, KNOWLEDGE_BRIDGE)
+        or (source in AGENT_ZONE and check["name"] in denial_names(KNOWLEDGE_DATA))
     ]
     requirements = {
         "REQ-PHI-05": bool(denials) and all(check["passed"] for check in denials),
         "REQ-PHI-06": all(check["passed"] for _, check in checks if check["name"] == "internet"),
+        "REQ-KB-01": bool(knowledge) and all(check["passed"] for check in knowledge),
         "REQ-ISO-02": all(
             check["passed"]
             for source, check in checks
@@ -200,7 +232,7 @@ def mutation() -> None:
     def side(attached: list[str]) -> dict:
         checks = probe(image, attached, targets)["checks"]
         controls = {check["name"]: check["passed"] for check in checks if check["expected"]}
-        denials = [check for check in checks if check["name"].startswith("deny-")]
+        denials = [check for check in checks if check["name"] in denial_names(CLINICAL_DATA)]
         return {
             "healthy": bool(controls) and all(controls.values()),
             "controls": controls,

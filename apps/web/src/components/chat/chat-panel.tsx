@@ -1,12 +1,13 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowDown, Dna, FlaskConical, Hash } from 'lucide-react'
+import { ArrowDown, Dna, FlaskConical, Hash, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { PrivacyBinding } from '../../lib/api'
+import type { Persona, PrivacyBinding } from '../../lib/api'
 import { toolView } from '../../lib/events'
 import type { ChatMessage, Projection, RefusedState, StepState } from '../../lib/events'
 import type { PushedView } from '../../lib/views'
 import { cn } from '../../lib/utils'
+import { Badge } from '../ui/badge'
 import { EmptyState } from '../ui/empty-state'
 import { IconButton } from '../ui/icon-button'
 import { Notice } from '../ui/notice'
@@ -58,6 +59,7 @@ function timeline(state: Projection): Entry[] {
 export function ChatPanel({
   sessionId,
   name,
+  persona,
   state,
   bindings,
   connection,
@@ -67,6 +69,7 @@ export function ChatPanel({
 }: {
   sessionId: string
   name: string
+  persona?: Persona
   state: Projection | null
   bindings: PrivacyBinding[]
   connection: Connection
@@ -221,10 +224,18 @@ export function ChatPanel({
       <div className="mx-auto w-full max-w-prose shrink-0 px-4 pb-4 @medium:px-6 @medium:pb-6">
         {problem && <Notice tone="danger" role="alert" className="mb-3">{problem}</Notice>}
         <Composer value={draft} onChange={setDraft} onSubmit={() => void send()} disabled={!state} canSend={canSend} />
-        <footer data-testid="composer-footer" className="mt-2 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <FlaskConical aria-hidden className="size-icon-sm" />
-            Genomics agent
+        <footer data-testid="composer-footer" className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-muted">
+          <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
+            {persona && (
+              <Badge icon={UserRound} data-testid="session-persona" data-persona={persona.id}>
+                <span className="sr-only">Asking as </span>
+                {persona.title}
+              </Badge>
+            )}
+            <span className="inline-flex items-center gap-1.5">
+              <FlaskConical aria-hidden className="size-icon-sm" />
+              Genomics agent
+            </span>
           </span>
           <span>Synthetic data only</span>
         </footer>

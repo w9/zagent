@@ -298,8 +298,8 @@ Each component has a story file next to it. Story data lives in `src/components/
 | `ui/` | PanelHeader, Eyebrow, Spinner | — | long subtitle (truncated with its full value) |
 | `shell/` | AppShell, TopBar, Wordmark, ThemeToggle | — | every viewport in section 4; X-ray on; drawer open; error |
 | `shell/` | SessionLayout | chat or surface tab | every viewport in section 4 |
-| `shell/` | SessionList | — | empty, many, creating, very long title |
-| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting |
+| `shell/` | SessionList | — | empty, many, creating, very long title; persona chooser with a long hint, no personas |
+| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting; persona badge, no persona |
 | `chat/` | TranscriptText, PrivacyText | user, assistant; md, sm | streaming, Markdown with code, tables and links |
 | `chat/` | StepMarker | running, complete, failed | expanded, with a view link |
 | `chat/` | RefusalChip, ViewReference, TurnStatus, Composer | — | in the chat panel stories |

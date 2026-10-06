@@ -2,6 +2,7 @@ import os
 import secrets
 from pathlib import Path
 
+from zagent.identity import write_keypair
 from zagent.privacy_server import capability
 
 
@@ -23,6 +24,9 @@ def main() -> None:
         with os.fdopen(descriptor, "w") as output:
             output.write(capability(master, role))
         path.chmod(0o600)
+    write_keypair(
+        root / "caller-signing/caller-signing.pem", root / "caller-verify/caller-verify.pem"
+    )
     print("Privacy capabilities initialized; no credentials were printed.")
 
 

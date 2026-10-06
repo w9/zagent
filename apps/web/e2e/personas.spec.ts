@@ -1,0 +1,20 @@
+import { expect, test } from '@playwright/test'
+
+test('a new session records the chosen persona and shows it beside the composer', async ({ page, request }) => {
+  await page.goto('/')
+  await expect(page.getByRole('banner')).toBeVisible()
+  const drawer = page.getByRole('button', { name: 'Open sessions' })
+  const narrow = await drawer.isVisible()
+  if (narrow) await drawer.click()
+  const sidebar = narrow ? page.getByRole('dialog', { name: 'Sessions' }) : page.locator('aside')
+  const chooser = sidebar.getByRole('combobox', { name: 'Persona for new sessions' })
+  await expect(chooser).toHaveValue('analyst')
+  await chooser.selectOption('qa-officer')
+  await expect(sidebar.getByText('Also draft procedures, QC review notes and open change proposals')).toBeVisible()
+  await sidebar.getByRole('button', { name: 'New session', exact: true }).click()
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]{36}$/)
+  await expect(page.getByTestId('session-persona')).toContainText('QA officer')
+  const sessionId = new URL(page.url()).pathname.split('/').at(-1)
+  const sessions: { id: string; persona: string }[] = await (await request.get('/api/sessions')).json()
+  expect(sessions.find((session) => session.id === sessionId)?.persona).toBe('qa-officer')
+})

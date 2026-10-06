@@ -514,6 +514,15 @@ fixed-size passages with BM25, glossary synonym expansion and an authority prior
 the caller's site and roles before ranking, so restricted and missing documents look the same.
 Retrieval quality is measured on labeled queries in `services/knowledge/evals`.
 
+Identity is simulated but verified. A session records one of four personas, each with knowledge
+roles. For every conversation turn the BFF mints a short-lived Ed25519-signed caller context
+(session, turn, site, persona, roles) and stores it with the turn, so a resumed turn reuses it.
+The runtime forwards it as MCP request metadata on knowledge calls only and cannot open or widen
+it: it holds no key. The broker, which alone holds the verification key, checks the signature,
+expiry and the session and turn it is bound to, then sends only the verified site and roles
+upstream. A missing, forged or expired context fails closed as `unavailable`; model arguments
+cannot carry site or role fields because the tool schemas forbid extra properties.
+
 Immutability buys determinism: a KB version is a build artifact, so a retrieval result is
 reproducible and the eval report can pin it. Indexing at line granularity lets answers cite
 line ranges. The current deterministic check validates retrieved ranges and supporting verbatim
@@ -570,11 +579,11 @@ simulator.
 
 | Service | Zone | Responsibility |
 |---|---|---|
-| Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization |
+| Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization, signing each turn's caller context |
 | Agent runtime | Agent | Conversation turn execution, the scope guard, conversation turn journaling |
 | LLM gateway | Agent | Provider routing, record and replay, egress tripwire. Sole internet egress |
 | Knowledge MCP server | Knowledge | Separately owned package serving immutable snapshots; no route to other zones |
-| MCP broker | Agent and knowledge | Only agent-zone route to knowledge: contract pinning, snapshot forwarding, tokenization |
+| MCP broker | Agent and knowledge | Only agent-zone route to knowledge: caller verification, contract pinning, snapshot forwarding, tokenization |
 | Tools and jobs MCP servers | Clinical and agent | MCP servers and policy enforcement points |
 | Privacy service | Clinical | Token vault, detector rule set, tokenize and resolve |
 | Tokenizer | Clinical and agent | Tokenize and tripwire only; no resolve routes |
@@ -690,3 +699,4 @@ how the traceability matrix is generated rather than maintained.
 | 22 | RLS for cross-site isolation | Query-level filtering | Holds regardless of what the agent asks for |
 | 23 | Compose network zones | Kubernetes with NetworkPolicy | The zone boundary is enforceable and probeable with Docker networks; a cluster was built and abandoned as overkill |
 | 24 | Knowledge as a separately owned zone behind a broker | Index baked into the agent image | A real knowledge service has another owner, release cycle and content; guarantees belong at the boundary |
+| 25 | Asymmetrically signed per-turn caller context, verified at the broker | Roles passed by the runtime or as tool arguments | Neither the model nor the runtime can widen knowledge access; only the BFF can sign and only the broker can verify |

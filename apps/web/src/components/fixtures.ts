@@ -1,6 +1,6 @@
 // Synthetic data for stories. Every identifier here is invented.
 import catalogJson from '../../../../services/agent/zagent/catalog.json'
-import type { PrivacyBinding, Session, XrayData } from '../lib/api'
+import type { Persona, PrivacyBinding, Session, XrayData } from '../lib/api'
 import type { DraftState, Projection, StepState } from '../lib/events'
 import type { PushedView, TableData } from '../lib/views'
 import type { HandleResolver } from './surface/views/table.view'
@@ -8,17 +8,37 @@ import type { CatalogApp } from './surface/views/draft_form.view'
 
 export const catalog = catalogJson as unknown as CatalogApp[]
 
+export const personas: Persona[] = [
+  { id: 'lab-technologist', name: 'Tamsin Rook', title: 'Lab technologist', roles: ['lab-technologist'], description: 'Published documents for this site' },
+  { id: 'analyst', name: 'Ilse Marrow', title: 'Analyst', roles: ['analyst'], description: 'Published documents for this site' },
+  {
+    id: 'qa-officer',
+    name: 'Odile Fenn',
+    title: 'QA officer',
+    roles: ['qa-officer'],
+    description: 'Also draft procedures, QC review notes and open change proposals',
+  },
+  {
+    id: 'lab-director',
+    name: 'Caspar Wend',
+    title: 'Lab director',
+    roles: ['lab-director'],
+    description: 'Also draft procedures, QC review notes and administration pages',
+  },
+]
+
 export const sessions: Session[] = [
-  { id: 'session-1', seq: 42, created_at: '2026-10-01T14:03:00Z', title: 'Intake review for the northgate cohort', title_source: 'automatic' },
-  { id: 'session-2', seq: 18, created_at: '2026-09-30T09:41:00Z', title: 'Library QC follow-up', title_source: 'manual' },
+  { id: 'session-1', seq: 42, created_at: '2026-10-01T14:03:00Z', title: 'Intake review for the northgate cohort', title_source: 'automatic', persona: 'qa-officer' },
+  { id: 'session-2', seq: 18, created_at: '2026-09-30T09:41:00Z', title: 'Library QC follow-up', title_source: 'manual', persona: 'analyst' },
   {
     id: 'session-3',
     seq: 7,
     created_at: '2026-09-29T16:20:00Z',
     title: 'Somatic calling for SPC-northgate-001-1 against matched normal SPC-northgate-001-2',
     title_source: 'automatic',
+    persona: 'analyst',
   },
-  { id: 'session-4', seq: 0, created_at: '2026-09-28T11:05:00Z', title: 'New session', title_source: 'fallback' },
+  { id: 'session-4', seq: 0, created_at: '2026-09-28T11:05:00Z', title: 'New session', title_source: 'fallback', persona: 'lab-technologist' },
 ]
 
 export const bindings: PrivacyBinding[] = [{ token: '[PT_1]', value: 'NGC-0041872', kind: 'PT' }]

@@ -34,6 +34,20 @@ def test_knowledge_zone_is_reachable_only_through_the_broker():
     assert not any("kb:" in str(value) for value in agent.values())
 
 
+def test_caller_keys_are_split_between_the_bff_and_the_broker():
+    def mounts(volume):
+        return {
+            name
+            for name, service in COMPOSE["services"].items()
+            if any(str(item).startswith(f"{volume}:") for item in service.get("volumes", []))
+        }
+
+    assert mounts("caller_signing") == {"privacy-init", "bff"}
+    assert mounts("caller_verify") == {"privacy-init", "mcp-broker"}
+    assert "ZAGENT_CALLER_SIGNING_KEY_FILE" in COMPOSE["services"]["bff"]["environment"]
+    assert "ZAGENT_CALLER_VERIFY_KEY_FILE" in COMPOSE["services"]["mcp-broker"]["environment"]
+
+
 def test_only_gateway_has_internet_egress():
     networks = COMPOSE["networks"]
     assert all(

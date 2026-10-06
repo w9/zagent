@@ -1,6 +1,6 @@
 # PLAN12: The Knowledge Service
 
-**Status:** stages 1 (relocation) and 2 (corpus) implemented; stages 3-4 not started
+**Status:** stages 1 (relocation), 2 (corpus) and 3 (identity) implemented; stage 4 not started
 **Depends on:** [PLAN10](PLAN10.md) for mutation and adversarial infrastructure;
 [DESIGN.md](DESIGN.md) for the persona chooser. Lands before the [PLAN11](PLAN11.md) gallery, so
 the gallery covers its requirements.
@@ -361,14 +361,14 @@ checks appear as their claim, verified where possible by contract tests.
   disagreement, broken supersession and oversized results.
 - [ ] The five tools work through the broker. Every result is under 8 KB and names its snapshot
   (served at `/v2/mcp` and size-tested; broker cutover is stage 4).
-- [ ] The broker tokenizes, verifies caller context, pins contract hashes, forwards snapshots,
-  times out cleanly and writes audits (all in place except caller context, which is stage 3;
-  audits come from the runtime's existing tool audit).
-- [ ] Persona chooser and badge pass `npm --prefix apps/web run test:design`.
+- [x] The broker tokenizes, verifies caller context, pins contract hashes, forwards snapshots,
+  times out cleanly and writes audits (audits come from the runtime's existing tool audit).
+- [x] Persona chooser and badge pass `npm --prefix apps/web run test:design`.
 - [ ] The scope policy change ships with labeled boundary cases, and the REQ-SCOPE gates are
   reported, including failures.
 - [ ] One re-record at cutover, within an approved budget.
-- [ ] Every new mutation is detected.
+- [ ] Every new mutation is detected (`acl_off` and `trust_unsigned_context` are; the stage 4
+  mutations are not written yet).
 - [x] The retrieval evaluation runs in CI.
 - [ ] ARCHITECTURE sections 6, 11, 12 and 14, the requirement register and the README are updated,
   with at least one recorded knowledge question in the quick start.
@@ -403,6 +403,35 @@ the previous commit, and the legacy snapshot keeps the pinned `kb_version`. The 
   rather than through a recorded drafting run, and still need human review. Infobox data is not
   extracted, because the TextExtracts API returns plain text. Six broken wiki links are reported
   as warnings, by design.
+
+**Stage 3.**
+
+- Four personas live in `zagent/identity.py`. Their names, titles and descriptions match no
+  detector rule, and their roles are a subset of the knowledge service's role labels; both are
+  tested. A session records its persona (default analyst), and the database accepts only
+  registered ones.
+- The caller context is an EdDSA-signed JWT with a 15-minute lifetime, bound to one session and
+  one conversation turn. The BFF now chooses the turn ID, so it can sign it, and forwards both to
+  the runtime. The context is stored with the turn, so a resumed turn reuses it and fails closed
+  once it has expired.
+- The key-initialization job writes an Ed25519 pair. The signing key is mounted only on the BFF
+  and the verification key only on the broker; a static Compose test checks this. In the running
+  stack, the broker accepted the BFF-signed context. It returned `unavailable` for a context the
+  runtime container signed itself, for a context reused on another turn, and when no context was sent.
+- Model-visible content is unchanged: tool definitions, prompt and results are the same, and the
+  legacy knowledge server ignores the caller metadata. The full replay (3,180 trials) again shows
+  no unrecognized regressions. Access filtering is exercised against the
+  v2 server through the broker's verification and forwarding code: the analyst and the lab
+  technologist get the same `not_found` for the draft `SOP-QC-001` v4 as for a document that
+  does not exist, while the QA officer and lab director read it.
+- Mutations `acl_off` (the broker forwards every role instead of the verified ones) and
+  `trust_unsigned_context` (the broker skips signature checks) are both detected by paired probes,
+  each with a healthy control in which the QA officer reads the draft.
+- The persona chooser sits in the sidebar above New session and states what the selected persona
+  can additionally see. The badge sits beside the composer. With no persona data, the session list
+  and chat panel render pixel-identical to the pre-change baselines at every viewport and theme.
+- Deviation: the broker sends no service credential to `kb`. The knowledge zone, which only the
+  broker can reach, is the control.
 
 ---
 

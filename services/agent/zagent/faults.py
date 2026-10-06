@@ -12,6 +12,8 @@ MUTATIONS = (
     "zones_off",
     "rls_off",
     "validator_off",
+    "acl_off",
+    "trust_unsigned_context",
 )
 
 

@@ -4,7 +4,7 @@ import os
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import asyncpg
 import httpx
@@ -18,6 +18,7 @@ from zagent.display import SessionDisplay
 from zagent.draft_store import DraftConflict, DraftStore, InvalidDraft
 from zagent.drafts import CATALOG
 from zagent.events import Projection
+from zagent.identity import DEFAULT_PERSONA, PERSONAS, CallerSigner, PersonaId
 from zagent.jobs import JobStore
 from zagent.jobs_server import UI_RESOURCES, create_jobs_server
 from zagent.llm import GatewayClient
@@ -85,6 +86,13 @@ class AcceptedConversationTurn(BaseModel):
 
 class TokenizedMessageInput(BaseModel):
     text: Tokenized[str]
+    conversation_turn_id: UUID | None = None
+    caller_context: str | None = Field(default=None, max_length=4096)
+
+
+class SessionInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    persona: PersonaId = DEFAULT_PERSONA
 
 
 class DraftEditInput(BaseModel):
@@ -156,6 +164,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             resources.push_async_callback(runtime.close)
             app.state.store = store
             app.state.runtime = runtime
+            app.state.signer = CallerSigner.configured() if settings.display_mode else None
             app.state.notifications = notifications
             app.state.clinical = ClinicalStore(store, configured_clock())
             app.state.drafts = DraftStore(app.state.clinical)
@@ -339,9 +348,18 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             else os.environ.get("ZAGENT_LLM_MODE", "replay"),
         }
 
+    @app.get("/personas")
+    async def personas():
+        return {
+            "default": DEFAULT_PERSONA,
+            "personas": [persona.model_dump() for persona in PERSONAS.values()],
+        }
+
     @app.post("/sessions", status_code=201, response_model=Session)
-    async def create_session():
-        return await app.state.store.create_session(settings.site_id)
+    async def create_session(body: SessionInput | None = None):
+        return await app.state.store.create_session(
+            settings.site_id, body.persona if body else DEFAULT_PERSONA
+        )
 
     @app.get("/sessions", response_model=list[Session])
     async def list_sessions():
@@ -404,7 +422,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         "/sessions/{session_id}/messages", status_code=202, response_model=AcceptedConversationTurn
     )
     async def message(session_id: UUID, body: MessageInput | TokenizedMessageInput):
-        await scoped_session(session_id)
+        session = await scoped_session(session_id)
         if settings.display_mode:
             if not isinstance(body, MessageInput):
                 raise HTTPException(422, "The display edge expects a user message")
@@ -416,10 +434,18 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                     external=True,
                 )
             ).value
+            turn_id = uuid4()
+            caller_context = app.state.signer.mint(
+                session_id=session_id,
+                turn_id=turn_id,
+                site=session.site_id,
+                persona=session.persona,
+            )
         else:
             if not isinstance(body, TokenizedMessageInput):
                 raise HTTPException(422, "The runtime accepts only tokenized messages")
             text = body.text.value
+            turn_id, caller_context = body.conversation_turn_id, body.caller_context
             checked = await app.state.store.privacy.tokenize(
                 session_id,
                 Raw(value=text),
@@ -431,17 +457,23 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.post(
                     f"{settings.runtime_url}/sessions/{session_id}/messages",
-                    json={"text": Tokenized(value=text).model_dump()},
+                    json={
+                        "text": Tokenized(value=text).model_dump(),
+                        "conversation_turn_id": str(turn_id),
+                        "caller_context": caller_context,
+                    },
                 )
             if response.is_error:
                 raise HTTPException(
                     response.status_code, response.json().get("detail", "Runtime unavailable")
                 )
             return AcceptedConversationTurn.model_validate(response.json())
-        session = await app.state.store.begin_conversation_turn(session_id, text)
-        app.state.runtime.start(session)
+        turn = await app.state.store.begin_conversation_turn(
+            session_id, text, conversation_turn_id=turn_id, caller_context=caller_context
+        )
+        app.state.runtime.start(turn)
         return AcceptedConversationTurn(
-            session_id=session.id, conversation_turn_id=session.conversation_turn_id
+            session_id=turn.id, conversation_turn_id=turn.conversation_turn_id
         )
 
     @app.get("/sessions/{session_id}/snapshot", response_model=Projection)

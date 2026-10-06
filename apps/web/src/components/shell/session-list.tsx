@@ -1,10 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import { Check, MessageSquare, Pencil, Plus, ShieldCheck, X } from 'lucide-react'
 import { useState } from 'react'
-import type { Session } from '../../lib/api'
+import type { Persona, Session } from '../../lib/api'
 import { formatTimestamp } from '../../lib/format'
 import { Button } from '../ui/button'
-import { Input } from '../ui/field'
+import { Field, Input, Select } from '../ui/field'
 import { IconButton } from '../ui/icon-button'
 import { Notice } from '../ui/notice'
 
@@ -13,6 +13,9 @@ export function SessionList({
   selectedId,
   creating = false,
   showTitle = true,
+  personas = [],
+  persona,
+  onPersonaChange,
   onCreate,
   onNavigate,
   onRename,
@@ -21,6 +24,9 @@ export function SessionList({
   selectedId?: string
   creating?: boolean
   showTitle?: boolean
+  personas?: Persona[]
+  persona?: string
+  onPersonaChange?: (persona: string) => void
   onCreate: () => void
   onNavigate?: () => void
   onRename: (id: string, title: string) => Promise<void>
@@ -29,6 +35,7 @@ export function SessionList({
   const [title, setTitle] = useState('')
   const [saving, setSaving] = useState(false)
   const [renameError, setRenameError] = useState<string | null>(null)
+  const chosen = personas.find((item) => item.id === persona)
 
   async function save(id: string) {
     if (saving || !title.trim()) return
@@ -52,7 +59,16 @@ export function SessionList({
           <span className="font-mono text-xs text-muted">{sessions.length}</span>
         </div>
       )}
-      <div className={showTitle ? 'px-3' : 'px-3 pt-3'}>
+      <div className={showTitle ? 'flex flex-col gap-3 px-3' : 'flex flex-col gap-3 px-3 pt-3'}>
+        {personas.length > 0 && (
+          <Field label="Persona for new sessions" hint={chosen?.description}>
+            <Select value={persona} disabled={creating} onChange={(event) => onPersonaChange?.(event.target.value)}>
+              {personas.map((item) => (
+                <option key={item.id} value={item.id}>{`${item.title} · ${item.name}`}</option>
+              ))}
+            </Select>
+          </Field>
+        )}
         <Button icon={Plus} loading={creating} onClick={onCreate} className="w-full justify-start">New session</Button>
       </div>
       <nav aria-label="Sessions" className="min-h-0 flex-1 overflow-y-auto px-2 py-3">

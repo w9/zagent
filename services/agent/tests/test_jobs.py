@@ -151,6 +151,7 @@ async def test_live_job_handles_keep_identity_and_session_scope(store):
 async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
     from test_drafts import fixture_draft
     from zagent.evals.local_knowledge import local_broker
+    from zagent.identity import CallerSigner
     from zagent.job_tools import JobsTools
     from zagent.jobs import JobStore
     from zagent.tools import ClinicalTools
@@ -172,11 +173,22 @@ async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
     assert result["status"] == "failed"
     assert result["logs"][-1]["code"] == "genotype_concordance_failed"
     knowledge = local_broker(store.privacy)
+    context = CallerSigner.configured().mint(
+        session_id=session.id,
+        turn_id=turn.conversation_turn_id,
+        site="northgate",
+        persona="analyst",
+    )
     found = await knowledge.dispatch(
-        session.id, "search_knowledge", {"query": "genotype concordance"}
+        session.id,
+        turn.conversation_turn_id,
+        "search_knowledge",
+        {"query": "genotype concordance"},
+        context,
     )
     excerpt = await knowledge.dispatch(
         session.id,
+        turn.conversation_turn_id,
         "read_document",
         {
             "document": "specimen-identity",
@@ -184,6 +196,7 @@ async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
             "end_line": 18,
             "version": found["version"],
         },
+        context,
     )
     assert 'identity="verified"' in excerpt["text"]
     clinical = ClinicalTools(drafts.clinical)

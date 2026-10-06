@@ -11,11 +11,11 @@ import { EmptyState } from './components/ui/empty-state'
 import { Spinner } from './components/ui/spinner'
 import { XrayPanel } from './components/xray/xray-panel'
 import { request } from './lib/api'
-import type { RuntimeHealth, Session } from './lib/api'
+import type { Persona, PersonaRegistry, RuntimeHealth, Session } from './lib/api'
 import { useSession } from './lib/use-session'
 import type { TableData } from './lib/views'
 
-function SessionWorkspace({ sessionId, name }: { sessionId: string; name: string }) {
+function SessionWorkspace({ sessionId, name, persona }: { sessionId: string; name: string; persona?: Persona }) {
   const session = useSession(sessionId)
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
@@ -46,6 +46,7 @@ function SessionWorkspace({ sessionId, name }: { sessionId: string; name: string
         <ChatPanel
           sessionId={sessionId}
           name={name}
+          persona={persona}
           state={session.state}
           bindings={session.bindings}
           connection={session.connection}
@@ -77,10 +78,19 @@ export default function App() {
   const navigate = useNavigate()
   const search = useSearch({ strict: false })
   const [sessions, setSessions] = useState<Session[] | null>(null)
+  const [personas, setPersonas] = useState<PersonaRegistry | null>(null)
+  const [persona, setPersona] = useState<string | null>(null)
   const [mode, setMode] = useState<RuntimeHealth['mode'] | null>(null)
   const [creating, setCreating] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    // Without the registry, new sessions use the server's default persona.
+    request<PersonaRegistry>('/personas', { signal: controller.signal }).then(setPersonas, () => {})
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -126,11 +136,16 @@ export default function App() {
     void navigate({ to: '/sessions/$sessionId', params: { sessionId: selected.id }, search: {}, replace: true })
   }, [sessionId, sessions, navigate])
 
+  const chosenPersona = persona ?? personas?.default
+
   async function createSession() {
     if (creating) return
     setCreating(true)
     try {
-      const session = await request<Session>('/sessions', { method: 'POST' })
+      const session = await request<Session>('/sessions', {
+        method: 'POST',
+        body: chosenPersona ? JSON.stringify({ persona: chosenPersona }) : undefined,
+      })
       setSessions((current) => [session, ...(current ?? []).filter((item) => item.id !== session.id)])
       setDrawerOpen(false)
       setError(null)
@@ -176,6 +191,9 @@ export default function App() {
           selectedId={sessionId}
           creating={creating}
           showTitle={!inDrawer}
+          personas={personas?.personas}
+          persona={chosenPersona}
+          onPersonaChange={setPersona}
           onCreate={() => void createSession()}
           onNavigate={() => setDrawerOpen(false)}
           onRename={renameSession}
@@ -183,7 +201,12 @@ export default function App() {
       )}
     >
       {sessionId ? (
-        <SessionWorkspace key={sessionId} sessionId={sessionId} name={current?.title ?? 'Session'} />
+        <SessionWorkspace
+          key={sessionId}
+          sessionId={sessionId}
+          name={current?.title ?? 'Session'}
+          persona={personas?.personas.find((item) => item.id === current?.persona)}
+        />
       ) : sessions && !sessions.length ? (
         <EmptyState
           icon={MessageSquare}

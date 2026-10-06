@@ -49,6 +49,7 @@ test('assistant Markdown streams safely without changing transcript or view navi
     let body: unknown
     if (url.pathname === '/api/sessions') body = [session]
     else if (url.pathname === '/api/health') body = { status: 'ok', mode: 'live' }
+    else if (url.pathname === '/api/personas') body = { default: 'analyst', personas: [] }
     else if (url.pathname.endsWith('/snapshot')) {
       expect(url.searchParams.get('representation')).toBe('model')
       body = projection

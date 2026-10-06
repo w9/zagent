@@ -168,7 +168,7 @@ services:
       timeout: 5s
       retries: 30
 
-  # The agent zone's only route to knowledge: contract pinning and tokenization.
+  # The agent zone's only route to knowledge: caller verification, contract pinning and tokenization.
   mcp-broker:
     build:
       context: .
@@ -180,8 +180,10 @@ services:
       ZAGENT_KB_SNAPSHOT: "${ZAGENT_KB_SNAPSHOT:-}"
       ZAGENT_PRIVACY_URL: http://tokenizer:8006
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/tokenize.key
+      ZAGENT_CALLER_VERIFY_KEY_FILE: /run/caller/caller-verify.pem
     volumes:
       - privacy_tokenize:/run/privacy:ro
+      - caller_verify:/run/caller:ro
     networks: [agent, knowledge]
     depends_on:
       kb:
@@ -268,6 +270,8 @@ services:
       - privacy_display:/keys/display
       - privacy_tools:/keys/tools
       - privacy_gateway:/keys/gateway
+      - caller_signing:/keys/caller-signing
+      - caller_verify:/keys/caller-verify
 
   privacy:
     build:
@@ -383,9 +387,11 @@ services:
       ZAGENT_JOBS_URL: http://jobs:8005/mcp
       ZAGENT_PRIVACY_URL: http://privacy:8003
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/display.key
+      ZAGENT_CALLER_SIGNING_KEY_FILE: /run/caller/caller-signing.pem
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
     volumes:
       - privacy_display:/run/privacy:ro
+      - caller_signing:/run/caller:ro
     networks: [clinical]
     depends_on:
       agent:
@@ -423,6 +429,8 @@ volumes:
   privacy_display:
   privacy_tools:
   privacy_gateway:
+  caller_signing:
+  caller_verify:
 
 networks:
   clinical:

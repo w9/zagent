@@ -86,7 +86,7 @@ class Runtime:
     async def recover(self) -> None:
         rows = await self.store.pool.fetch(
             """SELECT turns.session_id AS id, turns.id AS conversation_turn_id,
-               events.payload->>'text' AS message, sessions.site_id
+               events.payload->>'text' AS message, sessions.site_id, turns.caller_context
                FROM conversation_turns AS turns JOIN sessions ON sessions.id=turns.session_id
                JOIN events ON events.conversation_turn_id=turns.id AND events.type='user_message'
                WHERE turns.status='running' ORDER BY events.created_at"""

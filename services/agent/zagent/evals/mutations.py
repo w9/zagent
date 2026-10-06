@@ -25,6 +25,8 @@ EXPECTED = {
     "zones_off": ["REQ-PHI-05"],
     "rls_off": ["REQ-ISO-01", "REQ-ISO-02"],
     "validator_off": ["REQ-VALID-01"],
+    "acl_off": ["REQ-ACL-01"],
+    "trust_unsigned_context": ["REQ-ACL-02"],
 }
 
 
@@ -248,6 +250,50 @@ async def probe(name: str, root: Path) -> dict:
             )
             controls["human_confirm_works"] = response.status_code == 200
             await store.finish_conversation_turn(valid_turn.id, valid_turn.conversation_turn_id)
+        elif name in {"acl_off", "trust_unsigned_context"}:
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+            from zknowledge.index import IndexStore, build_index
+            from zknowledge.server_v2 import create_server_v2
+            from zknowledge.snapshot import corpus_root
+
+            from zagent.broker import KnowledgeBroker
+            from zagent.identity import CallerRejected, CallerSigner
+
+            session, turn_id = await store.create_session(), uuid4()
+            with TemporaryDirectory(prefix="zagent-acl-") as directory:
+                await asyncio.to_thread(build_index, corpus_root(), Path(directory))
+                upstream = McpToolClient(server=create_server_v2(IndexStore(Path(directory))))
+                broker = KnowledgeBroker(upstream, store.privacy)
+
+                async def reads_draft(signer: CallerSigner, persona: str) -> bool:
+                    token = signer.mint(
+                        session_id=session.id, turn_id=turn_id, site="northgate", persona=persona
+                    )
+                    try:
+                        caller = broker.verifier.verify(
+                            token, session_id=session.id, turn_id=turn_id
+                        )
+                    except CallerRejected:
+                        return False
+                    result = await upstream.invoke(
+                        "get_document",
+                        {"document": "sop-qc-001-v4"},
+                        meta=broker.upstream_meta(caller),
+                    )
+                    return "error" not in result
+
+                signer = CallerSigner.configured()
+                controls["qa_officer_reads_draft"] = await reads_draft(signer, "qa-officer")
+                if name == "acl_off":
+                    leaked = await reads_draft(signer, "analyst")
+                    outcomes["REQ-ACL-01"] = not leaked
+                    observed["analyst_reads_restricted_draft"] = leaked
+                else:
+                    forged = await reads_draft(
+                        CallerSigner(Ed25519PrivateKey.generate()), "qa-officer"
+                    )
+                    outcomes["REQ-ACL-02"] = not forged
+                    observed["forged_context_accepted"] = forged
         else:
             raise ValueError("The zones mutation requires the running Compose stack probe")
         controls["http_health_after"] = (await client.get("/health")).status_code == 200

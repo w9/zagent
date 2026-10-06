@@ -3,7 +3,12 @@ import type { Projection } from './events'
 export type Session = {
   id: string; seq: number; created_at: string; title: string
   title_source: 'fallback' | 'automatic' | 'manual'
+  persona?: string
 }
+
+/** A simulated identity; its roles decide which knowledge documents the agent can read. */
+export type Persona = { id: string; name: string; title: string; roles: string[]; description: string }
+export type PersonaRegistry = { default: string; personas: Persona[] }
 
 export class ApiError extends Error {
   status: number

@@ -7,10 +7,11 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 import asyncpg
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from zagent.events import Event, EventDraft, Projection, project
 from zagent.faults import configured, enabled
+from zagent.identity import DEFAULT_PERSONA, PersonaId
 from zagent.privacy import Raw
 from zagent.privacy_client import PrivacyClient, Tokenizer
 from zagent.privacy_store import PrivacyStore
@@ -58,6 +59,7 @@ class Session(BaseModel):
     seq: int
     created_at: datetime
     site_id: str = "northgate"
+    persona: PersonaId = DEFAULT_PERSONA
     title: str = "Session"
     title_source: Literal["fallback", "automatic", "manual"] = "fallback"
 
@@ -67,6 +69,10 @@ class AgentSession(BaseModel):
     conversation_turn_id: UUID
     message: str
     site_id: str = "northgate"
+    caller_context: str | None = Field(default=None, repr=False)
+
+
+SESSION_COLUMNS = "id, last_seq AS seq, created_at, site_id, persona, title, title_source"
 
 
 async def configure_connection(connection: asyncpg.Connection) -> None:
@@ -205,13 +211,16 @@ class Store:
         ).value
         return EventDraft(type=event.type, payload=payload)
 
-    async def create_session(self, site_id: str = "northgate") -> Session:
+    async def create_session(
+        self, site_id: str = "northgate", persona: PersonaId = DEFAULT_PERSONA
+    ) -> Session:
         session_id = uuid4()
         row = await self.pool.fetchrow(
-            """INSERT INTO sessions (id, site_id, title) VALUES ($1, $2, $3)
-               RETURNING id, last_seq AS seq, created_at, site_id, title, title_source""",
+            f"""INSERT INTO sessions (id, site_id, persona, title) VALUES ($1, $2, $3, $4)
+               RETURNING {SESSION_COLUMNS}""",
             session_id,
             site_id,
+            persona,
             f"Session {session_id.hex[:8]}",
         )
         await self.pool.execute("SELECT pg_notify($1, 'sessions')", NOTIFY_CHANNEL)
@@ -219,8 +228,7 @@ class Store:
 
     async def get_session(self, session_id: UUID) -> Session:
         row = await self.pool.fetchrow(
-            "SELECT id, last_seq AS seq, created_at, site_id, title, title_source "
-            "FROM sessions WHERE id = $1",
+            f"SELECT {SESSION_COLUMNS} FROM sessions WHERE id = $1",
             session_id,
         )
         if row is None:
@@ -229,8 +237,7 @@ class Store:
 
     async def list_sessions(self) -> list[Session]:
         rows = await self.pool.fetch(
-            """SELECT id, last_seq AS seq, created_at, site_id, title, title_source FROM sessions
-                    ORDER BY created_at DESC, id DESC"""
+            f"SELECT {SESSION_COLUMNS} FROM sessions ORDER BY created_at DESC, id DESC"
         )
         return [Session.model_validate(dict(row)) for row in rows]
 
@@ -274,7 +281,14 @@ class Store:
             await connection.execute("SELECT pg_notify($1, 'sessions')", NOTIFY_CHANNEL)
         return await self.get_session(session_id)
 
-    async def begin_conversation_turn(self, session_id: UUID, text: str) -> AgentSession:
+    async def begin_conversation_turn(
+        self,
+        session_id: UUID,
+        text: str,
+        *,
+        conversation_turn_id: UUID | None = None,
+        caller_context: str | None = None,
+    ) -> AgentSession:
         text = (
             await self.privacy.tokenize(
                 session_id,
@@ -282,7 +296,7 @@ class Store:
                 path="user_message",
             )
         ).value
-        conversation_turn_id = uuid4()
+        conversation_turn_id = conversation_turn_id or uuid4()
         async with self.pool.acquire() as connection, connection.transaction():
             session = await connection.fetchrow(
                 "SELECT id, site_id FROM sessions WHERE id = $1 FOR UPDATE", session_id
@@ -298,10 +312,11 @@ class Store:
                     "This session already has an active conversation turn"
                 )
             await connection.execute(
-                """INSERT INTO conversation_turns (id, session_id, status)
-                   VALUES ($1, $2, 'running')""",
+                """INSERT INTO conversation_turns (id, session_id, status, caller_context)
+                   VALUES ($1, $2, 'running', $3)""",
                 conversation_turn_id,
                 session_id,
+                caller_context,
             )
             await self._append(
                 connection,
@@ -314,6 +329,7 @@ class Store:
             conversation_turn_id=conversation_turn_id,
             message=text,
             site_id=session["site_id"],
+            caller_context=caller_context,
         )
 
     async def _append(

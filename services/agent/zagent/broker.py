@@ -7,10 +7,18 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import ValidationError
 
+from zagent.faults import enabled
+from zagent.identity import (
+    CALLER_CONTEXT_META,
+    PERSONAS,
+    CallerContext,
+    CallerRejected,
+    CallerVerifier,
+)
 from zagent.kb_tools import (
     KB_CONTRACT_SHA256,
     KB_DESCRIPTIONS,
@@ -23,7 +31,9 @@ from zagent.privacy_client import PrivacyClient, Tokenizer
 from zagent.tools import McpToolClient, failure
 
 SNAPSHOT_META = "zknowledge/snapshot"
+CALLER_META = "zknowledge/caller"
 CONTRACT_TTL_SECONDS = 60
+SERVICE_ROLES = tuple(sorted({role for persona in PERSONAS.values() for role in persona.roles}))
 logger = logging.getLogger("zagent.broker")
 
 
@@ -39,12 +49,14 @@ class KnowledgeBroker:
         upstream: McpToolClient,
         tokenizer: Tokenizer,
         *,
+        verifier: CallerVerifier | None = None,
         snapshot: str | None = None,
         timeout: float = 10,
         contract: str = KB_CONTRACT_SHA256,
     ):
         self.upstream = upstream
         self.tokenizer = tokenizer
+        self.verifier = verifier or CallerVerifier.configured()
         self.snapshot = snapshot
         self.timeout = timeout
         self.contract = contract
@@ -60,46 +72,67 @@ class KnowledgeBroker:
             raise ContractChanged(observed)
         self.verified_at = time.monotonic()
 
-    async def dispatch(self, session_id: UUID, name: str, arguments: dict) -> dict:
+    def upstream_meta(self, caller: CallerContext) -> dict:
+        """Request metadata for the knowledge service: the verified caller, never model input."""
+        roles = SERVICE_ROLES if enabled("acl_off") else caller.roles
+        meta: dict = {CALLER_META: {"site": caller.site, "roles": list(roles)}}
+        if self.snapshot:
+            meta[SNAPSHOT_META] = self.snapshot
+        return meta
+
+    async def dispatch(
+        self,
+        session_id: UUID,
+        turn_id: UUID,
+        name: str,
+        arguments: dict,
+        caller_context: str | None = None,
+    ) -> dict:
         try:
             params = KB_INPUTS[name].model_validate(arguments)
         except (KeyError, ValidationError):
             return failure("invalid_arguments", "Arguments do not match the knowledge tool schema")
         try:
-            async with asyncio.timeout(self.timeout):
-                await self.verify_contract()
-                result = await self.upstream.invoke(
-                    name,
-                    params.model_dump(),
-                    meta={SNAPSHOT_META: self.snapshot} if self.snapshot else None,
-                )
-        except ContractChanged:
+            caller = self.verifier.verify(caller_context, session_id=session_id, turn_id=turn_id)
+        except CallerRejected as error:
+            logger.warning("Knowledge call rejected: %s", error)
             result = failure(
-                "unavailable",
-                "Knowledge tools are disabled until the upstream contract is reviewed",
+                "unavailable", "Knowledge access could not be verified for this conversation turn"
             )
-        except Exception:
-            result = failure("unavailable", "Knowledge service is unavailable")
         else:
-            if "error" in result:
-                error = result["error"] if isinstance(result["error"], dict) else {}
-                code = error.get("code")
-                result = failure(
-                    code if code == "invalid_arguments" else "unavailable",
-                    str(error.get("message") or "Knowledge request failed"),
-                )
-            else:
-                try:
-                    KB_OUTPUTS[name].model_validate(result)
-                except ValidationError:
-                    result = failure(
-                        "unsafe_result", "Knowledge service returned an invalid result"
-                    )
+            result = await self.fetch(name, params.model_dump(), caller)
         return (
             await self.tokenizer.tokenize(
                 session_id, Raw(value=result), path="retrieved_document", external=True
             )
         ).value
+
+    async def fetch(self, name: str, arguments: dict, caller: CallerContext) -> dict:
+        try:
+            async with asyncio.timeout(self.timeout):
+                await self.verify_contract()
+                result = await self.upstream.invoke(
+                    name, arguments, meta=self.upstream_meta(caller)
+                )
+        except ContractChanged:
+            return failure(
+                "unavailable",
+                "Knowledge tools are disabled until the upstream contract is reviewed",
+            )
+        except Exception:
+            return failure("unavailable", "Knowledge service is unavailable")
+        if "error" in result:
+            error = result["error"] if isinstance(result["error"], dict) else {}
+            code = error.get("code")
+            return failure(
+                code if code == "invalid_arguments" else "unavailable",
+                str(error.get("message") or "Knowledge request failed"),
+            )
+        try:
+            KB_OUTPUTS[name].model_validate(result)
+        except ValidationError:
+            return failure("unsafe_result", "Knowledge service returned an invalid result")
+        return result
 
 
 def create_broker_server(broker: KnowledgeBroker) -> FastMCP:
@@ -110,9 +143,18 @@ def create_broker_server(broker: KnowledgeBroker) -> FastMCP:
             session_id: str,
             conversation_turn_id: str,
             arguments: dict[str, Any],
+            ctx: Context,
             operation_id: str | None = None,
         ) -> dict[str, Any]:
-            return await broker.dispatch(UUID(session_id), name, arguments)
+            meta = ctx.request_context.meta
+            extra = (meta.model_extra or {}) if meta else {}
+            return await broker.dispatch(
+                UUID(session_id),
+                UUID(conversation_turn_id),
+                name,
+                arguments,
+                caller_context=extra.get(CALLER_CONTEXT_META),
+            )
 
         server.add_tool(
             invoke,

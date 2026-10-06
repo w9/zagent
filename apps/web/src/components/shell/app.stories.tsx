@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { ChatPanel } from '../chat/chat-panel'
-import { bindings, conversation, empty, resolveHandle, responding, sessions, xray } from '../fixtures'
+import { bindings, conversation, empty, personas, resolveHandle, responding, sessions, xray } from '../fixtures'
 import { WorkingSurface } from '../surface/working-surface'
 import { XrayContent } from '../xray/xray-panel'
 import type { Projection } from '../../lib/events'
@@ -26,6 +26,7 @@ function Workspace({
   const [drawerOpen, setDrawerOpen] = useState(drawer)
   const [current, setCurrent] = useState(panel)
   const [selected, setSelected] = useState<string>()
+  const [persona, setPersona] = useState('analyst')
   const session = sessions.find((item) => item.id === state.session_id) ?? sessions[0]
   return (
     <AppShell
@@ -35,7 +36,16 @@ function Workspace({
       drawerOpen={drawerOpen}
       onDrawerOpenChange={setDrawerOpen}
       sidebar={(inDrawer) => (
-        <SessionList sessions={sessions} selectedId={session.id} showTitle={!inDrawer} onCreate={() => {}} onRename={async () => {}} />
+        <SessionList
+          sessions={sessions}
+          selectedId={session.id}
+          showTitle={!inDrawer}
+          personas={personas}
+          persona={persona}
+          onPersonaChange={setPersona}
+          onCreate={() => {}}
+          onRename={async () => {}}
+        />
       )}
     >
       {showXray ? (
@@ -48,7 +58,15 @@ function Workspace({
           onPanelChange={setCurrent}
           viewCount={state.views.length}
           chat={
-            <ChatPanel sessionId={session.id} name={session.title} state={state} bindings={bindings} connection="live" onSend={async () => {}} />
+            <ChatPanel
+              sessionId={session.id}
+              name={session.title}
+              persona={personas.find((item) => item.id === session.persona)}
+              state={state}
+              bindings={bindings}
+              connection="live"
+              onSend={async () => {}}
+            />
           }
           surface={
             <WorkingSurface sessionId={session.id} views={state.views} selectedId={selected} onSelect={setSelected} resolveHandle={resolveHandle} />

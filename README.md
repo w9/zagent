@@ -224,7 +224,10 @@ Services on both clinical and agent networks serve only fixed agent-facing ports
 jobs MCP servers, a tokenize-only privacy listener (`tokenizer`, no resolve routes), a PgBouncer
 event database proxy pinned to `zagent_runtime`, and the OTLP collector. `mcp-broker` alone joins
 the agent and knowledge networks; it pins the knowledge tool contract and tokenizes results
-before they reach the runtime. The runtime never
+before they reach the runtime. Each session records a simulated persona (lab technologist,
+analyst, QA officer or lab director, chosen in the sidebar). For every conversation turn the BFF
+signs a short-lived caller context with a key only it holds; the runtime forwards it unopened, and
+the broker verifies it before passing the site and roles to the knowledge service. The runtime never
 connects to clinical Postgres, privacy resolution, the BFF, or the knowledge service. The BFF
 reaches the runtime and
 gateway through `display-relay`, a one-way TCP forwarder with no route back. An `ingress`
@@ -576,7 +579,7 @@ quality weaknesses remain visible even when regression gates pass.
 | PLAN9 | The cluster: k3d, zones, enforced network policy | Abandoned; zones and tracing moved to Compose |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
-| [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Stages 1-2 of 4 (relocation, corpus) implemented |
+| [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Stages 1-3 of 4 (relocation, corpus, identity) implemented |
 
 ---
 

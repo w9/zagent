@@ -17,6 +17,7 @@ from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
 from zagent.draft_store import DraftConflict, DraftStore
 from zagent.drafts import AppId, DraftState, JobState
 from zagent.faults import enabled
+from zagent.identity import CALLER_CONTEXT_META
 from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
 from zagent.kb_tools import KB_DESCRIPTIONS, KB_INPUTS, KB_OUTPUTS
 from zagent.privacy import TOKEN, PrivacyError, Raw, Tokenized
@@ -514,6 +515,9 @@ class McpToolClient:
                     "arguments": arguments,
                     "operation_id": operation_id,
                 },
+                meta={CALLER_CONTEXT_META: session.caller_context}
+                if name in KB_INPUTS and session.caller_context
+                else None,
             )
         if result.isError or result.structuredContent is None:
             return failure("unavailable", "MCP tool execution failed")

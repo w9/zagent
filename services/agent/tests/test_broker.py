@@ -8,6 +8,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 from zagent.broker import KnowledgeBroker, create_broker_server
 from zagent.evals.local_knowledge import current_snapshot, local_broker
+from zagent.identity import CallerSigner
 from zagent.kb_tools import KB_CONTRACT_SHA256, contract_hash
 from zagent.privacy import Tokenized
 from zagent.store import AgentSession
@@ -25,8 +26,23 @@ class RecordingTokenizer:
         return Tokenized(value=raw.value)
 
 
-def agent_session():
-    return AgentSession(id=uuid4(), conversation_turn_id=uuid4(), message="Find the identity SOP")
+def agent_session(persona="analyst", session_id=None):
+    session_id, turn_id = session_id or uuid4(), uuid4()
+    return AgentSession(
+        id=session_id,
+        conversation_turn_id=turn_id,
+        message="Find the identity SOP",
+        caller_context=CallerSigner.configured().mint(
+            session_id=session_id, turn_id=turn_id, site="northgate", persona=persona
+        ),
+    )
+
+
+async def dispatch(broker, name, arguments, session=None):
+    session = session or agent_session()
+    return await broker.dispatch(
+        session.id, session.conversation_turn_id, name, arguments, session.caller_context
+    )
 
 
 def fake_upstream(result: dict[str, Any]) -> FastMCP:
@@ -97,7 +113,7 @@ async def test_a_changed_upstream_contract_disables_the_knowledge_tools():
         McpToolClient(server=fake_upstream({"version": "a" * 64, "matches": []})),
         RecordingTokenizer(),
     )
-    result = await broker.dispatch(uuid4(), "search_knowledge", {"query": "coverage"})
+    result = await dispatch(broker, "search_knowledge", {"query": "coverage"})
     assert result["error"]["code"] == "unavailable"
     assert "contract" in result["error"]["message"]
 
@@ -111,7 +127,7 @@ async def test_invalid_upstream_results_never_pass_the_broker():
         RecordingTokenizer(),
         contract=contract_hash(await upstream.tool_schemas()),
     )
-    result = await broker.dispatch(uuid4(), "search_knowledge", {"query": "coverage"})
+    result = await dispatch(broker, "search_knowledge", {"query": "coverage"})
     assert result["error"]["code"] == "unsafe_result"
 
 
@@ -119,7 +135,7 @@ async def test_an_unreachable_knowledge_service_fails_closed():
     broker = KnowledgeBroker(
         McpToolClient(url="http://127.0.0.1:9/mcp"), RecordingTokenizer(), timeout=2
     )
-    result = await broker.dispatch(uuid4(), "search_knowledge", {"query": "coverage"})
+    result = await dispatch(broker, "search_knowledge", {"query": "coverage"})
     assert result == {
         "error": {"code": "unavailable", "message": "Knowledge service is unavailable"}
     }
@@ -136,8 +152,11 @@ async def test_identifiers_in_knowledge_results_are_tokenized_by_the_broker(stor
     )
     build_snapshot(source, tmp_path / "snapshots")
     session = await store.create_session()
-    result = await local_broker(store.privacy, tmp_path / "snapshots").dispatch(
-        session.id, "search_knowledge", {"query": "specimen swap"}
+    result = await dispatch(
+        local_broker(store.privacy, tmp_path / "snapshots"),
+        "search_knowledge",
+        {"query": "specimen swap"},
+        agent_session(session_id=session.id),
     )
     assert "NGC-0041872" not in json.dumps(result)
     assert "[PT_" in result["matches"][0]["text"]

@@ -1,0 +1,9 @@
+<p>FASTQ files hold reads and per-base quality scores. Released FASTQ files are read only.</p>
+<h1>Quick checks</h1>
+<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[# count reads (four lines per read)
+echo $(( $(zcat sample_R1.fastq.gz | wc -l) / 4 ))
+# verify checksums after copying
+md5sum -c md5sums.txt]]></ac:plain-text-body></ac:structured-macro>
+<h1>Quality scores</h1>
+<p>Qualities use Phred+33 encoding. Q30 means a 1 in 1000 chance that the base call is wrong.</p>
+<p>Run a quality report tool on a copy if you suspect adapter contamination; do not trim released files in place.</p>

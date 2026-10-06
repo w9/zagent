@@ -1,0 +1,10 @@
+<p>Every project gets a space on the shared research file system for intermediate files. Clinical outputs stay in the workbench and are never copied here.</p>
+<h1>Request</h1>
+<p>Open a service request with the type Storage and give the project code, the owner role and the expected size.</p>
+<h1>Layout</h1>
+<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[/research/projects/<project_code>/
+  raw/        links to released FASTQ, read only
+  work/       scratch, purged after 60 days
+  results/    kept until the project closes]]></ac:plain-text-body></ac:structured-macro>
+<ac:structured-macro ac:name="warning"><ac:rich-text-body><p>The work directory is purged after 60 days without warning.</p></ac:rich-text-body></ac:structured-macro>
+<p>Quota starts at 2 TB per project. Ask the platform team for more.</p>

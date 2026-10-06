@@ -1,0 +1,17 @@
+<p>Somatic SNV and indel calling compares a tumor library with a matched normal library from the same patient. The application is somatic-snv.</p>
+<h1>Inputs</h1>
+<ul>
+<li>One specimen selection that contains both the tumor and the normal specimen of the same patient.</li>
+<li>Tumor libraries with at least 40x mean coverage, as required by SOP-QC-001 version 3 since 2025-11-03.</li>
+<li>A passing genotype concordance check between tumor and normal.</li>
+</ul>
+<h1>Parameters</h1>
+<table>
+<tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+<tr><td>min_vaf</td><td>0.05</td><td>Lowest variant allele frequency reported.</td></tr>
+<tr><td>min_depth</td><td>20</td><td>Lowest tumor read depth at the variant position.</td></tr>
+</table>
+<p>Defaults come from SOP-VAR-001. Lowering min_vaf below 0.05 needs a justification and at least 100x tumor coverage.</p>
+<h1>When a job fails</h1>
+<p>A genotype_concordance_failed code means the tumor and normal roles in the selection do not match the verified identity. Follow SOP-IDENTITY-001 and prepare a new draft with verified roles.</p>
+<p>A low_purity_warning does not fail the job. Sensitivity for subclonal variants is reduced below 0.20 purity.</p>

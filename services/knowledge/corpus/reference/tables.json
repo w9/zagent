@@ -1,0 +1,84 @@
+[
+  {
+    "name": "qc_thresholds",
+    "title": "QC thresholds by application",
+    "description": "Quality thresholds that workbench applications and reviews apply, with the controlled document that sets each one. Superseded rows are kept for audit; filter on status effective for current rules.",
+    "file": "qc_thresholds.csv",
+    "columns": {"app_id": "string", "metric": "string", "comparator": "string", "threshold": "number", "unit": "string", "specimen": "string", "effective_from": "string", "effective_to": "string", "status": "string"},
+    "column_notes": {"specimen": "Library or specimen role the rule applies to.", "status": "effective or superseded."},
+    "cite_values": ["threshold"],
+    "version": "2026.3",
+    "owner_role": "qa-officer"
+  },
+  {
+    "name": "assay_metrics",
+    "title": "In-house assay metric distributions",
+    "description": "Fifth percentile, median and 95th percentile of library quality metrics measured by the core. Use them to judge whether a library is typical; they are not pass or fail thresholds.",
+    "file": "assay_metrics.csv",
+    "columns": {"assay": "string", "metric": "string", "unit": "string", "p5": "number", "median": "number", "p95": "number", "libraries": "integer", "period": "string"},
+    "cite_values": ["p5", "median", "p95"],
+    "version": "2026-06",
+    "owner_role": "sequencing supervisor"
+  },
+  {
+    "name": "gene_panels",
+    "title": "Germline panel genes",
+    "description": "Genes on the predisposition and extended germline panels, with inheritance and the SOP-GERM-001 version that added each gene. The extended panel includes every predisposition gene.",
+    "file": "gene_panels.csv",
+    "columns": {"panel": "string", "gene": "string", "inheritance": "string", "added_in_version": "integer"},
+    "column_notes": {"inheritance": "AD autosomal dominant, AR autosomal recessive."},
+    "cite_values": ["gene"],
+    "version": "2025-02",
+    "owner_role": "bioinformatics lead"
+  },
+  {
+    "name": "fusion_targets",
+    "title": "Curated fusion targets",
+    "description": "Recurrent pediatric fusions that rna-fusion flags when found.",
+    "file": "fusion_targets.csv",
+    "columns": {"five_prime": "string", "three_prime": "string", "tumor_type": "string"},
+    "cite_values": ["five_prime", "three_prime"],
+    "version": "2026-03",
+    "owner_role": "bioinformatics lead"
+  },
+  {
+    "name": "job_error_codes",
+    "title": "Workbench job log codes",
+    "description": "Codes that workbench jobs write to their logs, the job state they imply and what to do.",
+    "file": "job_error_codes.csv",
+    "columns": {"code": "string", "severity": "string", "state": "string", "meaning": "string", "action": "string"},
+    "cite_values": ["code"],
+    "version": "2026-01",
+    "owner_role": "platform engineering lead"
+  },
+  {
+    "name": "reference_resources",
+    "title": "Reference data in use",
+    "description": "Versions of reference genomes, annotations and variant resources used by Autopipe and the workbench.",
+    "file": "reference_resources.csv",
+    "columns": {"resource": "string", "version": "string", "build": "string", "alias": "string", "in_use_since": "string"},
+    "cite_values": ["version"],
+    "version": "2026-02",
+    "owner_role": "platform engineering lead"
+  },
+  {
+    "name": "ensembl_id_prefixes",
+    "title": "Ensembl and GENCODE ID prefixes",
+    "description": "Stable identifier prefixes and the feature type each one names.",
+    "file": "ensembl_id_prefixes.csv",
+    "columns": {"prefix": "string", "feature": "string", "example": "string"},
+    "cite_values": ["prefix", "example"],
+    "version": "2025-02",
+    "owner_role": "analyst"
+  },
+  {
+    "name": "assay_contacts",
+    "title": "Points of contact by assay",
+    "description": "Team, responsible role and chat channel for each assay platform. Roles, not named people, are listed so the table survives staff changes.",
+    "file": "assay_contacts.csv",
+    "columns": {"assay": "string", "team": "string", "role": "string", "channel": "string"},
+    "cite_values": ["channel"],
+    "version": "2026-06",
+    "owner_role": "lab operations lead"
+  }
+]

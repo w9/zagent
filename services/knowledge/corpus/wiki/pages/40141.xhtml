@@ -1,0 +1,9 @@
+<p>Bulk RNA-seq expression analysis is a research service and is not available as a workbench application. It is run by the bioinformatics team on request.</p>
+<h1>Standard workflow</h1>
+<ol>
+<li>Map reads with a splice-aware aligner against GRCh38 and the GENCODE annotation.</li>
+<li>Count reads per gene, respecting strand.</li>
+<li>Normalize counts and run differential expression when there are replicates.</li>
+</ol>
+<p>Fusion calling from the same libraries is a separate application, rna-fusion.</p>
+<p>Expect at least 50 million read pairs per library for expression work. Fusion calling can work with fewer.</p>

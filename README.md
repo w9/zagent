@@ -576,7 +576,7 @@ quality weaknesses remain visible even when regression gates pass.
 | PLAN9 | The cluster: k3d, zones, enforced network policy | Abandoned; zones and tracing moved to Compose |
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
-| [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Stage 1 of 4 (relocation) implemented |
+| [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Stages 1-2 of 4 (relocation, corpus) implemented |
 
 ---
 

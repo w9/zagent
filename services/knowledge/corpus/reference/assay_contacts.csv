@@ -1,0 +1,7 @@
+assay,team,role,channel,source_document,source_anchor
+PCR-free WGS,Lab operations,lab operations lead,#mcgc-lab-ops,wiki-40121,| PCR-free WGS |
+Whole exome,Lab operations,sequencing supervisor,#mcgc-sequencing,wiki-40121,| Whole exome |
+Stranded RNA-seq,Bioinformatics,RNA analyst,#mcgc-rna,wiki-40121,| Stranded RNA-seq |
+Somatic calling,Bioinformatics,bioinformatics lead,#mcgc-bioinfo-oncall,wiki-40121,| Somatic calling |
+Germline panels,Bioinformatics,germline analyst,#mcgc-germline,wiki-40121,| Germline panels |
+Identity checks,Quality,quality lead,#mcgc-quality,wiki-40121,| Identity checks |

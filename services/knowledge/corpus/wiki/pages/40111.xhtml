@@ -1,0 +1,19 @@
+<p>Analyses run in the Zagent workbench as drafts that a person confirms. You can prepare a draft yourself or ask the workbench assistant to prepare one, but only you can confirm it.</p>
+<h1>Steps</h1>
+<ol>
+<li>Open a service request in the service desk with the request type Analysis.</li>
+<li>Name the application: readqc, somatic-snv, rna-fusion or germline-panel.</li>
+<li>Describe the specimens by site, patient study code and intake window. Do not paste MRNs into the request.</li>
+<li>Prepare the draft in the workbench and check the validation messages on the form.</li>
+<li>Confirm the draft yourself with the Confirm control. A chat reply of yes does not submit anything.</li>
+</ol>
+<h1>Which application do I need?</h1>
+<table>
+<tr><th>Question</th><th>Application</th></tr>
+<tr><td>Is the sequencing deep and clean enough?</td><td>readqc</td></tr>
+<tr><td>Which somatic SNVs and indels does the tumor carry?</td><td>somatic-snv</td></tr>
+<tr><td>Is there a gene fusion in the RNA?</td><td>rna-fusion</td></tr>
+<tr><td>Is there an inherited predisposition variant?</td><td>germline-panel</td></tr>
+</table>
+<ac:structured-macro ac:name="note"><ac:rich-text-body><p>Somatic calling needs a tumor and a matched normal from the same patient in one specimen selection. There is no separate matched normal field.</p></ac:rich-text-body></ac:structured-macro>
+<p>Germline panels need PCR-free WGS libraries. Requests on other library types are returned.</p>

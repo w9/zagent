@@ -1,0 +1,11 @@
+<p>Germline small variant calling runs inside the germline-panel application. Reads are aligned to GRCh38 and variants are called jointly across the panel regions.</p>
+<h1>Method</h1>
+<ol>
+<li>Align reads with the Autopipe mapping step and mark duplicates.</li>
+<li>Recalibrate base qualities against known sites from the reference library.</li>
+<li>Call SNVs and indels in the panel regions plus 20 base pairs of padding.</li>
+<li>Annotate with the transcript set listed in the reference library.</li>
+</ol>
+<h1>Outputs</h1>
+<p>The job writes a VCF restricted to panel regions and a coverage summary per gene. Genes with less than 20x coverage over any exon are flagged for review.</p>
+<ac:structured-macro ac:name="info"><ac:rich-text-body><p>Classification and reporting follow SOP-GERM-001. This page describes calling only.</p></ac:rich-text-body></ac:structured-macro>

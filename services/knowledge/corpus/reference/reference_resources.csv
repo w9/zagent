@@ -1,0 +1,7 @@
+resource,version,build,alias,in_use_since,source_document,source_anchor
+Reference genome,GRCh38 analysis set,GRCh38,ref/grch38,2022-01-10,wiki-40153,| Reference genome |
+Gene annotation,GENCODE 47,GRCh38,ann/gencode,2026-02-02,wiki-40153,| Gene annotation |
+Transcript set,MANE Select 1.4,GRCh38,ann/mane,2026-02-02,wiki-40153,| Transcript set |
+Known variants,dbSNP 156,GRCh38,var/dbsnp,2024-07-01,wiki-40153,| Known variants |
+Population frequencies,gnomAD 4.1,GRCh38,var/gnomad,2024-07-01,wiki-40153,| Population frequencies |
+Identity panel,IDP 2.0,GRCh38,qc/identity,2025-01-20,wiki-40153,| Identity panel |

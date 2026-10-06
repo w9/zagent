@@ -1,0 +1,23 @@
+MERIDIAN CLINICAL GENOMICS CORE - VALIDATION SUMMARY
+CONTROLLED COPY - Somatic SNV Calling Validation Summary
+Document: VAL-SOM-2025 Version 1 Page 1 of 1
+
+1 SCOPE
+This summary covers the limit of detection of somatic-snv
+calling on PCR-free WGS tumor and normal pairs.
+
+2 RESULTS
+At 40x tumor coverage the limit of detection was 0.05 VAF
+with 95 percent sensitivity.
+At 30x tumor coverage the limit of detection rose to 0.08
+VAF.
+Below 0.20 tumor purity, sensitivity for subclonal variants
+fell by roughly one third.
+
+3 CONCLUSIONS
+The default min_vaf of 0.05 is supported only with at least
+40x tumor coverage.
+A 45x tumor minimum was modelled and is being evaluated
+under CHG-0024.
+
+Printed copies are uncontrolled.

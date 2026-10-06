@@ -1,0 +1,22 @@
+MERIDIAN CLINICAL GENOMICS CORE - VALIDATION SUMMARY
+CONTROLLED COPY - RNA Fusion Detection Validation Summary
+Document: VAL-RNA-2025 Version 1 Page 1 of 1
+
+1 SCOPE
+This summary covers fusion detection from stranded poly-A RNA
+libraries.
+
+2 RESULTS
+With a minimum of 5 supporting reads, sensitivity for known
+fusions was 94.7 percent.
+Raising the minimum to 10 supporting reads lowered
+sensitivity to 88.3 percent with no further drop in false
+positives.
+Most false positives were read-through transcripts, which the
+artifact filter removed.
+
+3 CONCLUSIONS
+The default min_support of 5 and artifact filtering on are
+adopted in SOP-FUS-001.
+
+Printed copies are uncontrolled.

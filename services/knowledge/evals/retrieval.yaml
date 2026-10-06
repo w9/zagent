@@ -1,0 +1,176 @@
+# Labeled retrieval queries for the knowledge service. A hit is relevant when it comes from the
+# listed document and its line range includes the line containing the `contains` text.
+# The default caller is an analyst at Northgate. `must_not` lists documents the caller must never
+# see in any result; those checks are invariants, not part of the measured recall.
+default_caller: {site: northgate, roles: [analyst]}
+gate: {k: 5, min_recall_lower_bound: 0.85}
+queries:
+  # QMS: controlled documents
+  - {id: Q001, query: "What minimum coverage do tumor libraries need for somatic calling?", relevant: [{document: sop-qc-001-v3, contains: "Tumor libraries intended for somatic calling require"}]}
+  - {id: Q002, query: "readqc coverage threshold for normal libraries", relevant: [{document: sop-qc-001-v3, contains: "Normal and germline libraries require a mean coverage"}]}
+  - {id: Q003, query: "when did the 40x tumor minimum take effect", relevant: [{document: sop-qc-001-v3, contains: "The 40x tumor minimum replaced"}, {document: chg-0021, contains: "Effective with SOP-QC-001 version 3"}]}
+  - {id: Q004, query: "what min_coverage should I set on a readqc draft for a tumor", relevant: [{document: sop-qc-001-v3, contains: "Confirm min_coverage 40"}]}
+  - {id: Q005, query: "low tumor purity warning threshold", relevant: [{document: sop-qc-001-v3, contains: "Tumor purity below 0.20 produces a warning"}]}
+  - {id: Q006, query: "does a low purity warning mean the job failed", relevant: [{document: sop-qc-001-v3, contains: "A completed job with a low-purity warning is not a failed job"}, {document: inc-0145, contains: "A purity below 0.20 is a warning"}, {document: wiki-40218, contains: "A low_purity_warning is a warning on a completed job"}]}
+  - {id: Q007, query: "mapping rate hold for review", relevant: [{document: sop-qc-001-v3, contains: "mapping rate below 95 percent"}]}
+  - {id: Q008, query: "is high duplication a readqc failure", relevant: [{document: sop-qc-001-v3, contains: "Duplication above 15 percent is recorded"}]}
+  - {id: Q009, query: "genotype concordance minimum between tumor and normal", relevant: [{document: sop-identity-001-v1, contains: "concordance of at least 0.90"}]}
+  - {id: Q010, query: "how do I correct a tumor normal swap draft", relevant: [{document: sop-identity-001-v1, contains: "Find the patient's specimens with identity=\"verified\""}, {document: wiki-40137, contains: "Select the patient's specimens with verified identity"}]}
+  - {id: Q011, query: "can I edit the specimen records after a swap", relevant: [{document: sop-identity-001-v1, contains: "it never rewrites the clinical specimen rows"}, {document: wiki-40137, contains: "Do not edit the clinical specimen records"}, {document: sop-acc-001-v2, contains: "Never overwrite the reported role"}]}
+  - {id: Q012, query: "what does genotype concordance failure mean", relevant: [{document: sop-identity-001-v1, contains: "Genotype concordance failure means selected tumor and normal roles disagree"}, {document: wiki-40152, contains: "genotype_concordance_failed | ERROR"}]}
+  - {id: Q013, query: "default minimum VAF for somatic calls", relevant: [{document: sop-var-001-v2, contains: "The default minimum variant allele frequency is 0.05"}, {document: wiki-40134, contains: "| min_vaf | 0.05 |"}]}
+  - {id: Q014, query: "when can min_vaf be lowered to 0.03", relevant: [{document: sop-var-001-v2, contains: "Analysts may lower min_vaf to 0.03"}, {document: wiki-40218, contains: "You can go to 0.03 only with 100x tumor coverage"}]}
+  - {id: Q015, query: "minimum read depth for somatic variants", relevant: [{document: sop-var-001-v2, contains: "minimum depth of 20 reads"}]}
+  - {id: Q016, query: "is there a matched_normal parameter", relevant: [{document: sop-var-001-v2, contains: "There is no matched_normal parameter"}, {document: wiki-40218, contains: "There is no separate matched normal parameter"}]}
+  - {id: Q017, query: "minimum supporting reads for a fusion call", relevant: [{document: sop-fus-001-v1, contains: "at least 5 supporting reads"}, {document: wiki-40142, contains: "| min_support | 5 |"}]}
+  - {id: Q018, query: "turning off fusion artifact filtering", relevant: [{document: sop-fus-001-v1, contains: "Disabling artifact filtering requires a documented justification"}, {document: wiki-40142, contains: "Turning off artifact filtering needs a justification"}]}
+  - {id: Q019, query: "known fusion artifact classes", relevant: [{document: sop-fus-001-v1, contains: "Read-through between neighboring genes on the same strand"}]}
+  - {id: Q020, query: "which library type is required for germline panels", relevant: [{document: sop-germ-001-v2, contains: "Germline panels require PCR-free WGS libraries"}, {document: wiki-40138, contains: "Both panels need PCR-free WGS libraries"}]}
+  - {id: Q021, query: "genes on the predisposition panel", relevant: [{document: sop-germ-001-v2, contains: "Predisposition panel genes:"}, {document: ref-gene-panels, contains: "| predisposition | TP53 | AD | 1 |"}]}
+  - {id: Q022, query: "which genes does the extended panel add", relevant: [{document: sop-germ-001-v2, contains: "Extended panel adds:"}, {document: ref-gene-panels, contains: "| extended | CHEK2 | AD | 2 |"}]}
+  - {id: Q023, query: "germline panel minimum coverage", relevant: [{document: sop-germ-001-v2, contains: "requires a minimum coverage of 30x"}]}
+  - {id: Q024, query: "does the workbench release germline results to families", relevant: [{document: sop-germ-001-v2, contains: "never contacts patients or families"}]}
+  - {id: Q025, query: "PCR-free WGS input DNA amount", relevant: [{document: sop-prep-001-v4, contains: "PCR-free WGS requires at least 500 ng"}]}
+  - {id: Q026, query: "RNA integrity requirement for fusion libraries", relevant: [{document: sop-prep-001-v4, contains: "integrity number of 7 or higher"}, {document: wiki-40163, contains: "integrity number below 7 need a deviation"}]}
+  - {id: Q027, query: "index hopping review", relevant: [{document: sop-seq-001-v3, contains: "Index hopping above 0.1 percent"}]}
+  - {id: Q028, query: "Q30 release criterion for a sequencing run", relevant: [{document: sop-seq-001-v3, contains: "at least 85 percent of bases reach Q30"}]}
+  - {id: Q029, query: "what happens to a run that misses a release criterion", relevant: [{document: sop-seq-001-v3, contains: "A run that misses a release criterion is not analyzed"}]}
+  - {id: Q030, query: "how quickly must a deviation be reported", relevant: [{document: sop-dev-001-v1, contains: "Report a deviation within 1 business day"}, {document: frm-dev-001-v1, contains: "within 1 business day of discovering a deviation"}]}
+  - {id: Q031, query: "CAPA effectiveness check timing", relevant: [{document: sop-dev-001-v1, contains: "The effectiveness check is performed 90 days"}]}
+  - {id: Q032, query: "how long are FASTQ files retained", relevant: [{document: sop-data-001-v2, contains: "Raw FASTQ files are kept for 2 years"}]}
+  - {id: Q033, query: "can I put patient identifiers in a ticket", relevant: [{document: sop-data-001-v2, contains: "Patient identifiers must not be entered into wiki pages, tickets or the knowledge base"}]}
+  - {id: Q034, query: "is a chat yes enough to submit a job", relevant: [{document: sop-job-001-v1, contains: "A chat reply such as yes is not a confirmation"}, {document: wiki-40111, contains: "A chat reply of yes does not submit anything"}]}
+  - {id: Q035, query: "what does the draft content hash cover", relevant: [{document: sop-job-001-v1, contains: "Each draft version has a content hash"}]}
+  - {id: Q036, query: "rerun a failed job in place", relevant: [{document: sop-job-001-v1, contains: "A failed job is never edited or restarted in place"}]}
+  - {id: Q037, query: "what happens after a second node eviction", relevant: [{document: sop-ops-001-v1, contains: "A second eviction fails the job"}]}
+  - {id: Q038, query: "when to escalate a long running job", relevant: [{document: sop-ops-001-v1, contains: "beyond 4 hours"}, {document: wiki-40152, contains: "Escalate to the on-call bioinformatician after 4 hours"}]}
+  - {id: Q039, query: "dispatcher restart duplicate attempt", relevant: [{document: sop-ops-001-v1, contains: "A dispatcher restart reconnects to the running execution by name"}, {document: inc-0153, contains: "No duplicate attempt was created"}]}
+  - {id: Q040, query: "germline SNV sensitivity at 30x in validation", relevant: [{document: val-wgs-2025-v1, contains: "Germline SNV sensitivity was 99.1 percent"}]}
+  - {id: Q041, query: "somatic sensitivity at 30x versus 40x", relevant: [{document: val-wgs-2025-v1, contains: "rose from 91.2 percent at 30x to 96.4 percent at 40x"}, {document: wiki-40221, contains: "91.2 percent at 30x and 96.4 percent at 40x"}]}
+  - {id: Q042, query: "somatic limit of detection", relevant: [{document: val-som-2025-v1, contains: "the limit of detection was 0.05 VAF"}]}
+  - {id: Q043, query: "fusion detection sensitivity validation", relevant: [{document: val-rna-2025-v1, contains: "sensitivity for known fusions was 94.7 percent"}]}
+  - {id: Q044, query: "what fields go on the QC review record", relevant: [{document: frm-qc-001-v2, contains: "Observed mean coverage, mapping rate and duplication rate"}]}
+  - {id: Q045, query: "verified identity field on specimen records", relevant: [{document: sop-acc-001-v2, contains: "Assay-verified identity is recorded separately"}]}
+  - {id: Q046, query: "how fast are specimens logged in the LIMS after arrival", relevant: [{document: sop-acc-001-v2, contains: "logged in the LIMS within 2 hours of arrival"}]}
+  - {id: Q047, query: "array call rate acceptance", include_inactive: true, relevant: [{document: sop-qc-000-v3, contains: "call rate was at least 0.98"}]}
+  - {id: Q048, query: "old germline panel coverage minimum before 2025", include_inactive: true, relevant: [{document: sop-germ-001-v1, contains: "requires a minimum coverage of 25x"}, {document: wiki-40217, contains: "| Germline panel normal | 25x |"}]}
+  - {id: Q049, query: "previous tumor coverage rule in version 2", include_inactive: true, relevant: [{document: sop-qc-001-v2, contains: "All libraries require a mean coverage of at least 30x"}]}
+  - {id: Q050, query: "low-input PCR protocol limits", relevant: [{document: sop-prep-001-v4, contains: "low-input PCR protocol, which is not valid for germline panels"}, {document: wiki-40164, contains: "Low-input PCR libraries carry the suffix LI"}]}
+  # Wiki
+  - {id: Q051, query: "how do I request an analysis", relevant: [{document: wiki-40111, contains: "Open a service request in the service desk"}]}
+  - {id: Q052, query: "which application answers whether there is a gene fusion", relevant: [{document: wiki-40111, contains: "| Is there a gene fusion in the RNA? | rna-fusion |"}]}
+  - {id: Q053, query: "required fields on an analysis service request", relevant: [{document: wiki-40112, contains: "| Specimen description | Yes |"}]}
+  - {id: Q054, query: "do network sites pay for analyses", relevant: [{document: wiki-40113, contains: "Network sites are funded centrally"}]}
+  - {id: Q055, query: "who pays for top-up sequencing", relevant: [{document: wiki-40113, contains: "Top-up sequencing after a coverage failure is charged"}]}
+  - {id: Q056, query: "project space scratch purge", relevant: [{document: wiki-40114, contains: "purged after 60 days"}]}
+  - {id: Q057, query: "turnaround target for somatic-snv", relevant: [{document: wiki-40115, contains: "| somatic-snv | 10 days |"}]}
+  - {id: Q058, query: "germline panel turnaround time", relevant: [{document: wiki-40115, contains: "| germline-panel | 15 days |"}]}
+  - {id: Q059, query: "who to contact about RNA-seq", relevant: [{document: wiki-40121, contains: "| Stranded RNA-seq | Bioinformatics |"}, {document: ref-assay-contacts, contains: "| Stranded RNA-seq | Bioinformatics | RNA analyst | #mcgc-rna |"}]}
+  - {id: Q060, query: "chat channel for job failures", relevant: [{document: wiki-40101, contains: "| Bioinformatics and job failures | #mcgc-bioinfo-oncall |"}]}
+  - {id: Q061, query: "genes with less than 20x exon coverage flagged", relevant: [{document: wiki-40132, contains: "Genes with less than 20x coverage over any exon are flagged"}]}
+  - {id: Q062, query: "inputs needed for somatic SNV calling", relevant: [{document: wiki-40134, contains: "One specimen selection that contains both the tumor and the normal specimen"}]}
+  - {id: Q063, query: "contamination limit in germline QC", relevant: [{document: wiki-40136, contains: "| Contamination estimate | Below 2 percent |"}]}
+  - {id: Q064, query: "heterozygous to homozygous ratio expected", relevant: [{document: wiki-40136, contains: "| Heterozygous to homozygous ratio |"}]}
+  - {id: Q065, query: "common causes of identity check failures", relevant: [{document: wiki-40137, contains: "A tumor/normal swap at accessioning, so the roles are reversed"}]}
+  - {id: Q066, query: "how many genes are on each germline panel", relevant: [{document: wiki-40138, contains: "| predisposition | 22 |"}]}
+  - {id: Q067, query: "read pairs needed for RNA expression work", relevant: [{document: wiki-40141, contains: "at least 50 million read pairs"}]}
+  - {id: Q068, query: "TPM versus FPKM", relevant: [{document: wiki-40143, contains: "TPM values sum to one million"}]}
+  - {id: Q069, query: "can I compare FPKM across samples", relevant: [{document: wiki-40143, contains: "FPKM is not comparable across samples"}]}
+  - {id: Q070, query: "what does Autopipe do", relevant: [{document: wiki-40151, contains: "Autopipe maps every released run automatically"}]}
+  - {id: Q071, query: "how long does mapping a 30x genome take", relevant: [{document: wiki-40151, contains: "A typical 30x genome takes about 6 hours to map"}]}
+  - {id: Q072, query: "what to do about node_evicted in the log", relevant: [{document: wiki-40152, contains: "| node_evicted | WARN | retrying |"}, {document: ref-job-error-codes, contains: "| node_evicted | WARN | retrying |"}]}
+  - {id: Q073, query: "low_coverage job code action", relevant: [{document: wiki-40152, contains: "| low_coverage | ERROR | failed |"}, {document: ref-job-error-codes, contains: "| low_coverage | ERROR | failed |"}]}
+  - {id: Q074, query: "which GENCODE release is in use", relevant: [{document: wiki-40153, contains: "| Gene annotation | GENCODE 47 |"}, {document: ref-reference-resources, contains: "| Gene annotation | GENCODE 47 |"}]}
+  - {id: Q075, query: "hg19 BED file with GRCh38", relevant: [{document: wiki-40153, contains: "Never mix hg19 and GRCh38 files"}, {document: inc-0170, contains: "The BED file was on hg19 coordinates"}]}
+  - {id: Q076, query: "release notes for 2026.2", relevant: [{document: wiki-40154, contains: "Autopipe writes CRAM by default"}]}
+  - {id: Q077, query: "median WGS duplication rate", relevant: [{document: wiki-40161, contains: "| Duplication rate (percent) | 4.1 | 7.9 | 13.8 |"}, {document: ref-assay-metrics, contains: "| WGS | duplication_rate |"}]}
+  - {id: Q078, query: "typical mean coverage of our genomes", relevant: [{document: wiki-40161, contains: "| Mean coverage (x) | 32.1 | 43.2 | 61.5 |"}, {document: ref-assay-metrics, contains: "| WGS | mean_coverage |"}]}
+  - {id: Q079, query: "exome targets at 20x", relevant: [{document: wiki-40162, contains: "| Targets at 20x or more (percent) |"}, {document: ref-assay-metrics, contains: "| WES | targets_at_20x |"}]}
+  - {id: Q080, query: "uniquely mapped RNA reads median", relevant: [{document: wiki-40163, contains: "| Uniquely mapped reads (percent) |"}, {document: ref-assay-metrics, contains: "| RNA-seq | uniquely_mapped |"}]}
+  - {id: Q081, query: "library name suffix convention for tumor and normal", relevant: [{document: wiki-40164, contains: "Library names end in the specimen role letter"}]}
+  - {id: Q082, query: "where are released FASTQ files stored", relevant: [{document: wiki-40165, contains: "Released FASTQ files follow one layout"}]}
+  - {id: Q083, query: "re-demultiplexed run directory naming", relevant: [{document: wiki-40165, contains: "Re-demultiplexed runs get a suffix"}]}
+  - {id: Q084, query: "count reads in a FASTQ file", relevant: [{document: wiki-40171, contains: "count reads (four lines per read)"}]}
+  - {id: Q085, query: "convert CRAM to BAM", relevant: [{document: wiki-40172, contains: "samtools view -b -T ref/grch38/genome.fa -o out.bam in.cram"}]}
+  - {id: Q086, query: "where is AF stored in somatic VCFs", relevant: [{document: wiki-40173, contains: "store the variant allele frequency in the FORMAT field AF"}]}
+  - {id: Q087, query: "germline VCF missing AF field", relevant: [{document: inc-0172, contains: "Only somatic VCFs carry AF"}, {document: wiki-40173, contains: "Germline VCFs do not carry AF"}]}
+  - {id: Q088, query: "downloading public data to compute nodes", relevant: [{document: wiki-40175, contains: "compute nodes have no internet access"}]}
+  - {id: Q089, query: "what are data levels", relevant: [{document: wiki-40181, contains: "The core talks about data in levels"}]}
+  - {id: Q090, query: "NM versus XM RefSeq records", relevant: [{document: wiki-40182, contains: "XM_ records are predicted by the annotation pipeline"}]}
+  - {id: Q091, query: "what does the ENST prefix mean", relevant: [{document: wiki-40183, contains: "| ENST | Transcript |"}, {document: ref-ensembl-id-prefixes, contains: "| ENST | Transcript |"}]}
+  - {id: Q092, query: "expected VAF of a clonal variant at 40 percent purity", relevant: [{document: wiki-40184, contains: "is expected near 0.20 VAF"}]}
+  - {id: Q093, query: "what is tumor cellularity", relevant: [{document: wiki-40185, contains: "is the fraction of cells in a tumor specimen that are cancer cells"}, {document: ref-glossary, contains: "The fraction of cells in a tumor specimen that are cancer cells"}]}
+  - {id: Q094, query: "submit a batch job on the cluster", relevant: [{document: wiki-40191, contains: "bsub -q standard"}]}
+  - {id: Q095, query: "do workbench jobs run on the HPC cluster", relevant: [{document: wiki-40191, contains: "Workbench jobs do not run on this cluster"}]}
+  - {id: Q096, query: "copy collaborator data from cloud bucket", relevant: [{document: wiki-40192, contains: "gsutil -m cp -r"}]}
+  - {id: Q097, query: "who leads the bioinformatics team", relevant: [{document: wiki-40202, contains: "| Ingrid Halloway | Bioinformatics lead |"}]}
+  - {id: Q098, query: "first week onboarding tasks", relevant: [{document: wiki-40211, contains: "Read SOP-DATA-001 and complete the privacy training"}]}
+  - {id: Q099, query: "why was the tumor minimum raised", relevant: [{document: wiki-40221, contains: "The group agreed to raise the tumor minimum to 40x"}, {document: chg-0021, contains: "based on VAL-WGS-2025"}]}
+  - {id: Q100, query: "operations sync evictions in December", relevant: [{document: wiki-40222, contains: "Three node evictions in December"}]}
+  # Tickets
+  - {id: Q101, query: "past incident with a tumor normal swap", relevant: [{document: inc-0142, contains: "The manifest listed the tumor and normal tubes the other way round"}]}
+  - {id: Q102, query: "eviction incident example", relevant: [{document: inc-0137, contains: "logged node_evicted on attempt 1"}]}
+  - {id: Q103, query: "requester thought purity warning was a failure", relevant: [{document: inc-0145, contains: "assumed the somatic analysis had failed"}]}
+  - {id: Q104, query: "read-through fusion flagged as novel", relevant: [{document: inc-0166, contains: "It is a read-through transcript"}]}
+  - {id: Q105, query: "rerun readqc after top-up", relevant: [{document: sr-1024, contains: "It was topped up to 47x"}]}
+  - {id: Q106, query: "germline panel request on LI library rejected", relevant: [{document: sr-1044, contains: "LI libraries are low-input PCR"}]}
+  - {id: Q107, query: "extended panel request with family history", relevant: [{document: sr-1019, contains: "Requesting the extended panel instead of the default"}]}
+  - {id: Q108, query: "research request with artifact filter off", relevant: [{document: sr-1040, contains: "Requesting filter_artifacts false"}]}
+  - {id: Q109, query: "change request raising tumor coverage", relevant: [{document: chg-0021, contains: "from 30x to 40x"}]}
+  - {id: Q110, query: "readqc default still 30 in the workbench", relevant: [{document: chg-0021, contains: "The readqc default in the workbench stays 30"}]}
+  - {id: Q111, query: "GENCODE 47 change request", relevant: [{document: chg-0019, contains: "from GENCODE 44 to GENCODE 47"}]}
+  - {id: Q112, query: "lane 4 low coverage problem", relevant: [{document: prb-0007, contains: "lane 4 of one instrument"}]}
+  - {id: Q113, query: "someone pasted job log instructions into a ticket", relevant: [{document: inc-0160, contains: "pasted raw job log output into a ticket"}, {document: wiki-40222, contains: "Someone pasted a job log containing instructions"}]}
+  - {id: Q114, query: "duplicate attempt shown after dispatcher restart", relevant: [{document: inc-0153, contains: "The job card briefly showed two attempts"}]}
+  - {id: Q115, query: "EWSR1-FLI1 found in sarcoma cohort request", relevant: [{document: sr-1012, contains: "Two EWSR1-FLI1 fusions found"}]}
+  - {id: Q116, query: "request to read another site's addendum", relevant: [{document: sr-1050, contains: "Site addenda are visible only to that site's staff"}]}
+  - {id: Q117, query: "download public control genome", relevant: [{document: sr-1031, contains: "public WGS control genome"}]}
+  - {id: Q118, query: "coverage near zero for half the targets", relevant: [{document: inc-0170, contains: "Coverage of a research target set looked near zero"}]}
+  - {id: Q119, query: "who approved CHG-0021", relevant: [{document: chg-0021, contains: "Effective with SOP-QC-001 version 3 on 2025-11-03"}]}
+  - {id: Q120, query: "fee for rerun after a core error", relevant: [{document: wiki-40113, contains: "Reruns caused by a core error"}]}
+  # Reference tables and glossary
+  - {id: Q121, query: "effective readqc thresholds table", relevant: [{document: ref-qc-thresholds, contains: "| readqc | mean_coverage | >= | 40 | x | tumor |"}]}
+  - {id: Q122, query: "is ETV6-RUNX1 a curated fusion target", relevant: [{document: ref-fusion-targets, contains: "| ETV6 | RUNX1 |"}, {document: wiki-40142, contains: "| ETV6 | RUNX1 |"}]}
+  - {id: Q123, query: "which tumor is PAX3 FOXO1 associated with", relevant: [{document: ref-fusion-targets, contains: "| PAX3 | FOXO1 | Alveolar rhabdomyosarcoma |"}, {document: wiki-40142, contains: "| PAX3 | FOXO1 |"}]}
+  - {id: Q124, query: "is MUTYH recessive on the extended panel", relevant: [{document: ref-gene-panels, contains: "| extended | MUTYH | AR | 2 |"}]}
+  - {id: Q125, query: "what is the identity panel version in use", relevant: [{document: ref-reference-resources, contains: "| Identity panel | IDP 2.0 |"}, {document: wiki-40153, contains: "| Identity panel | IDP 2.0 |"}]}
+  - {id: Q126, query: "dbSNP build used", relevant: [{document: ref-reference-resources, contains: "| Known variants | dbSNP 156 |"}, {document: wiki-40153, contains: "| Known variants | dbSNP 156 |"}]}
+  - {id: Q127, query: "what does untrusted_fixture mean", relevant: [{document: ref-job-error-codes, contains: "| untrusted_fixture | INFO |"}, {document: wiki-40152, contains: "| untrusted_fixture | INFO |"}]}
+  - {id: Q128, query: "register of controlled documents", relevant: [{document: ref-document-register, contains: "| SOP-QC-001 | 3 |"}]}
+  - {id: Q129, query: "what is a CAPA", relevant: [{document: ref-glossary, contains: "The action plan that fixes the root cause"}, {document: sop-dev-001-v1, contains: "Each CAPA names an owner"}]}
+  - {id: Q130, query: "allele fraction meaning", relevant: [{document: ref-glossary, contains: "The fraction of sequencing reads at a position that carry the variant allele"}, {document: wiki-40184, contains: "is the fraction of reads at a position that carry the variant"}]}
+  # Wikipedia background
+  - {id: Q131, query: "what is sequence coverage depth", relevant: [{document: wp-coverage-genetics, contains: "Sequence coverage (or depth) is the number of unique reads"}]}
+  - {id: Q132, query: "Phred quality score definition", relevant: [{document: wp-phred-quality-score, contains: "A Phred quality score is a measure of the quality"}]}
+  - {id: Q133, query: "FASTQ format quality scores", relevant: [{document: wp-fastq-format, contains: "FASTQ format is a text-based format for storing both a biological sequence"}]}
+  - {id: Q134, query: "what is the variant call format", relevant: [{document: wp-variant-call-format, contains: "The Variant Call Format or VCF is a standard text file format"}]}
+  - {id: Q135, query: "how do fusion genes form", relevant: [{document: wp-fusion-gene, contains: "a fusion gene is a hybrid gene formed from two previously independent genes"}]}
+  - {id: Q136, query: "Ewing sarcoma tumor type", relevant: [{document: wp-ewing-sarcoma, contains: "Ewing sarcoma is a type of pediatric cancer that forms in bone or soft tissue"}]}
+  - {id: Q137, query: "Li-Fraumeni syndrome inheritance", relevant: [{document: wp-li-fraumeni-syndrome, contains: "autosomal dominant, hereditary disorder that predisposes carriers to cancer"}]}
+  - {id: Q138, query: "loss of heterozygosity", relevant: [{document: wp-loss-of-heterozygosity, contains: "loss of heterozygosity (LOH) is a type of genetic abnormality"}]}
+  - {id: Q139, query: "tumour heterogeneity", relevant: [{document: wp-tumour-heterogeneity, contains: "Tumour heterogeneity describes the observation"}]}
+  - {id: Q140, query: "chain of custody documentation", relevant: [{document: wp-chain-of-custody, contains: "Chain of custody (CoC), in legal contexts"}]}
+  - {id: Q141, query: "what is de-identification", relevant: [{document: wp-de-identification, contains: "De-identification is the process used to prevent someone's personal identity"}]}
+  - {id: Q142, query: "ISO 15189 medical laboratory standard", relevant: [{document: wp-iso-15189, contains: "ISO 15189 Medical laboratories"}]}
+  - {id: Q143, query: "CLIA regulation", relevant: [{document: wp-clinical-laboratory-improvement-amendments, contains: "The Clinical Laboratory Improvement Amendments (CLIA) of 1988"}]}
+  - {id: Q144, query: "microsatellite instability mismatch repair", relevant: [{document: wp-microsatellite-instability, contains: "Microsatellite instability (MSI) is the condition of genetic hypermutability"}]}
+  - {id: Q145, query: "tumor mutational burden definition", relevant: [{document: wp-tumor-mutational-burden, contains: "number of non-inherited mutations per million bases"}]}
+  - {id: Q146, query: "Philadelphia chromosome BCR ABL1", relevant: [{document: wp-philadelphia-chromosome, contains: "results in the fusion gene BCR::ABL1"}]}
+  - {id: Q147, query: "what is a variant of uncertain significance", relevant: [{document: wp-variant-of-uncertain-significance, contains: "A variant of uncertain (or unknown) significance (VUS)"}]}
+  - {id: Q148, query: "pseudonymization of records", relevant: [{document: wp-pseudonymization, contains: "Pseudonymization is a data management and de-identification procedure"}]}
+  - {id: Q149, query: "what is a LIMS", relevant: [{document: wp-laboratory-information-management-system, contains: "A laboratory information management system (LIMS)"}]}
+  - {id: Q150, query: "BAM binary alignment map", relevant: [{document: wp-bam-file-format, contains: "The BAM file format (which stands for Binary Alignment Map)"}]}
+  - {id: Q151, query: "CRAM compressed reference-oriented alignment", relevant: [{document: wp-cram-file-format, contains: "Compressed Reference-oriented Alignment Map (CRAM)"}, {document: wiki-40172, contains: "CRAM is smaller than BAM"}]}
+  - {id: Q152, query: "copy number variation definition", relevant: [{document: wp-copy-number-variation, contains: "Copy number variation (CNV) is a phenomenon"}]}
+  - {id: Q153, query: "penetrance of a variant", relevant: [{document: wp-penetrance, contains: "Penetrance in genetics is the proportion of individuals"}]}
+  - {id: Q154, query: "what is an indel", relevant: [{document: wp-indel, contains: "Indel (insertion-deletion) is a molecular biology term"}]}
+  - {id: Q155, query: "what is a biobank", relevant: [{document: wp-biobank, contains: "A biobank is a type of biorepository"}]}
+  # Callers, inactive content and access
+  - {id: Q156, query: "proposed 45x tumor minimum", caller: {site: northgate, roles: [qa-officer]}, include_inactive: true, relevant: [{document: sop-qc-001-v4, contains: "would require a mean coverage of at least 45x"}, {document: chg-0024, contains: "raise the tumor minimum to 45x"}]}
+  - {id: Q157, query: "proposed 45x tumor minimum", include_inactive: true, relevant: [{document: val-som-2025-v1, contains: "A 45x tumor minimum was modelled"}], must_not: [sop-qc-001-v4, chg-0024, wiki-40223]}
+  - {id: Q158, query: "Lakeside courier cutoff", caller: {site: lakeside, roles: [lab-technologist]}, relevant: [{document: sop-acc-001a-v1, contains: "The Lakeside courier leaves for the core at 14:00"}, {document: wiki-40232, contains: "The courier cutoff is 14:00 on weekdays"}]}
+  - {id: Q159, query: "Lakeside courier cutoff", caller: {site: harbor, roles: [lab-technologist]}, relevant: [{document: sr-1050, contains: "Site addenda are visible only to that site's staff"}], must_not: [sop-acc-001a-v1, wiki-40232, inc-0151]}
+  - {id: Q160, query: "staff promotion review process", relevant: [], must_not: [wiki-40204, wiki-40205]}
+  - {id: Q161, query: "staff promotion review process", caller: {site: northgate, roles: [lab-director]}, relevant: [{document: wiki-40205, contains: "Promotion reviews happen once a year in December"}]}
+  - {id: Q162, query: "Lakeside tumor libraries failed readqc at 8x", caller: {site: lakeside, roles: [analyst]}, relevant: [{document: inc-0151, contains: "at 8x and 11x against the 40x minimum"}, {document: wiki-40232, contains: "failed readqc at 8x and 11x coverage"}]}
+  - {id: Q163, query: "Lakeside tumor libraries failed readqc at 8x", relevant: [{document: prb-0007, contains: "about 30 percent fewer reads"}], must_not: [inc-0151, wiki-40232]}

@@ -505,6 +505,15 @@ A digest of ordered source names and contents is a snapshot's ID. `search_knowle
 matching line numbers; `read_document` requires that ID and at most thirty lines. Execution cases
 pin the digest and fail on drift.
 
+The knowledge team's v2 API is served at `/v2/mcp` beside that legacy contract until the agent
+cuts over. Connectors normalize five source systems (a Confluence-style wiki export, a QMS
+register with Markdown and PDF-text bodies, a ticketing export, reference tables, and pinned
+Wikipedia articles) into canonical citation lines and section outlines. Publishing checks gate
+provenance, access labels, supersession and table-to-document consistency. The index ranks
+fixed-size passages with BM25, glossary synonym expansion and an authority prior, and filters by
+the caller's site and roles before ranking, so restricted and missing documents look the same.
+Retrieval quality is measured on labeled queries in `services/knowledge/evals`.
+
 Immutability buys determinism: a KB version is a build artifact, so a retrieval result is
 reproducible and the eval report can pin it. Indexing at line granularity lets answers cite
 line ranges. The current deterministic check validates retrieved ranges and supporting verbatim

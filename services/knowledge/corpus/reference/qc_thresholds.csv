@@ -1,0 +1,15 @@
+app_id,metric,comparator,threshold,unit,specimen,effective_from,effective_to,status,source_document,source_anchor
+readqc,mean_coverage,>=,30,x,normal,2025-11-03,,effective,sop-qc-001-v3,Normal and germline libraries require a mean coverage of at least 30x
+readqc,mean_coverage,>=,40,x,tumor,2025-11-03,,effective,sop-qc-001-v3,Tumor libraries intended for somatic calling require a mean coverage of at least 40x
+readqc,mean_coverage,>=,30,x,tumor,2024-03-01,2025-11-02,superseded,sop-qc-001-v2,All libraries require a mean coverage of at least 30x
+readqc,mean_coverage,>=,30,x,normal,2024-03-01,2025-11-02,superseded,sop-qc-001-v2,All libraries require a mean coverage of at least 30x
+readqc,mapping_rate,>=,95,percent,all,2025-11-03,,effective,sop-qc-001-v3,Libraries with a mapping rate below 95 percent
+readqc,q30_bases,>=,85,percent,all,2025-01-13,,effective,sop-seq-001-v3,at least 85 percent of bases
+readqc,clusters_passing_filter,>=,0.80,fraction,all,2025-01-13,,effective,sop-seq-001-v3,clusters passing filter must be at least 0.80
+somatic-snv,tumor_purity_warning,<,0.20,fraction,tumor,2025-11-03,,effective,sop-qc-001-v3,Tumor purity below 0.20 produces a warning
+somatic-snv,min_vaf,>=,0.05,fraction,tumor,2025-03-17,,effective,sop-var-001-v2,The default minimum variant allele frequency is 0.05
+somatic-snv,min_depth,>=,20,reads,tumor,2025-03-17,,effective,sop-var-001-v2,minimum depth of 20 reads
+somatic-snv,genotype_concordance,>=,0.90,fraction,tumor and normal,2025-01-20,,effective,sop-identity-001-v1,concordance of at least 0.90
+rna-fusion,min_support,>=,5,reads,RNA,2025-05-05,,effective,sop-fus-001-v1,at least 5 supporting reads
+germline-panel,min_coverage,>=,30,x,normal,2025-02-10,,effective,sop-germ-001-v2,requires a minimum coverage of 30x
+germline-panel,min_coverage,>=,25,x,normal,2023-09-04,2025-02-09,superseded,sop-germ-001-v1,requires a minimum coverage of 25x

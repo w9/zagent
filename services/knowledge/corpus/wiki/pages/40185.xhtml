@@ -1,0 +1,9 @@
+<p>Tumor purity is the fraction of cells in a tumor specimen that are cancer cells. People also say tumor cellularity or tumor content. Ploidy is the average number of chromosome copies in those cells.</p>
+<h1>Why it matters</h1>
+<p>Low purity dilutes somatic variants, so their VAF drops and some fall below min_vaf. Below 0.20 purity the workbench raises a low_purity_warning, as set in SOP-QC-001.</p>
+<h1>Where estimates come from</h1>
+<ul>
+<li>Pathology review at accessioning, recorded in the specimen record.</li>
+<li>Computational estimates from copy number and VAF patterns after sequencing.</li>
+</ul>
+<p>When the two estimates disagree by more than 0.20, mention it in the review.</p>

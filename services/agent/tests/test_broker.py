@@ -46,6 +46,26 @@ def test_the_pinned_contract_matches_the_published_knowledge_contract():
     )
 
 
+def test_detector_matches_in_the_knowledge_corpus_are_only_the_planted_identifiers(tmp_path):
+    from zagent.privacy import Detector
+    from zknowledge.index import IndexStore, build_index
+    from zknowledge.snapshot import corpus_root
+
+    build_index(corpus_root(), tmp_path)
+    index = IndexStore(tmp_path).open()
+    try:
+        detector = Detector()
+        matched = {
+            document
+            for document, text in index.connection.execute("SELECT document, text FROM lines")
+            if detector.matches(text)
+        }
+    finally:
+        index.close()
+    # Rule-matched text elsewhere would be tokenized inside quotes and break citations.
+    assert matched == {"inc-0142", "inc-0151"}
+
+
 async def test_runtime_reads_knowledge_through_the_broker_with_external_tokenization():
     tokenizer = RecordingTokenizer()
     client = McpToolClient(server=create_broker_server(local_broker(tokenizer)))

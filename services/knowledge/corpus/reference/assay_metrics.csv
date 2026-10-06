@@ -1,0 +1,13 @@
+assay,metric,unit,p5,median,p95,libraries,period,source_document,source_anchor
+WGS,mean_coverage,x,32.1,43.2,61.5,1184,2025-07-01 to 2026-05-31,wiki-40161,Mean coverage (x)
+WGS,duplication_rate,percent,4.1,7.9,13.8,1184,2025-07-01 to 2026-05-31,wiki-40161,Duplication rate (percent)
+WGS,mapping_rate,percent,97.6,99.2,99.7,1184,2025-07-01 to 2026-05-31,wiki-40161,Mapping rate (percent)
+WGS,q30_bases,percent,88.9,92.4,94.6,1184,2025-07-01 to 2026-05-31,wiki-40161,Bases at Q30 (percent)
+WGS,insert_size,bp,352,401,446,1184,2025-07-01 to 2026-05-31,wiki-40161,Median insert size (bp)
+WES,mean_target_coverage,x,86.0,128.4,171.9,312,2025-07-01 to 2026-05-31,wiki-40162,Mean target coverage (x)
+WES,targets_at_20x,percent,93.8,97.1,98.6,312,2025-07-01 to 2026-05-31,wiki-40162,Targets at 20x or more (percent)
+WES,duplication_rate,percent,6.2,11.5,19.7,312,2025-07-01 to 2026-05-31,wiki-40162,Duplication rate (percent)
+RNA-seq,read_pairs,millions,38.5,62.0,91.3,644,2025-07-01 to 2026-05-31,wiki-40163,Read pairs (millions)
+RNA-seq,uniquely_mapped,percent,79.2,88.4,92.9,644,2025-07-01 to 2026-05-31,wiki-40163,Uniquely mapped reads (percent)
+RNA-seq,rna_integrity,RIN,6.8,8.6,9.5,644,2025-07-01 to 2026-05-31,wiki-40163,RNA integrity number
+RNA-seq,ribosomal_reads,percent,0.4,1.9,6.1,644,2025-07-01 to 2026-05-31,wiki-40163,Ribosomal reads (percent)

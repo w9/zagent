@@ -1,0 +1,16 @@
+five_prime,three_prime,tumor_type,source_document,source_anchor
+EWSR1,FLI1,Ewing sarcoma,wiki-40142,| EWSR1 | FLI1 |
+EWSR1,ERG,Ewing sarcoma,wiki-40142,| EWSR1 | ERG |
+PAX3,FOXO1,Alveolar rhabdomyosarcoma,wiki-40142,| PAX3 | FOXO1 |
+PAX7,FOXO1,Alveolar rhabdomyosarcoma,wiki-40142,| PAX7 | FOXO1 |
+ETV6,RUNX1,B-cell acute lymphoblastic leukemia,wiki-40142,| ETV6 | RUNX1 |
+BCR,ABL1,Acute lymphoblastic leukemia,wiki-40142,| BCR | ABL1 |
+TCF3,PBX1,B-cell acute lymphoblastic leukemia,wiki-40142,| TCF3 | PBX1 |
+KMT2A,AFF1,Infant acute lymphoblastic leukemia,wiki-40142,| KMT2A | AFF1 |
+KIAA1549,BRAF,Pilocytic astrocytoma,wiki-40142,| KIAA1549 | BRAF |
+ETV6,NTRK3,Infantile fibrosarcoma,wiki-40142,| ETV6 | NTRK3 |
+SS18,SSX1,Synovial sarcoma,wiki-40142,| SS18 | SSX1 |
+EWSR1,WT1,Desmoplastic small round cell tumor,wiki-40142,| EWSR1 | WT1 |
+RUNX1,RUNX1T1,Acute myeloid leukemia,wiki-40142,| RUNX1 | RUNX1T1 |
+CBFB,MYH11,Acute myeloid leukemia,wiki-40142,| CBFB | MYH11 |
+NUP98,NSD1,Acute myeloid leukemia,wiki-40142,| NUP98 | NSD1 |

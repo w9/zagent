@@ -9,16 +9,20 @@ description = "The knowledge team's read-only, snapshot-addressed knowledge serv
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115,<1",
+    "httpx>=0.28,<1",
     "mcp>=1.20,<2",
     "opentelemetry-exporter-otlp-proto-http>=1.30,<2",
     "opentelemetry-instrumentation-fastapi>=0.51b0,<1",
     "opentelemetry-sdk>=1.30,<2",
     "pydantic>=2.10,<3",
+    "pyyaml>=6,<7",
     "uvicorn[standard]>=0.34,<1",
 ]
 
 [project.scripts]
 kb-publish = "zknowledge.publish:main"
+kb-fetch-wikipedia = "zknowledge.fetch_wikipedia:main"
+kb-eval = "zknowledge.evaluate:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["zknowledge"]

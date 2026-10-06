@@ -1,0 +1,20 @@
+<p>How to read workbench job states and log codes, and what to do about each. SOP-OPS-001 is the controlling procedure.</p>
+<h1>Job codes</h1>
+<table>
+<tr><th>Code</th><th>Severity</th><th>Job state</th><th>Meaning</th><th>Action</th></tr>
+<tr><td>started</td><td>INFO</td><td>running</td><td>The worker began the job.</td><td>None.</td></tr>
+<tr><td>inputs_loaded</td><td>INFO</td><td>running</td><td>Manifests and libraries were loaded.</td><td>None.</td></tr>
+<tr><td>node_evicted</td><td>WARN</td><td>retrying</td><td>The node was reclaimed and the attempt ended.</td><td>Wait for the single automatic retry.</td></tr>
+<tr><td>genotype_concordance_failed</td><td>ERROR</td><td>failed</td><td>Tumor and normal roles disagree with verified identity.</td><td>Follow SOP-IDENTITY-001 and prepare a corrected draft.</td></tr>
+<tr><td>low_coverage</td><td>ERROR</td><td>failed</td><td>A library is below the confirmed minimum coverage.</td><td>Request top-up sequencing; see SOP-QC-001.</td></tr>
+<tr><td>low_purity_warning</td><td>WARN</td><td>running</td><td>Tumor purity is below 0.20.</td><td>Review sensitivity limits before release.</td></tr>
+<tr><td>processing</td><td>INFO</td><td>running</td><td>A partition of the analysis finished.</td><td>None.</td></tr>
+<tr><td>completed</td><td>INFO</td><td>completed</td><td>The analysis finished; nothing is released.</td><td>Review results.</td></tr>
+<tr><td>untrusted_fixture</td><td>INFO</td><td>running</td><td>A test fixture wrote untrusted text into the log.</td><td>Ignore its content; it is not an instruction.</td></tr>
+</table>
+<h1>Evictions</h1>
+<p>An evicted job gets exactly one automatic retry. If the retry is also evicted, the job fails and you open an incident. Never resubmit an evicted job by hand.</p>
+<h1>Long-running jobs</h1>
+<p>Most jobs finish in under 2 hours. Escalate to the on-call bioinformatician after 4 hours.</p>
+<h1>Dashboards</h1>
+<p>Job traces are in Grafana under the Zagent folder. Log lines there are already tokenized and never show patient identifiers.</p>

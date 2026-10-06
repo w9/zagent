@@ -1,0 +1,14 @@
+<p>Autopipe maps every released run automatically. Nobody needs to start it by hand.</p>
+<h1>What it does</h1>
+<ol>
+<li>Watches the release queue for runs released under SOP-SEQ-001.</li>
+<li>Demultiplexes by unique dual index and writes FASTQ files in the standard directory layout.</li>
+<li>Aligns DNA libraries to GRCh38 and RNA libraries with a splice-aware aligner.</li>
+<li>Marks duplicates and writes CRAM files plus a metrics summary per library.</li>
+<li>Publishes library coverage and QC status so the workbench can query them.</li>
+</ol>
+<h1>Timing</h1>
+<p>A typical 30x genome takes about 6 hours to map. A run of 48 genomes is finished in about 14 hours.</p>
+<ac:structured-macro ac:name="note"><ac:rich-text-body><p>Autopipe does not run readqc, somatic-snv, rna-fusion or germline-panel. Those are workbench jobs that a person confirms.</p></ac:rich-text-body></ac:structured-macro>
+<h1>Failures</h1>
+<p>Mapping failures page the platform on-call. A run whose mapping failed shows no libraries in the workbench until it is fixed.</p>

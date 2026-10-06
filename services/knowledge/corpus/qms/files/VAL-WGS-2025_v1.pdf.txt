@@ -1,0 +1,39 @@
+MERIDIAN CLINICAL GENOMICS CORE - VALIDATION SUMMARY
+CONTROLLED COPY - PCR-free WGS Validation Summary
+Document: VAL-WGS-2025 Version 1 Page 1 of 2
+
+1 SCOPE
+This summary covers validation of PCR-free whole genome
+sequencing for germline panels and somatic calling.
+
+2 DESIGN
+Reference materials with known variants were sequenced at
+four coverage levels in triplicate.
+Somatic performance used dilution series of a tumor cell
+line into its matched normal.
+
+3 RESULTS
+| Coverage | Germline SNV sensitivity | Somatic SNV sensitivity at 0.10 VAF |
+| 25x | 98.2 percent | 84.5 percent |
+| 30x | 99.1 percent | 91.2 percent |
+| 40x | 99.5 percent | 96.4 percent |
+| 60x | 99.6 percent | 98.8 percent |
+Germline SNV sensitivity was 99.1 percent at 30x mean
+coverage.
+Somatic SNV sensitivity at 0.10 VAF rose from 91.2 percent
+at 30x to 96.4 percent at 40x.
+
+Printed copies are uncontrolled.
+MERIDIAN CLINICAL GENOMICS CORE - VALIDATION SUMMARY
+Document: VAL-WGS-2025 Version 1 Page 2 of 2
+
+4 CONCLUSIONS
+A 30x minimum is adequate for germline panels.
+The results support a higher minimum for tumor libraries,
+which was adopted later under CHG-0021.
+
+5 LIMITATIONS
+Reference materials do not reproduce formalin damage or low
+tumor purity.
+
+Printed copies are uncontrolled.

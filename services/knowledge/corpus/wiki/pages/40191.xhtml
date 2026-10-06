@@ -1,0 +1,12 @@
+<p>The research cluster runs a batch scheduler. Interactive work happens on login nodes only for editing and small tests.</p>
+<h1>Submit a job</h1>
+<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[bsub -q standard -n 8 -R "rusage[mem=32GB]" -o logs/%J.out ./align.sh
+bjobs -u $USER]]></ac:plain-text-body></ac:structured-macro>
+<h1>Queues</h1>
+<table>
+<tr><th>Queue</th><th>Wall time</th><th>Use for</th></tr>
+<tr><td>short</td><td>2 hours</td><td>Tests and small tasks</td></tr>
+<tr><td>standard</td><td>48 hours</td><td>Most work</td></tr>
+<tr><td>gpu</td><td>24 hours</td><td>Basecalling and deep learning</td></tr>
+</table>
+<p>Workbench jobs do not run on this cluster; they run in isolated worker containers managed by the dispatcher.</p>

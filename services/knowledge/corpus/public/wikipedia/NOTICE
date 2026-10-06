@@ -1,0 +1,103 @@
+Wikipedia text in this directory
+
+Each Markdown file is adapted from a Wikipedia article and is licensed CC BY-SA 4.0
+(https://creativecommons.org/licenses/by-sa/4.0/). Attribution: Wikipedia contributors. The file's front matter
+names the article and the exact revision used.
+
+Changes: converted to plain text by the MediaWiki TextExtracts API, headings
+rewritten as Markdown, and treatment, management, prognosis, therapy, reference and
+link sections removed. No other text was edited.
+
+Articles:
+- ATAC-seq, revision 1368833331, retrieved 2026-10-06
+- Acute lymphoblastic leukemia, revision 1367470024, retrieved 2026-10-06
+- Acute myeloid leukemia, revision 1375622927, retrieved 2026-10-06
+- Allele frequency, revision 1346370843, retrieved 2026-10-06
+- BAM (file format), revision 1364141142, retrieved 2026-10-06
+- BED (file format), revision 1244776555, retrieved 2026-10-06
+- BRCA1, revision 1376557746, retrieved 2026-10-06
+- BRCA2, revision 1376101112, retrieved 2026-10-06
+- Biobank, revision 1364641008, retrieved 2026-10-06
+- Bioinformatics, revision 1376349012, retrieved 2026-10-06
+- Bisulfite sequencing, revision 1374409722, retrieved 2026-10-06
+- CRAM (file format), revision 1349292472, retrieved 2026-10-06
+- ChIP sequencing, revision 1374647010, retrieved 2026-10-06
+- Chain of custody, revision 1377502893, retrieved 2026-10-06
+- Childhood cancer, revision 1369725733, retrieved 2026-10-06
+- Chromosomal translocation, revision 1374683476, retrieved 2026-10-06
+- Clinical Laboratory Improvement Amendments, revision 1378630835, retrieved 2026-10-06
+- College of American Pathologists, revision 1362258194, retrieved 2026-10-06
+- Copy number variation, revision 1363295253, retrieved 2026-10-06
+- Corrective and preventive action, revision 1373708211, retrieved 2026-10-06
+- Coverage (genetics), revision 1368671266, retrieved 2026-10-06
+- DNA microarray, revision 1335531483, retrieved 2026-10-06
+- DNA sequencing, revision 1378305681, retrieved 2026-10-06
+- De-identification, revision 1369637766, retrieved 2026-10-06
+- Electronic lab notebook, revision 1377838477, retrieved 2026-10-06
+- Ensembl genome database project, revision 1314036676, retrieved 2026-10-06
+- Ewing sarcoma, revision 1373734055, retrieved 2026-10-06
+- Exome sequencing, revision 1377450320, retrieved 2026-10-06
+- FASTA format, revision 1361618063, retrieved 2026-10-06
+- FASTQ format, revision 1368840807, retrieved 2026-10-06
+- Fixation (histology), revision 1376291354, retrieved 2026-10-06
+- Fusion gene, revision 1372276942, retrieved 2026-10-06
+- GENCODE, revision 1365332047, retrieved 2026-10-06
+- Gene expression profiling, revision 1342083535, retrieved 2026-10-06
+- Gene set enrichment analysis, revision 1368841655, retrieved 2026-10-06
+- Genetic privacy, revision 1368886552, retrieved 2026-10-06
+- Genetic testing, revision 1375335499, retrieved 2026-10-06
+- Genome-wide association study, revision 1375238301, retrieved 2026-10-06
+- Genotyping, revision 1373422381, retrieved 2026-10-06
+- Germline mutation, revision 1374906715, retrieved 2026-10-06
+- Good laboratory practice, revision 1331695987, retrieved 2026-10-06
+- Health Insurance Portability and Accountability Act, revision 1378623935, retrieved 2026-10-06
+- Hereditary breast–ovarian cancer syndrome, revision 1343001012, retrieved 2026-10-06
+- Hereditary cancer syndrome, revision 1357091617, retrieved 2026-10-06
+- Hereditary nonpolyposis colorectal cancer, revision 1378834920, retrieved 2026-10-06
+- ISO 15189, revision 1372137627, retrieved 2026-10-06
+- Illumina dye sequencing, revision 1362359050, retrieved 2026-10-06
+- Indel, revision 1375539443, retrieved 2026-10-06
+- Laboratory information management system, revision 1369984301, retrieved 2026-10-06
+- Library (biology), revision 1360702735, retrieved 2026-10-06
+- Li–Fraumeni syndrome, revision 1374237340, retrieved 2026-10-06
+- Loss of heterozygosity, revision 1310594943, retrieved 2026-10-06
+- Massively parallel sequencing, revision 1352792939, retrieved 2026-10-06
+- Medulloblastoma, revision 1378658709, retrieved 2026-10-06
+- Microsatellite instability, revision 1363391062, retrieved 2026-10-06
+- Molecular diagnostics, revision 1376805404, retrieved 2026-10-06
+- Mutation, revision 1372306895, retrieved 2026-10-06
+- Mutational signatures, revision 1365730613, retrieved 2026-10-06
+- N-Myc, revision 1313730019, retrieved 2026-10-06
+- Neuroblastoma, revision 1377286426, retrieved 2026-10-06
+- Osteosarcoma, revision 1368886625, retrieved 2026-10-06
+- P53, revision 1373900071, retrieved 2026-10-06
+- Penetrance, revision 1371509148, retrieved 2026-10-06
+- Personalized medicine, revision 1374681167, retrieved 2026-10-06
+- Philadelphia chromosome, revision 1378143857, retrieved 2026-10-06
+- Phred quality score, revision 1311165171, retrieved 2026-10-06
+- Point mutation, revision 1350780439, retrieved 2026-10-06
+- Polymerase chain reaction, revision 1378295121, retrieved 2026-10-06
+- Protected health information, revision 1374483019, retrieved 2026-10-06
+- Pseudonymization, revision 1353934637, retrieved 2026-10-06
+- Quality control, revision 1328028707, retrieved 2026-10-06
+- RNA-Seq, revision 1376053366, retrieved 2026-10-06
+- RefSeq, revision 1370720185, retrieved 2026-10-06
+- Reference genome, revision 1353765350, retrieved 2026-10-06
+- Retinoblastoma, revision 1368888863, retrieved 2026-10-06
+- Rhabdomyosarcoma, revision 1369339762, retrieved 2026-10-06
+- SAM (file format), revision 1334729679, retrieved 2026-10-06
+- SNP array, revision 1301941611, retrieved 2026-10-06
+- Scientific workflow system, revision 1369246739, retrieved 2026-10-06
+- Sequence alignment, revision 1372595539, retrieved 2026-10-06
+- Single-cell sequencing, revision 1377331418, retrieved 2026-10-06
+- Single-nucleotide polymorphism, revision 1369644110, retrieved 2026-10-06
+- Standard operating procedure, revision 1365633889, retrieved 2026-10-06
+- Structural variation, revision 1376707654, retrieved 2026-10-06
+- Transcriptomics technologies, revision 1374040147, retrieved 2026-10-06
+- Tumor mutational burden, revision 1369602305, retrieved 2026-10-06
+- Tumour heterogeneity, revision 1368825750, retrieved 2026-10-06
+- Variant Call Format, revision 1373132868, retrieved 2026-10-06
+- Variant of uncertain significance, revision 1369622545, retrieved 2026-10-06
+- Whole genome sequencing, revision 1378234578, retrieved 2026-10-06
+- Wilms' tumor, revision 1373479021, retrieved 2026-10-06
+- Zygosity, revision 1368742383, retrieved 2026-10-06

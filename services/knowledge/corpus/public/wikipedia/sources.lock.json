@@ -1,0 +1,554 @@
+{
+  "ATAC-seq": {
+    "title": "ATAC-seq",
+    "revision_id": 1368833331,
+    "retrieved": "2026-10-06",
+    "file": "atac-seq.md"
+  },
+  "Acute lymphoblastic leukemia": {
+    "title": "Acute lymphoblastic leukemia",
+    "revision_id": 1367470024,
+    "retrieved": "2026-10-06",
+    "file": "acute-lymphoblastic-leukemia.md"
+  },
+  "Acute myeloid leukemia": {
+    "title": "Acute myeloid leukemia",
+    "revision_id": 1375622927,
+    "retrieved": "2026-10-06",
+    "file": "acute-myeloid-leukemia.md"
+  },
+  "Allele frequency": {
+    "title": "Allele frequency",
+    "revision_id": 1346370843,
+    "retrieved": "2026-10-06",
+    "file": "allele-frequency.md"
+  },
+  "BED (file format)": {
+    "title": "BED (file format)",
+    "revision_id": 1244776555,
+    "retrieved": "2026-10-06",
+    "file": "bed-file-format.md"
+  },
+  "BRCA1": {
+    "title": "BRCA1",
+    "revision_id": 1376557746,
+    "retrieved": "2026-10-06",
+    "file": "brca1.md"
+  },
+  "BRCA2": {
+    "title": "BRCA2",
+    "revision_id": 1376101112,
+    "retrieved": "2026-10-06",
+    "file": "brca2.md"
+  },
+  "Binary Alignment Map": {
+    "title": "BAM (file format)",
+    "revision_id": 1364141142,
+    "retrieved": "2026-10-06",
+    "file": "bam-file-format.md"
+  },
+  "Biobank": {
+    "title": "Biobank",
+    "revision_id": 1364641008,
+    "retrieved": "2026-10-06",
+    "file": "biobank.md"
+  },
+  "Bioinformatics": {
+    "title": "Bioinformatics",
+    "revision_id": 1376349012,
+    "retrieved": "2026-10-06",
+    "file": "bioinformatics.md"
+  },
+  "Bioinformatics workflow management system": {
+    "title": "Scientific workflow system",
+    "revision_id": 1369246739,
+    "retrieved": "2026-10-06",
+    "file": "scientific-workflow-system.md"
+  },
+  "Bisulfite sequencing": {
+    "title": "Bisulfite sequencing",
+    "revision_id": 1374409722,
+    "retrieved": "2026-10-06",
+    "file": "bisulfite-sequencing.md"
+  },
+  "CRAM (file format)": {
+    "title": "CRAM (file format)",
+    "revision_id": 1349292472,
+    "retrieved": "2026-10-06",
+    "file": "cram-file-format.md"
+  },
+  "Cancer syndrome": {
+    "title": "Hereditary cancer syndrome",
+    "revision_id": 1357091617,
+    "retrieved": "2026-10-06",
+    "file": "hereditary-cancer-syndrome.md"
+  },
+  "ChIP sequencing": {
+    "title": "ChIP sequencing",
+    "revision_id": 1374647010,
+    "retrieved": "2026-10-06",
+    "file": "chip-sequencing.md"
+  },
+  "Chain of custody": {
+    "title": "Chain of custody",
+    "revision_id": 1377502893,
+    "retrieved": "2026-10-06",
+    "file": "chain-of-custody.md"
+  },
+  "Childhood cancer": {
+    "title": "Childhood cancer",
+    "revision_id": 1369725733,
+    "retrieved": "2026-10-06",
+    "file": "childhood-cancer.md"
+  },
+  "Chromosomal translocation": {
+    "title": "Chromosomal translocation",
+    "revision_id": 1374683476,
+    "retrieved": "2026-10-06",
+    "file": "chromosomal-translocation.md"
+  },
+  "Clinical Laboratory Improvement Amendments": {
+    "title": "Clinical Laboratory Improvement Amendments",
+    "revision_id": 1378630835,
+    "retrieved": "2026-10-06",
+    "file": "clinical-laboratory-improvement-amendments.md"
+  },
+  "College of American Pathologists": {
+    "title": "College of American Pathologists",
+    "revision_id": 1362258194,
+    "retrieved": "2026-10-06",
+    "file": "college-of-american-pathologists.md"
+  },
+  "Copy number variation": {
+    "title": "Copy number variation",
+    "revision_id": 1363295253,
+    "retrieved": "2026-10-06",
+    "file": "copy-number-variation.md"
+  },
+  "Corrective and preventive action": {
+    "title": "Corrective and preventive action",
+    "revision_id": 1373708211,
+    "retrieved": "2026-10-06",
+    "file": "corrective-and-preventive-action.md"
+  },
+  "Coverage (genetics)": {
+    "title": "Coverage (genetics)",
+    "revision_id": 1368671266,
+    "retrieved": "2026-10-06",
+    "file": "coverage-genetics.md"
+  },
+  "DNA microarray": {
+    "title": "DNA microarray",
+    "revision_id": 1335531483,
+    "retrieved": "2026-10-06",
+    "file": "dna-microarray.md"
+  },
+  "DNA sequencing": {
+    "title": "DNA sequencing",
+    "revision_id": 1378305681,
+    "retrieved": "2026-10-06",
+    "file": "dna-sequencing.md"
+  },
+  "De-identification": {
+    "title": "De-identification",
+    "revision_id": 1369637766,
+    "retrieved": "2026-10-06",
+    "file": "de-identification.md"
+  },
+  "Electronic lab notebook": {
+    "title": "Electronic lab notebook",
+    "revision_id": 1377838477,
+    "retrieved": "2026-10-06",
+    "file": "electronic-lab-notebook.md"
+  },
+  "Ensembl genome database project": {
+    "title": "Ensembl genome database project",
+    "revision_id": 1314036676,
+    "retrieved": "2026-10-06",
+    "file": "ensembl-genome-database-project.md"
+  },
+  "Ewing sarcoma": {
+    "title": "Ewing sarcoma",
+    "revision_id": 1373734055,
+    "retrieved": "2026-10-06",
+    "file": "ewing-sarcoma.md"
+  },
+  "Exome sequencing": {
+    "title": "Exome sequencing",
+    "revision_id": 1377450320,
+    "retrieved": "2026-10-06",
+    "file": "exome-sequencing.md"
+  },
+  "FASTA format": {
+    "title": "FASTA format",
+    "revision_id": 1361618063,
+    "retrieved": "2026-10-06",
+    "file": "fasta-format.md"
+  },
+  "FASTQ format": {
+    "title": "FASTQ format",
+    "revision_id": 1368840807,
+    "retrieved": "2026-10-06",
+    "file": "fastq-format.md"
+  },
+  "Fixation (histology)": {
+    "title": "Fixation (histology)",
+    "revision_id": 1376291354,
+    "retrieved": "2026-10-06",
+    "file": "fixation-histology.md"
+  },
+  "Fusion gene": {
+    "title": "Fusion gene",
+    "revision_id": 1372276942,
+    "retrieved": "2026-10-06",
+    "file": "fusion-gene.md"
+  },
+  "GENCODE": {
+    "title": "GENCODE",
+    "revision_id": 1365332047,
+    "retrieved": "2026-10-06",
+    "file": "gencode.md"
+  },
+  "Gene expression profiling": {
+    "title": "Gene expression profiling",
+    "revision_id": 1342083535,
+    "retrieved": "2026-10-06",
+    "file": "gene-expression-profiling.md"
+  },
+  "Gene set enrichment analysis": {
+    "title": "Gene set enrichment analysis",
+    "revision_id": 1368841655,
+    "retrieved": "2026-10-06",
+    "file": "gene-set-enrichment-analysis.md"
+  },
+  "Genetic privacy": {
+    "title": "Genetic privacy",
+    "revision_id": 1368886552,
+    "retrieved": "2026-10-06",
+    "file": "genetic-privacy.md"
+  },
+  "Genetic testing": {
+    "title": "Genetic testing",
+    "revision_id": 1375335499,
+    "retrieved": "2026-10-06",
+    "file": "genetic-testing.md"
+  },
+  "Genome-wide association study": {
+    "title": "Genome-wide association study",
+    "revision_id": 1375238301,
+    "retrieved": "2026-10-06",
+    "file": "genome-wide-association-study.md"
+  },
+  "Genotyping": {
+    "title": "Genotyping",
+    "revision_id": 1373422381,
+    "retrieved": "2026-10-06",
+    "file": "genotyping.md"
+  },
+  "Germline mutation": {
+    "title": "Germline mutation",
+    "revision_id": 1374906715,
+    "retrieved": "2026-10-06",
+    "file": "germline-mutation.md"
+  },
+  "Good laboratory practice": {
+    "title": "Good laboratory practice",
+    "revision_id": 1331695987,
+    "retrieved": "2026-10-06",
+    "file": "good-laboratory-practice.md"
+  },
+  "Health Insurance Portability and Accountability Act": {
+    "title": "Health Insurance Portability and Accountability Act",
+    "revision_id": 1378623935,
+    "retrieved": "2026-10-06",
+    "file": "health-insurance-portability-and-accountability-act.md"
+  },
+  "Hereditary breast\u2013ovarian cancer syndrome": {
+    "title": "Hereditary breast\u2013ovarian cancer syndrome",
+    "revision_id": 1343001012,
+    "retrieved": "2026-10-06",
+    "file": "hereditary-breast-ovarian-cancer-syndrome.md"
+  },
+  "ISO 15189": {
+    "title": "ISO 15189",
+    "revision_id": 1372137627,
+    "retrieved": "2026-10-06",
+    "file": "iso-15189.md"
+  },
+  "Illumina dye sequencing": {
+    "title": "Illumina dye sequencing",
+    "revision_id": 1362359050,
+    "retrieved": "2026-10-06",
+    "file": "illumina-dye-sequencing.md"
+  },
+  "Indel": {
+    "title": "Indel",
+    "revision_id": 1375539443,
+    "retrieved": "2026-10-06",
+    "file": "indel.md"
+  },
+  "Laboratory information management system": {
+    "title": "Laboratory information management system",
+    "revision_id": 1369984301,
+    "retrieved": "2026-10-06",
+    "file": "laboratory-information-management-system.md"
+  },
+  "Library (biology)": {
+    "title": "Library (biology)",
+    "revision_id": 1360702735,
+    "retrieved": "2026-10-06",
+    "file": "library-biology.md"
+  },
+  "Li\u2013Fraumeni syndrome": {
+    "title": "Li\u2013Fraumeni syndrome",
+    "revision_id": 1374237340,
+    "retrieved": "2026-10-06",
+    "file": "li-fraumeni-syndrome.md"
+  },
+  "Loss of heterozygosity": {
+    "title": "Loss of heterozygosity",
+    "revision_id": 1310594943,
+    "retrieved": "2026-10-06",
+    "file": "loss-of-heterozygosity.md"
+  },
+  "Lynch syndrome": {
+    "title": "Hereditary nonpolyposis colorectal cancer",
+    "revision_id": 1378834920,
+    "retrieved": "2026-10-06",
+    "file": "hereditary-nonpolyposis-colorectal-cancer.md"
+  },
+  "MYCN": {
+    "title": "N-Myc",
+    "revision_id": 1313730019,
+    "retrieved": "2026-10-06",
+    "file": "n-myc.md"
+  },
+  "Massive parallel sequencing": {
+    "title": "Massively parallel sequencing",
+    "revision_id": 1352792939,
+    "retrieved": "2026-10-06",
+    "file": "massively-parallel-sequencing.md"
+  },
+  "Medulloblastoma": {
+    "title": "Medulloblastoma",
+    "revision_id": 1378658709,
+    "retrieved": "2026-10-06",
+    "file": "medulloblastoma.md"
+  },
+  "Microsatellite instability": {
+    "title": "Microsatellite instability",
+    "revision_id": 1363391062,
+    "retrieved": "2026-10-06",
+    "file": "microsatellite-instability.md"
+  },
+  "Molecular diagnostics": {
+    "title": "Molecular diagnostics",
+    "revision_id": 1376805404,
+    "retrieved": "2026-10-06",
+    "file": "molecular-diagnostics.md"
+  },
+  "Mutation": {
+    "title": "Mutation",
+    "revision_id": 1372306895,
+    "retrieved": "2026-10-06",
+    "file": "mutation.md"
+  },
+  "Mutational signatures": {
+    "title": "Mutational signatures",
+    "revision_id": 1365730613,
+    "retrieved": "2026-10-06",
+    "file": "mutational-signatures.md"
+  },
+  "Neuroblastoma": {
+    "title": "Neuroblastoma",
+    "revision_id": 1377286426,
+    "retrieved": "2026-10-06",
+    "file": "neuroblastoma.md"
+  },
+  "Osteosarcoma": {
+    "title": "Osteosarcoma",
+    "revision_id": 1368886625,
+    "retrieved": "2026-10-06",
+    "file": "osteosarcoma.md"
+  },
+  "P53": {
+    "title": "P53",
+    "revision_id": 1373900071,
+    "retrieved": "2026-10-06",
+    "file": "p53.md"
+  },
+  "Penetrance": {
+    "title": "Penetrance",
+    "revision_id": 1371509148,
+    "retrieved": "2026-10-06",
+    "file": "penetrance.md"
+  },
+  "Philadelphia chromosome": {
+    "title": "Philadelphia chromosome",
+    "revision_id": 1378143857,
+    "retrieved": "2026-10-06",
+    "file": "philadelphia-chromosome.md"
+  },
+  "Phred quality score": {
+    "title": "Phred quality score",
+    "revision_id": 1311165171,
+    "retrieved": "2026-10-06",
+    "file": "phred-quality-score.md"
+  },
+  "Point mutation": {
+    "title": "Point mutation",
+    "revision_id": 1350780439,
+    "retrieved": "2026-10-06",
+    "file": "point-mutation.md"
+  },
+  "Polymerase chain reaction": {
+    "title": "Polymerase chain reaction",
+    "revision_id": 1378295121,
+    "retrieved": "2026-10-06",
+    "file": "polymerase-chain-reaction.md"
+  },
+  "Precision medicine": {
+    "title": "Personalized medicine",
+    "revision_id": 1374681167,
+    "retrieved": "2026-10-06",
+    "file": "personalized-medicine.md"
+  },
+  "Protected health information": {
+    "title": "Protected health information",
+    "revision_id": 1374483019,
+    "retrieved": "2026-10-06",
+    "file": "protected-health-information.md"
+  },
+  "Pseudonymization": {
+    "title": "Pseudonymization",
+    "revision_id": 1353934637,
+    "retrieved": "2026-10-06",
+    "file": "pseudonymization.md"
+  },
+  "Quality control": {
+    "title": "Quality control",
+    "revision_id": 1328028707,
+    "retrieved": "2026-10-06",
+    "file": "quality-control.md"
+  },
+  "RNA-Seq": {
+    "title": "RNA-Seq",
+    "revision_id": 1376053366,
+    "retrieved": "2026-10-06",
+    "file": "rna-seq.md"
+  },
+  "RefSeq": {
+    "title": "RefSeq",
+    "revision_id": 1370720185,
+    "retrieved": "2026-10-06",
+    "file": "refseq.md"
+  },
+  "Reference genome": {
+    "title": "Reference genome",
+    "revision_id": 1353765350,
+    "retrieved": "2026-10-06",
+    "file": "reference-genome.md"
+  },
+  "Retinoblastoma": {
+    "title": "Retinoblastoma",
+    "revision_id": 1368888863,
+    "retrieved": "2026-10-06",
+    "file": "retinoblastoma.md"
+  },
+  "Rhabdomyosarcoma": {
+    "title": "Rhabdomyosarcoma",
+    "revision_id": 1369339762,
+    "retrieved": "2026-10-06",
+    "file": "rhabdomyosarcoma.md"
+  },
+  "SAM (file format)": {
+    "title": "SAM (file format)",
+    "revision_id": 1334729679,
+    "retrieved": "2026-10-06",
+    "file": "sam-file-format.md"
+  },
+  "SNP array": {
+    "title": "SNP array",
+    "revision_id": 1301941611,
+    "retrieved": "2026-10-06",
+    "file": "snp-array.md"
+  },
+  "Sequence alignment": {
+    "title": "Sequence alignment",
+    "revision_id": 1372595539,
+    "retrieved": "2026-10-06",
+    "file": "sequence-alignment.md"
+  },
+  "Single-cell sequencing": {
+    "title": "Single-cell sequencing",
+    "revision_id": 1377331418,
+    "retrieved": "2026-10-06",
+    "file": "single-cell-sequencing.md"
+  },
+  "Single-nucleotide polymorphism": {
+    "title": "Single-nucleotide polymorphism",
+    "revision_id": 1369644110,
+    "retrieved": "2026-10-06",
+    "file": "single-nucleotide-polymorphism.md"
+  },
+  "Standard operating procedure": {
+    "title": "Standard operating procedure",
+    "revision_id": 1365633889,
+    "retrieved": "2026-10-06",
+    "file": "standard-operating-procedure.md"
+  },
+  "Structural variation": {
+    "title": "Structural variation",
+    "revision_id": 1376707654,
+    "retrieved": "2026-10-06",
+    "file": "structural-variation.md"
+  },
+  "Transcriptomics technologies": {
+    "title": "Transcriptomics technologies",
+    "revision_id": 1374040147,
+    "retrieved": "2026-10-06",
+    "file": "transcriptomics-technologies.md"
+  },
+  "Tumor mutational burden": {
+    "title": "Tumor mutational burden",
+    "revision_id": 1369602305,
+    "retrieved": "2026-10-06",
+    "file": "tumor-mutational-burden.md"
+  },
+  "Tumour heterogeneity": {
+    "title": "Tumour heterogeneity",
+    "revision_id": 1368825750,
+    "retrieved": "2026-10-06",
+    "file": "tumour-heterogeneity.md"
+  },
+  "Variant Call Format": {
+    "title": "Variant Call Format",
+    "revision_id": 1373132868,
+    "retrieved": "2026-10-06",
+    "file": "variant-call-format.md"
+  },
+  "Variant of uncertain significance": {
+    "title": "Variant of uncertain significance",
+    "revision_id": 1369622545,
+    "retrieved": "2026-10-06",
+    "file": "variant-of-uncertain-significance.md"
+  },
+  "Whole genome sequencing": {
+    "title": "Whole genome sequencing",
+    "revision_id": 1378234578,
+    "retrieved": "2026-10-06",
+    "file": "whole-genome-sequencing.md"
+  },
+  "Wilms' tumor": {
+    "title": "Wilms' tumor",
+    "revision_id": 1373479021,
+    "retrieved": "2026-10-06",
+    "file": "wilms-tumor.md"
+  },
+  "Zygosity": {
+    "title": "Zygosity",
+    "revision_id": 1368742383,
+    "retrieved": "2026-10-06",
+    "file": "zygosity.md"
+  }
+}

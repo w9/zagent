@@ -1,0 +1,7 @@
+<p>Workbench jobs write VCF files with standard fields plus a few core-specific INFO tags.</p>
+<h1>Allele frequency</h1>
+<p>Somatic VCFs store the variant allele frequency in the FORMAT field AF for the tumor sample. Germline VCFs do not carry AF; compute it from AD if you need it.</p>
+<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[bcftools query -f '%CHROM\t%POS\t%REF\t%ALT\t[%AF]\n' tumor.vcf.gz]]></ac:plain-text-body></ac:structured-macro>
+<h1>Filtering</h1>
+<p>Only records with FILTER equal to PASS met the job's min_vaf and min_depth. Other records are kept for review and carry the reason in FILTER.</p>
+<p>See incident INC-0172 for the confusion caused by germline VCFs without AF.</p>

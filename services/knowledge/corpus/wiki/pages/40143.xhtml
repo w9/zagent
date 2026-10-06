@@ -1,0 +1,9 @@
+<p>Expression values come in several units. Pick the one that matches the comparison you want to make.</p>
+<table>
+<tr><th>Unit</th><th>Normalizes for</th><th>Use for</th></tr>
+<tr><td>CPM</td><td>Library size</td><td>Comparing the same gene across samples</td></tr>
+<tr><td>FPKM</td><td>Library size and gene length</td><td>Legacy reports only</td></tr>
+<tr><td>TPM</td><td>Gene length, then library size</td><td>Comparing genes within a sample</td></tr>
+</table>
+<p>TPM values sum to one million in every sample, which makes within-sample proportions comparable. FPKM values do not, so FPKM is not comparable across samples.</p>
+<p>Differential expression tools expect raw counts, not any of these units.</p>

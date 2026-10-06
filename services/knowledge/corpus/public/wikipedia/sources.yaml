@@ -1,0 +1,101 @@
+# Wikipedia articles vendored as public background. Run `kb-fetch-wikipedia` to pin new titles.
+clusters:
+  sequencing_and_libraries:
+    - Whole genome sequencing
+    - Exome sequencing
+    - RNA-Seq
+    - DNA sequencing
+    - Massive parallel sequencing
+    - Illumina dye sequencing
+    - Coverage (genetics)
+    - Phred quality score
+    - FASTQ format
+    - FASTA format
+    - SAM (file format)
+    - Binary Alignment Map
+    - CRAM (file format)
+    - Variant Call Format
+    - BED (file format)
+    - Reference genome
+    - Sequence alignment
+    - Polymerase chain reaction
+    - Library (biology)
+    - Single-cell sequencing
+    - ChIP sequencing
+    - ATAC-seq
+    - Bisulfite sequencing
+    - Transcriptomics technologies
+    - Gene expression profiling
+    - DNA microarray
+    - SNP array
+    - GENCODE
+    - Ensembl genome database project
+    - RefSeq
+  variants:
+    - Single-nucleotide polymorphism
+    - Point mutation
+    - Mutation
+    - Germline mutation
+    - Indel
+    - Copy number variation
+    - Loss of heterozygosity
+    - Structural variation
+    - Allele frequency
+    - Zygosity
+    - Variant of uncertain significance
+    - Genotyping
+    - Mutational signatures
+    - Tumor mutational burden
+    - Microsatellite instability
+    - Tumour heterogeneity
+  fusions_and_pediatric_tumors:
+    - Fusion gene
+    - Chromosomal translocation
+    - Philadelphia chromosome
+    - Ewing sarcoma
+    - Rhabdomyosarcoma
+    - Acute lymphoblastic leukemia
+    - Acute myeloid leukemia
+    - Neuroblastoma
+    - Medulloblastoma
+    - Wilms' tumor
+    - Retinoblastoma
+    - Osteosarcoma
+    - Childhood cancer
+    - MYCN
+  predisposition:
+    - P53
+    - Li–Fraumeni syndrome
+    - BRCA1
+    - BRCA2
+    - Lynch syndrome
+    - Hereditary breast–ovarian cancer syndrome
+    - Cancer syndrome
+    - Genetic testing
+    - Penetrance
+  laboratory_quality:
+    - Clinical Laboratory Improvement Amendments
+    - College of American Pathologists
+    - ISO 15189
+    - Laboratory information management system
+    - Chain of custody
+    - Standard operating procedure
+    - Corrective and preventive action
+    - Good laboratory practice
+    - Quality control
+    - Biobank
+    - Fixation (histology)
+    - Electronic lab notebook
+    - Bioinformatics workflow management system
+  privacy:
+    - Protected health information
+    - De-identification
+    - Health Insurance Portability and Accountability Act
+    - Pseudonymization
+    - Genetic privacy
+  concepts:
+    - Bioinformatics
+    - Precision medicine
+    - Molecular diagnostics
+    - Genome-wide association study
+    - Gene set enrichment analysis

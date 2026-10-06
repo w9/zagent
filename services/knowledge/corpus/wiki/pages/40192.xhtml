@@ -1,0 +1,5 @@
+<p>Some collaborator data lives in cloud object storage. Use the platform's service account; personal cloud accounts are not allowed for network data.</p>
+<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[gcloud auth activate-service-account --key-file ~/.config/mcgc/sa.json
+gsutil ls gs://mcgc-collab-transfer/<project_code>/
+gsutil -m cp -r gs://mcgc-collab-transfer/<project_code>/incoming ./raw/]]></ac:plain-text-body></ac:structured-macro>
+<p>Transfer buckets are emptied 30 days after a project closes.</p>

@@ -1,0 +1,7 @@
+<p>Released FASTQ files follow one layout. Scripts that guess paths break when runs are re-demultiplexed, so use this layout.</p>
+<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[/released/<run_id>/<library_id>/
+  <library_id>_L<lane>_R1.fastq.gz
+  <library_id>_L<lane>_R2.fastq.gz
+  md5sums.txt]]></ac:plain-text-body></ac:structured-macro>
+<p>Run IDs have the form YYMMDD_instrument_flowcell. Lanes are numbered from 1.</p>
+<p>Re-demultiplexed runs get a suffix such as _redemux1; the original directory is never changed.</p>

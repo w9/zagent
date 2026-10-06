@@ -1,6 +1,6 @@
 # PLAN12: The Knowledge Service
 
-**Status:** stage 1 (relocation) implemented; stages 2-4 not started
+**Status:** stages 1 (relocation) and 2 (corpus) implemented; stages 3-4 not started
 **Depends on:** [PLAN10](PLAN10.md) for mutation and adversarial infrastructure;
 [DESIGN.md](DESIGN.md) for the persona chooser. Lands before the [PLAN11](PLAN11.md) gallery, so
 the gallery covers its requirements.
@@ -349,28 +349,60 @@ checks appear as their claim, verified where possible by contract tests.
 
 ## Definition of done
 
-- [ ] `kb` runs only on `knowledge`. `make zones` proves the allowed broker routes and the
+- [x] `kb` runs only on `knowledge`. `make zones` proves the allowed broker routes and the
   denials: agent to `kb`, `kb` to the agent zone, clinical services and the internet, and broker
   to clinical data.
-- [ ] Stage 1 replays every existing golden and cassette unchanged.
-- [ ] `services/knowledge` has its own tests and a CI check that it imports nothing from `zagent`.
-- [ ] The corpus has ~80 pinned Wikipedia articles with a NOTICE, ~100 internal documents across
+- [x] Stage 1 replays every existing golden and cassette unchanged.
+- [x] `services/knowledge` has its own tests and a CI check that it imports nothing from `zagent`.
+- [x] The corpus has ~80 pinned Wikipedia articles with a NOTICE, ~100 internal documents across
   wiki, QMS and ticketing, and 10 reference tables. Deliberate conflicts are listed in the manifest.
-- [ ] `kb-publish` builds byte-identical snapshots offline from the same sources.
-- [ ] Publishing checks fail on missing provenance, missing labels, unlisted table and document
+- [x] `kb-publish` builds byte-identical snapshots offline from the same sources.
+- [x] Publishing checks fail on missing provenance, missing labels, unlisted table and document
   disagreement, broken supersession and oversized results.
-- [ ] The five tools work through the broker. Every result is under 8 KB and names its snapshot.
+- [ ] The five tools work through the broker. Every result is under 8 KB and names its snapshot
+  (served at `/v2/mcp` and size-tested; broker cutover is stage 4).
 - [ ] The broker tokenizes, verifies caller context, pins contract hashes, forwards snapshots,
-  times out cleanly and writes audits.
+  times out cleanly and writes audits (all in place except caller context, which is stage 3;
+  audits come from the runtime's existing tool audit).
 - [ ] Persona chooser and badge pass `npm --prefix apps/web run test:design`.
 - [ ] The scope policy change ships with labeled boundary cases, and the REQ-SCOPE gates are
   reported, including failures.
 - [ ] One re-record at cutover, within an approved budget.
 - [ ] Every new mutation is detected.
-- [ ] The retrieval evaluation runs in CI.
+- [x] The retrieval evaluation runs in CI.
 - [ ] ARCHITECTURE sections 6, 11, 12 and 14, the requirement register and the README are updated,
   with at least one recorded knowledge question in the quick start.
 - [ ] A clean clone and `make up` answer the recorded knowledge questions with no key.
+
+## Recorded findings
+
+**Stage 1.** The model-visible tool definitions, prompt and response schemas hash identically to
+the previous commit, and the legacy snapshot keeps the pinned `kb_version`. The full replay
+(3,180 trials) shows no unrecognized regressions; its red gates are the documented known findings.
+
+**Stage 2.**
+
+- The published corpus has 92 pinned Wikipedia articles (1.7 MB with a NOTICE), 106 internal
+  documents (23 QMS versions, 63 wiki pages, 20 tickets), 9 reference tables and a 38-term
+  glossary. Snapshot `30ce85e0` builds byte-identically on the host (Python 3.13) and in the image
+  (Python 3.12), with no network.
+- The v2 tools are served at `/v2/mcp` beside the legacy contract, which the broker keeps using
+  until the stage 4 cutover. The knowledge server already filters by caller site and role from
+  request metadata; stage 3 adds the signed context that supplies it.
+- Retrieval over 162 labeled queries: recall@5 0.969 (95% lower bound 0.930), MRR@8 0.794. By
+  source: QMS 0.981, wiki 0.980, ticketing 0.913, reference 0.900, Wikipedia 1.000. The labels
+  were written alongside the corpus, and ranking was tuned against them (fixed passage windows,
+  an encyclopedia lead bonus), so these numbers are optimistic. They are not a held-out result.
+- The agent's detector matched `LIB-001` inside the document number `SOP-LIB-001` as a library
+  identifier. Every quote of it would have been tokenized and failed citation checks. The
+  document was renamed `SOP-PREP-001`; the detector rule is unchanged. An agent-side test now
+  asserts that the only detector matches in the corpus are the two planted MRN tickets.
+- The knowledge team's own scan covers email addresses, phone numbers and SSN-shaped strings, not
+  hospital MRN formats, so the planted MRNs publish as intended and only the broker stops them.
+- Deviations: internal documents were written directly by the coding assistant in this session
+  rather than through a recorded drafting run, and still need human review. Infobox data is not
+  extracted, because the TextExtracts API returns plain text. Six broken wiki links are reported
+  as warnings, by design.
 
 ---
 

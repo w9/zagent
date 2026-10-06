@@ -1,0 +1,195 @@
+title: Glossary
+version: "2026-09"
+owner_role: quality lead
+description: Terms used across the core's procedures, wiki pages and tickets. Each entry cites the document that uses the term authoritatively.
+terms:
+  - term: Variant allele frequency
+    synonyms: [VAF, allele fraction, variant allele fraction, AF]
+    definition: The fraction of sequencing reads at a position that carry the variant allele. A heterozygous germline variant sits near 0.5; somatic variants are diluted by normal cells, copy number and subclonality.
+    source_document: wiki-40184
+    source_anchor: is the fraction of reads at a position that carry the variant
+  - term: Coverage
+    synonyms: [mean coverage, read depth, sequencing depth, depth of coverage]
+    definition: The average number of reads covering each base of the genome or target, written with an x, as in 40x. Readqc compares a library's mean coverage with the confirmed minimum.
+    source_document: sop-qc-001-v3
+    source_anchor: Readqc fails when a selected library's coverage is below the confirmed minimum coverage
+  - term: Tumor purity
+    synonyms: [tumour purity, tumor cellularity, tumor content, purity]
+    definition: The fraction of cells in a tumor specimen that are cancer cells. Low purity lowers the VAF of somatic variants and the sensitivity of somatic calling.
+    source_document: wiki-40185
+    source_anchor: is the fraction of cells in a tumor specimen that are cancer cells
+  - term: Ploidy
+    synonyms: [tumor ploidy]
+    definition: The average number of copies of each chromosome in the tumor cells. Ploidy and purity together determine the expected VAF of a clonal variant.
+    source_document: wiki-40185
+    source_anchor: Ploidy is the average number of chromosome copies
+  - term: Low purity warning
+    synonyms: [low_purity_warning, purity warning]
+    definition: A job log warning written when a selected tumor specimen has purity below 0.20. The job still completes; the warning limits interpretation and never means the job failed.
+    source_document: sop-qc-001-v3
+    source_anchor: Tumor purity below 0.20 produces a warning
+  - term: Matched normal
+    synonyms: [normal sample, paired normal, germline control, matched normal sample]
+    definition: A non-tumor specimen from the same patient used to separate somatic from inherited variants. In the workbench it is selected together with the tumor in one specimen query; there is no separate parameter.
+    source_document: wiki-40111
+    source_anchor: Somatic calling needs a tumor and a matched normal
+  - term: Genotype concordance
+    synonyms: [identity check, sample identity check, genotype identity check, fingerprinting, concordance]
+    definition: The fraction of identity panel sites where the tumor and normal genotypes agree. At least 0.90 is required before somatic calling proceeds.
+    source_document: sop-identity-001-v1
+    source_anchor: Tumor and normal genotypes must show concordance of at least 0.90
+  - term: Genotype concordance failure
+    synonyms: [genotype_concordance_failed, identity failure, concordance failure]
+    definition: The job log code written when selected tumor and normal roles disagree with verified identity. The job fails before any variant is called and a corrected draft with verified roles is needed.
+    source_document: wiki-40152
+    source_anchor: genotype_concordance_failed | ERROR
+  - term: Sample swap
+    synonyms: [tumor/normal swap, tumour/normal swap, T/N swap, sample mix-up, specimen swap]
+    definition: Two specimens labeled with each other's role or identity, most often at accessioning. It is corrected by selecting verified roles, never by editing the original specimen records.
+    source_document: wiki-40137
+    source_anchor: A tumor/normal swap at accessioning
+  - term: Verified identity
+    synonyms: [assay-verified identity, verified role, verified specimen identity]
+    definition: The specimen role confirmed by the genotype identity check, recorded separately from the role reported on the manifest.
+    source_document: sop-acc-001-v2
+    source_anchor: Assay-verified identity is recorded separately
+  - term: Identity panel
+    synonyms: [identity SNP panel, IDP]
+    definition: A fixed set of common germline SNP sites used to compare genotypes between specimens of the same patient.
+    source_document: sop-identity-001-v1
+    source_anchor: The identity panel uses common germline SNPs
+  - term: Readqc
+    synonyms: [read QC, read quality control, readqc job]
+    definition: The workbench application that checks whether selected libraries meet coverage and identity requirements before further analysis.
+    source_document: sop-qc-001-v3
+    source_anchor: This procedure defines read quality review
+  - term: Somatic SNV calling
+    synonyms: [somatic-snv, somatic variant calling, somatic calling]
+    definition: The workbench application that finds tumor-specific single nucleotide variants and small indels by comparing a tumor with its matched normal.
+    source_document: wiki-40134
+    source_anchor: Somatic SNV and indel calling compares a tumor library
+  - term: Gene fusion
+    synonyms: [fusion, fusion transcript, rna-fusion, fusion gene]
+    definition: A transcript joining parts of two genes, detected from split and spanning reads in RNA. Recurrent pediatric fusions are listed in the curated fusion targets table.
+    source_document: wiki-40142
+    source_anchor: detects gene fusions from split and spanning reads
+  - term: Supporting reads
+    synonyms: [split reads, spanning reads, junction reads, min_support]
+    definition: Reads whose alignment supports a fusion junction, either by crossing it or by pairing across it. A fusion is reported only with at least the configured minimum.
+    source_document: sop-fus-001-v1
+    source_anchor: at least 5 supporting reads
+  - term: Read-through artifact
+    synonyms: [read-through transcript, readthrough, read-through]
+    definition: A transcript that continues from one gene into its neighbor on the same strand. It looks like a fusion but is removed by artifact filtering.
+    source_document: sop-fus-001-v1
+    source_anchor: Read-through between neighboring genes
+  - term: Germline panel
+    synonyms: [predisposition panel, extended panel, germline-panel]
+    definition: The workbench application that looks for inherited cancer predisposition variants in a set of genes. The predisposition panel is the default; the extended panel adds more genes on request.
+    source_document: sop-germ-001-v2
+    source_anchor: The predisposition panel is the default
+  - term: PCR-free WGS
+    synonyms: [PCR-free whole genome sequencing, PCR-free library, PCR free WGS]
+    definition: Whole genome libraries made without amplification, which avoids PCR duplicates and coverage bias. Required for germline panels.
+    source_document: sop-prep-001-v4
+    source_anchor: PCR-free WGS requires at least 500 ng
+  - term: Low-input library
+    synonyms: [LI library, low-input PCR library]
+    definition: A library made with PCR amplification from limited DNA. It carries the suffix LI and is never valid for germline panels.
+    source_document: wiki-40164
+    source_anchor: Low-input PCR libraries carry the suffix LI
+  - term: Duplication rate
+    synonyms: [duplicate rate, PCR duplicates, duplicate reads]
+    definition: The fraction of reads that are copies of the same original molecule. Above 15 percent it is recorded on the QC review record.
+    source_document: sop-qc-001-v3
+    source_anchor: Duplication above 15 percent is recorded
+  - term: Mapping rate
+    synonyms: [alignment rate, mapped reads]
+    definition: The fraction of reads that align to the reference genome. Libraries below 95 percent are held for review.
+    source_document: sop-qc-001-v3
+    source_anchor: mapping rate below 95 percent
+  - term: Q30
+    synonyms: [Phred 30, base quality 30, bases at Q30]
+    definition: A base call quality of 30 on the Phred scale, meaning a one in a thousand chance that the call is wrong. Runs are released when at least 85 percent of bases reach it.
+    source_document: wiki-40171
+    source_anchor: Q30 means a 1 in 1000 chance
+  - term: Top-up sequencing
+    synonyms: [top-up, top up, resequencing]
+    definition: Additional sequencing of an existing library to raise its coverage after a coverage failure. A new readqc draft is needed afterwards.
+    source_document: wiki-40113
+    source_anchor: Top-up sequencing after a coverage failure
+  - term: Node eviction
+    synonyms: [eviction, evicted attempt, node_evicted]
+    definition: Loss of the compute node running a job attempt. The job moves to retrying and gets exactly one automatic retry.
+    source_document: sop-ops-001-v1
+    source_anchor: A node eviction ends the attempt
+  - term: Dispatcher
+    synonyms: [job dispatcher]
+    definition: The service that claims confirmed jobs and starts their worker containers. After a restart it reconnects to running executions by name.
+    source_document: sop-ops-001-v1
+    source_anchor: A dispatcher restart reconnects
+  - term: Analysis draft
+    synonyms: [workbench draft, job draft]
+    definition: A pending analysis naming an application, a specimen selection and parameters. The assistant can edit drafts but cannot submit them.
+    source_document: sop-job-001-v1
+    source_anchor: An analysis starts as a draft
+  - term: Human confirmation
+    synonyms: [Confirm control, draft confirmation]
+    definition: The act of a person approving the exact draft version they reviewed. A chat reply of yes is not a confirmation.
+    source_document: sop-job-001-v1
+    source_anchor: Only a person can confirm a draft
+  - term: Content hash
+    synonyms: [draft hash]
+    definition: A fingerprint of a draft's application, specimen selection and parameters. Confirmation is rejected when the hash no longer matches what the reviewer saw.
+    source_document: sop-job-001-v1
+    source_anchor: Each draft version has a content hash
+  - term: Deviation
+    synonyms: [deviation report, nonconformance]
+    definition: Any planned or unplanned departure from an effective procedure. It is reported within 1 business day on FRM-DEV-001.
+    source_document: sop-dev-001-v1
+    source_anchor: A deviation is any departure from an effective procedure
+  - term: CAPA
+    synonyms: [corrective and preventive action, corrective action]
+    definition: The action plan that fixes the root cause of a major or critical deviation, with an owner, a due date and an effectiveness check.
+    source_document: sop-dev-001-v1
+    source_anchor: Each CAPA names an owner
+  - term: Effective version
+    synonyms: [effective SOP, current version, effective document]
+    definition: The single version of a controlled document that applies today. When a wiki page or ticket disagrees with it, the effective version wins.
+    source_document: wiki-40100
+    source_anchor: When a wiki page and an effective SOP disagree, the SOP wins
+  - term: Superseded version
+    synonyms: [superseded, superseded SOP]
+    definition: An older controlled document version replaced by a newer effective one. It is kept for audit and must not be followed.
+    source_document: sop-qc-001-v3
+    source_anchor: The 40x tumor minimum replaced the earlier 30x minimum
+  - term: CRAM
+    synonyms: [CRAM file]
+    definition: A compressed alignment format that needs the exact reference genome to decode. Autopipe writes CRAM by default.
+    source_document: wiki-40172
+    source_anchor: CRAM is smaller than BAM
+  - term: GRCh38
+    synonyms: [hg38, reference genome]
+    definition: The human reference genome build used for all alignments at the core. Files on hg19 coordinates must be lifted over first.
+    source_document: wiki-40153
+    source_anchor: GRCh38 analysis set
+  - term: MANE Select
+    synonyms: [MANE transcript]
+    definition: A transcript set that pairs one curated RefSeq NM record with one Ensembl transcript per gene. The core reports variants on these transcripts.
+    source_document: wiki-40182
+    source_anchor: MANE Select transcripts
+  - term: TPM
+    synonyms: [transcripts per million]
+    definition: An expression unit normalized for gene length and then library size, so values sum to one million in every sample.
+    source_document: wiki-40143
+    source_anchor: TPM values sum to one million
+  - term: Data level
+    synonyms: [data levels]
+    definition: The core's four-step scale from raw instrument output to signed, interpreted results. The workbench produces level 3 data.
+    source_document: wiki-40181
+    source_anchor: The core talks about data in levels
+  - term: Turnaround time
+    synonyms: [TAT, turnaround]
+    definition: Business days from specimen receipt to a reviewed result available to the requesting team.
+    source_document: wiki-40115
+    source_anchor: Turnaround is counted in business days

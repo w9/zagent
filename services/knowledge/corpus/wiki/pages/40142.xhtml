@@ -1,0 +1,29 @@
+<p>The rna-fusion application detects gene fusions from split and spanning reads in stranded RNA libraries.</p>
+<h1>Parameters</h1>
+<table>
+<tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+<tr><td>min_support</td><td>5</td><td>Minimum supporting reads, split plus spanning.</td></tr>
+<tr><td>filter_artifacts</td><td>true</td><td>Removes read-through and other known artifact classes.</td></tr>
+</table>
+<p>Turning off artifact filtering needs a justification in the service request. Expect many read-through calls without it.</p>
+<h1>Curated targets</h1>
+<p>These fusions are recurrent in pediatric tumors and are flagged when found.</p>
+<table>
+<tr><th>5' partner</th><th>3' partner</th><th>Typical tumor</th></tr>
+<tr><td>EWSR1</td><td>FLI1</td><td>Ewing sarcoma</td></tr>
+<tr><td>EWSR1</td><td>ERG</td><td>Ewing sarcoma</td></tr>
+<tr><td>PAX3</td><td>FOXO1</td><td>Alveolar rhabdomyosarcoma</td></tr>
+<tr><td>PAX7</td><td>FOXO1</td><td>Alveolar rhabdomyosarcoma</td></tr>
+<tr><td>ETV6</td><td>RUNX1</td><td>B-cell acute lymphoblastic leukemia</td></tr>
+<tr><td>BCR</td><td>ABL1</td><td>Acute lymphoblastic leukemia</td></tr>
+<tr><td>TCF3</td><td>PBX1</td><td>B-cell acute lymphoblastic leukemia</td></tr>
+<tr><td>KMT2A</td><td>AFF1</td><td>Infant acute lymphoblastic leukemia</td></tr>
+<tr><td>KIAA1549</td><td>BRAF</td><td>Pilocytic astrocytoma</td></tr>
+<tr><td>ETV6</td><td>NTRK3</td><td>Infantile fibrosarcoma</td></tr>
+<tr><td>SS18</td><td>SSX1</td><td>Synovial sarcoma</td></tr>
+<tr><td>EWSR1</td><td>WT1</td><td>Desmoplastic small round cell tumor</td></tr>
+<tr><td>RUNX1</td><td>RUNX1T1</td><td>Acute myeloid leukemia</td></tr>
+<tr><td>CBFB</td><td>MYH11</td><td>Acute myeloid leukemia</td></tr>
+<tr><td>NUP98</td><td>NSD1</td><td>Acute myeloid leukemia</td></tr>
+</table>
+<p>Validation results are summarized in VAL-RNA-2025.</p>

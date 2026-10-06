@@ -1,0 +1,11 @@
+<p>Germline QC checks that a normal library is fit for germline panel analysis before variants are called.</p>
+<h1>Checks</h1>
+<table>
+<tr><th>Check</th><th>Expected</th></tr>
+<tr><td>Mean coverage</td><td>At least 30x</td></tr>
+<tr><td>Mapping rate</td><td>At least 95 percent</td></tr>
+<tr><td>Heterozygous to homozygous ratio</td><td>1.4 to 2.2 for whole genomes</td></tr>
+<tr><td>Reported sex matches inferred sex</td><td>Yes</td></tr>
+<tr><td>Contamination estimate</td><td>Below 2 percent</td></tr>
+</table>
+<p>A sex mismatch or contamination above 2 percent is treated like an identity problem and escalated to the quality team.</p>

@@ -1,0 +1,37 @@
+MERIDIAN CLINICAL GENOMICS CORE - STANDARD OPERATING PROCEDURE
+CONTROLLED COPY - Sequencing Run Release
+Document: SOP-SEQ-001 Version 3 Page 1 of 2
+
+1 PURPOSE
+This procedure defines when a sequencing run is released for
+analysis in the workbench.
+
+2 RELEASE CRITERIA
+A run is released only when at least 85 percent of bases
+reach Q30 or above.
+The fraction of clusters passing filter must be at least 0.80.
+Each library must receive at least 90 percent of its planned
+read pairs; shortfalls are topped up rather than released.
+Index hopping above 0.1 percent of reads triggers a review
+of the index plate before release.
+
+3 RELEASE STEPS
+- Review the instrument run summary and the demultiplexing report.
+- Record the release decision in the LIMS run record.
+- Notify the bioinformatics on-call channel that the run is
+  available for readqc.
+
+Printed copies are uncontrolled.
+MERIDIAN CLINICAL GENOMICS CORE - STANDARD OPERATING PROCEDURE
+Document: SOP-SEQ-001 Version 3 Page 2 of 2
+
+4 FAILED RUNS
+A run that misses a release criterion is not analyzed.
+Open a deviation under SOP-DEV-001 when a failed run delays
+reporting beyond the turnaround target.
+
+5 REVISION HISTORY
+Version 2 introduced the top-up rule.
+Version 3 added the index hopping review.
+
+Printed copies are uncontrolled.

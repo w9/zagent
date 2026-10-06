@@ -1,0 +1,11 @@
+<p>Fields on the Analysis request type in the service desk.</p>
+<table>
+<tr><th>Field</th><th>Required</th><th>Notes</th></tr>
+<tr><td>Application</td><td>Yes</td><td>One of readqc, somatic-snv, rna-fusion, germline-panel.</td></tr>
+<tr><td>Site</td><td>Yes</td><td>The requesting site; records are visible to that site.</td></tr>
+<tr><td>Specimen description</td><td>Yes</td><td>Study code and intake window, never an MRN.</td></tr>
+<tr><td>Parameters</td><td>No</td><td>Leave empty to use defaults from the analysis SOP.</td></tr>
+<tr><td>Justification</td><td>Sometimes</td><td>Needed to turn off fusion artifact filtering or to lower min_vaf.</td></tr>
+<tr><td>Priority</td><td>No</td><td>Urgent requests need a lab director approval comment.</td></tr>
+</table>
+<p>Requests missing a required field are sent back with the status Waiting for requester.</p>

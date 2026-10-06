@@ -1,0 +1,6 @@
+prefix,feature,example,source_document,source_anchor
+ENSG,Gene,ENSG00000141510,wiki-40183,| ENSG |
+ENST,Transcript,ENST00000269305,wiki-40183,| ENST |
+ENSP,Protein,ENSP00000269305,wiki-40183,| ENSP |
+ENSE,Exon,ENSE00001146308,wiki-40183,| ENSE |
+ENSR,Regulatory feature,ENSR00000082541,wiki-40183,| ENSR |

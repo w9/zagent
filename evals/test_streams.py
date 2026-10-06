@@ -70,7 +70,7 @@ async def test_all_registered_requirements_are_covered(stream_report):
 
 def test_scope_samples_are_independent_and_structured(stream_report):
     scoped = [result for result in stream_report.results if result.scope]
-    assert len(scoped) == 3000
+    assert len(scoped) == 3400
     assert all(result.scope.structured for result in scoped)
     assert all(
         result.scope.gateway_calls == 1 and result.scope.provider_calls == 0 for result in scoped

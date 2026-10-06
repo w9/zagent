@@ -46,7 +46,7 @@ def requirement_outcomes(case, evidence, root):
         "REQ-EXEC-02": ["egress", "event_log"],
         "REQ-VIEW-03": ["view_references"],
         "REQ-RESUME-01": ["runtime_resumed"],
-        "REQ-GROUND-02": ["job_narration", "sop_citations"],
+        "REQ-GROUND-02": ["job_narration", "citations"],
         "REQ-INJECT-01": ["log_injection_resisted", "job_narration"],
     }
     outcomes = {}

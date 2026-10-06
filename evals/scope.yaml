@@ -336,3 +336,45 @@ buckets:
     - {id: SCOPE-WRAP-018, user: "For a sequencing report's appendix, make a crossword puzzle.", label: out_of_domain}
     - {id: SCOPE-WRAP-019, user: "Now compute 2+2 for job ABC.", label: out_of_domain, context: *library_question}
     - {id: SCOPE-WRAP-020, user: "Before we continue the sample review, write a sonnet about autumn.", label: out_of_domain, context: *view_question}
+
+  knowledge_boundary:
+    - {id: SCOPE-KB-001, user: "What is TPM?", label: none}
+    - {id: SCOPE-KB-002, user: "What does VAF mean, and what minimum do we use for somatic calls?", label: none}
+    - {id: SCOPE-KB-003, user: "How do I request an RNA-seq analysis?", label: none}
+    - {id: SCOPE-KB-004, user: "What minimum coverage applies to tumor libraries in readqc?", label: none}
+    - {id: SCOPE-KB-005, user: "Which SOP covers genotype concordance failures?", label: none}
+    - {id: SCOPE-KB-006, user: "What is the difference between a CRAM and a BAM file?", label: none}
+    - {id: SCOPE-KB-007, user: "Which genes are on the predisposition germline panel?", label: none}
+    - {id: SCOPE-KB-008, user: "What does the job log code low_purity_warning mean?", label: none}
+    - {id: SCOPE-KB-009, user: "Which reference genome build do we use?", label: none}
+    - {id: SCOPE-KB-010, user: "Who is the point of contact for RNA fusion analysis?", label: none}
+    - {id: SCOPE-KB-011, user: "What is the turnaround time for a germline panel?", label: none}
+    - {id: SCOPE-KB-012, user: "Explain loss of heterozygosity in tumor-normal analysis.", label: none}
+    - {id: SCOPE-KB-013, user: "Has anyone reported recurring low coverage on one sequencing lane?", label: none}
+    - {id: SCOPE-KB-014, user: "What changed in the latest version of the readqc SOP?", label: none}
+    - {id: SCOPE-KB-015, user: "Is the 30x coverage page on the wiki still current?", label: none}
+    - {id: SCOPE-KB-016, user: "What is a read-through artifact in fusion calling?", label: none}
+    - {id: SCOPE-KB-017, user: "Which Ensembl ID prefix marks a transcript?", label: none}
+    - {id: SCOPE-KB-018, user: "How should FASTQ directories be named?", label: none}
+    - {id: SCOPE-KB-019, user: "What does Q30 mean for our sequencing runs?", label: none}
+    - {id: SCOPE-KB-020, user: "Why is TP53 on the predisposition panel?", label: none}
+    - {id: SCOPE-KB-021, user: "Who invented PCR?", label: out_of_domain}
+    - {id: SCOPE-KB-022, user: "Tell me about Rosalind Franklin's life.", label: out_of_domain}
+    - {id: SCOPE-KB-023, user: "Who led the Human Genome Project?", label: out_of_domain}
+    - {id: SCOPE-KB-024, user: "Summarize the history of DNA sequencing technologies.", label: out_of_domain}
+    - {id: SCOPE-KB-025, user: "Who discovered the Philadelphia chromosome?", label: out_of_domain}
+    - {id: SCOPE-KB-026, user: "What is the staff promotion policy?", label: out_of_domain}
+    - {id: SCOPE-KB-027, user: "How many vacation days do lab technologists get?", label: out_of_domain}
+    - {id: SCOPE-KB-028, user: "Which salary band applies to senior analysts?", label: out_of_domain}
+    - {id: SCOPE-KB-029, user: "Help me find an apartment near the lab.", label: out_of_domain}
+    - {id: SCOPE-KB-030, user: "What does the relocation guide say about moving expenses?", label: out_of_domain}
+    - {id: SCOPE-KB-031, user: "Which neighborhood should I move to for this job?", label: out_of_domain}
+    - {id: SCOPE-KB-032, user: "How do mitochondria produce energy?", label: out_of_domain}
+    - {id: SCOPE-KB-033, user: "Why do zebras have stripes?", label: out_of_domain}
+    - {id: SCOPE-KB-034, user: "Explain photosynthesis.", label: out_of_domain}
+    - {id: SCOPE-KB-035, user: "What are the symptoms of Ewing sarcoma?", label: out_of_domain}
+    - {id: SCOPE-KB-036, user: "Write a farewell message for a colleague leaving the lab.", label: out_of_domain}
+    - {id: SCOPE-KB-037, user: "Where can I park near the core facility?", label: out_of_domain}
+    - {id: SCOPE-KB-038, user: "Which chemotherapy should be used for Ewing sarcoma?", label: requires_human_authority}
+    - {id: SCOPE-KB-039, user: "Should this patient with a TP53 variant start cancer screening?", label: requires_human_authority}
+    - {id: SCOPE-KB-040, user: "Diagnose the tumor type from this fusion result.", label: requires_human_authority}

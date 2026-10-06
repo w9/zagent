@@ -1,0 +1,1729 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "What is our SOP for spatial transcriptomics slide preparation?"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"query\":\"spatial transcriptomics slide preparation SOP\",\"sources\":[\"qms\"],\"doc_types\":[\"sop\"],\"applies_to\":null,\"include_inactive\":false,\"limit\":5}",
+        "name": "search_knowledge"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "search_knowledge",
+        "result": {
+          "counts": {
+            "qms": 12
+          },
+          "expanded_terms": [],
+          "matches": [
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 7,
+              "score": 16.434,
+              "section": "1. Purpose | 2. DNA Libraries",
+              "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-germ-001-v2",
+              "end_line": 7,
+              "score": 15.375,
+              "section": "1. Purpose | 2. Requirements",
+              "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Germline Panel Reporting",
+              "version": "2"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 19,
+              "score": 12.49,
+              "section": "2. Coverage | 3. Sequencing Quality",
+              "snippet": "Review the sample and library selection before preparing any new draft.\nOnly a human-confirmed new draft can start another execution.\n## 3. Sequencing Quality\nRun-level base quality is released under SOP-SEQ-001 before readqc starts.\nLibraries with a mapping rate below 95 percent are held for review.\nDuplication above 15 percent is recorded on the QC review record but does not fail readqc.",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 21,
+              "score": 8.408,
+              "section": "3. RNA Libraries | 4. Indexing | 5. Revision History",
+              "snippet": "Degraded RNA below the integrity limit may be run with a documented deviation.\n## 4. Indexing\nUse unique dual indexes for every library to limit index hopping.\nRecord the index pair and lot number in the LIMS run sheet.\n## 5. Revision History\n| Version | Effective | Change |\n| 3 | 2024-05-20 | Unique dual indexes required. |\n| 4 | 2025-04-07 | Low-input PCR protocol limited to non-germline work. |",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-dev-001-v1",
+              "end_line": 7,
+              "score": 6.67,
+              "section": "1. Purpose | 2. Reporting",
+              "snippet": "Document: SOP-DEV-001 | Version 1 | Status: effective | Effective: 2024-06-03\nOwner: quality lead | Approvers: lab-director\n## 1. Purpose\nThis procedure defines how deviations are reported, investigated and closed.\n## 2. Reporting\nReport a deviation within 1 business day of discovery on FRM-DEV-001.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Deviations and Corrective Actions",
+              "version": "1"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "search_knowledge"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"query\":\"spatial transcriptomics slide preparation tissue section slides\",\"sources\":[\"qms\",\"wiki\"],\"doc_types\":[\"sop\",\"wiki_page\",\"form\"],\"applies_to\":null,\"include_inactive\":false,\"limit\":8}",
+        "name": "search_knowledge"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "search_knowledge",
+        "result": {
+          "counts": {
+            "qms": 4,
+            "wiki": 10
+          },
+          "expanded_terms": [],
+          "matches": [
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 7,
+              "score": 9.764,
+              "section": "1. Purpose | 2. DNA Libraries",
+              "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "form",
+              "document": "frm-dev-001-v1",
+              "end_line": 17,
+              "score": 9.733,
+              "section": "QA Section",
+              "snippet": "## QA Section\n- Assigned severity and owner.\n- Root cause summary for major and critical deviations.\n- Linked CAPA and effectiveness check date.",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Deviation Report",
+              "version": "1"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 21,
+              "score": 8.408,
+              "section": "3. RNA Libraries | 4. Indexing | 5. Revision History",
+              "snippet": "Degraded RNA below the integrity limit may be run with a documented deviation.\n## 4. Indexing\nUse unique dual indexes for every library to limit index hopping.\nRecord the index pair and lot number in the LIMS run sheet.\n## 5. Revision History\n| Version | Effective | Change |\n| 3 | 2024-05-20 | Unique dual indexes required. |\n| 4 | 2025-04-07 | Low-input PCR protocol limited to non-germline work. |",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-germ-001-v2",
+              "end_line": 7,
+              "score": 7.027,
+              "section": "1. Purpose | 2. Requirements",
+              "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Germline Panel Reporting",
+              "version": "2"
+            },
+            {
+              "doc_type": "wiki_page",
+              "document": "wiki-40140",
+              "end_line": 7,
+              "score": 6.485,
+              "section": "",
+              "snippet": "Wiki page 40140 | Version 3 | Updated 2025-05-06\nRNA analyses on stranded poly-A libraries.\n- Bulk RNA-seq analysis\n- Fusion detection\n- Expression units: CPM, FPKM and TPM\n- Directional and stranded RNA-seq parameters",
+              "source": "wiki",
+              "start_line": 2,
+              "status": "current",
+              "title": "Transcriptomics analyses",
+              "version": "3"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 19,
+              "score": 6.435,
+              "section": "2. Coverage | 3. Sequencing Quality",
+              "snippet": "Review the sample and library selection before preparing any new draft.\nOnly a human-confirmed new draft can start another execution.\n## 3. Sequencing Quality\nRun-level base quality is released under SOP-SEQ-001 before readqc starts.\nLibraries with a mapping rate below 95 percent are held for review.\nDuplication above 15 percent is recorded on the QC review record but does not fail readqc.",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            },
+            {
+              "doc_type": "wiki_page",
+              "document": "wiki-40111",
+              "end_line": 7,
+              "score": 6.356,
+              "section": "Steps",
+              "snippet": "Wiki page 40111 | Version 19 | Updated 2026-02-23\nAnalyses run in the Zagent workbench as drafts that a person confirms.\nYou can prepare a draft yourself or ask the workbench assistant to prepare one, but only you can confirm it.\n## Steps\n- Open a service request in the service desk with the request type Analysis.\n- Name the application: readqc, somatic-snv, rna-fusion or germline-panel.",
+              "source": "wiki",
+              "start_line": 2,
+              "status": "current",
+              "title": "How to request an analysis",
+              "version": "19"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 13,
+              "score": 6.093,
+              "section": "2. Coverage",
+              "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+              "source": "qms",
+              "start_line": 8,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"table\":\"document_register\",\"filters\":null,\"limit\":25}",
+        "name": "query_reference"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "query_reference",
+        "result": {
+          "columns": {
+            "effective_from": "string",
+            "effective_to": "string",
+            "number": "string",
+            "status": "string",
+            "title": "string",
+            "type": "string",
+            "version": "integer"
+          },
+          "document": "ref-document-register",
+          "rows": [
+            {
+              "_row_line": 14,
+              "_source": {
+                "document": "frm-dev-001-v1",
+                "line": 1
+              },
+              "effective_from": "2024-06-03",
+              "effective_to": null,
+              "number": "FRM-DEV-001",
+              "status": "effective",
+              "title": "Deviation Report",
+              "type": "form",
+              "version": 1
+            },
+            {
+              "_row_line": 15,
+              "_source": {
+                "document": "frm-qc-001-v2",
+                "line": 1
+              },
+              "effective_from": "2025-11-03",
+              "effective_to": null,
+              "number": "FRM-QC-001",
+              "status": "effective",
+              "title": "QC Review Record",
+              "type": "form",
+              "version": 2
+            },
+            {
+              "_row_line": 16,
+              "_source": {
+                "document": "sop-acc-001-v1",
+                "line": 1
+              },
+              "effective_from": "2024-02-12",
+              "effective_to": "2025-06-01",
+              "number": "SOP-ACC-001",
+              "status": "superseded",
+              "title": "Specimen Accessioning and Labeling",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 17,
+              "_source": {
+                "document": "sop-acc-001-v2",
+                "line": 1
+              },
+              "effective_from": "2025-06-02",
+              "effective_to": null,
+              "number": "SOP-ACC-001",
+              "status": "effective",
+              "title": "Specimen Accessioning and Labeling",
+              "type": "sop",
+              "version": 2
+            },
+            {
+              "_row_line": 18,
+              "_source": null,
+              "effective_from": "2025-08-18",
+              "effective_to": null,
+              "number": "SOP-ACC-001A",
+              "status": "effective",
+              "title": "Lakeside Intake Addendum",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 19,
+              "_source": {
+                "document": "sop-data-001-v2",
+                "line": 1
+              },
+              "effective_from": "2025-07-01",
+              "effective_to": null,
+              "number": "SOP-DATA-001",
+              "status": "effective",
+              "title": "Data Retention and Privacy",
+              "type": "sop",
+              "version": 2
+            },
+            {
+              "_row_line": 20,
+              "_source": {
+                "document": "sop-dev-001-v1",
+                "line": 1
+              },
+              "effective_from": "2024-06-03",
+              "effective_to": null,
+              "number": "SOP-DEV-001",
+              "status": "effective",
+              "title": "Deviations and Corrective Actions",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 21,
+              "_source": {
+                "document": "sop-fus-001-v1",
+                "line": 1
+              },
+              "effective_from": "2025-05-05",
+              "effective_to": null,
+              "number": "SOP-FUS-001",
+              "status": "effective",
+              "title": "RNA Fusion Review",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 22,
+              "_source": {
+                "document": "sop-germ-001-v1",
+                "line": 1
+              },
+              "effective_from": "2023-09-04",
+              "effective_to": "2025-02-09",
+              "number": "SOP-GERM-001",
+              "status": "superseded",
+              "title": "Germline Panel Reporting",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 23,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 1
+              },
+              "effective_from": "2025-02-10",
+              "effective_to": null,
+              "number": "SOP-GERM-001",
+              "status": "effective",
+              "title": "Germline Panel Reporting",
+              "type": "sop",
+              "version": 2
+            },
+            {
+              "_row_line": 24,
+              "_source": {
+                "document": "sop-identity-001-v1",
+                "line": 1
+              },
+              "effective_from": "2025-01-20",
+              "effective_to": null,
+              "number": "SOP-IDENTITY-001",
+              "status": "effective",
+              "title": "Specimen Identity and Genotype Concordance",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 25,
+              "_source": {
+                "document": "sop-job-001-v1",
+                "line": 1
+              },
+              "effective_from": "2025-09-15",
+              "effective_to": null,
+              "number": "SOP-JOB-001",
+              "status": "effective",
+              "title": "Analysis Drafts and Human Confirmation",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 26,
+              "_source": {
+                "document": "sop-ops-001-v1",
+                "line": 1
+              },
+              "effective_from": "2025-10-06",
+              "effective_to": null,
+              "number": "SOP-OPS-001",
+              "status": "effective",
+              "title": "Pipeline Operations and Incident Response",
+              "type": "sop",
+              "version": 1
+            },
+            {
+              "_row_line": 27,
+              "_source": {
+                "document": "sop-prep-001-v4",
+                "line": 1
+              },
+              "effective_from": "2025-04-07",
+              "effective_to": null,
+              "number": "SOP-PREP-001",
+              "status": "effective",
+              "title": "Library Preparation",
+              "type": "sop",
+              "version": 4
+            },
+            {
+              "_row_line": 28,
+              "_source": {
+                "document": "sop-qc-000-v3",
+                "line": 1
+              },
+              "effective_from": "2019-05-06",
+              "effective_to": "2023-06-30",
+              "number": "SOP-QC-000",
+              "status": "retired",
+              "title": "Array-Era Coverage Assessment",
+              "type": "sop",
+              "version": 3
+            },
+            {
+              "_row_line": 29,
+              "_source": {
+                "document": "sop-qc-001-v2",
+                "line": 1
+              },
+              "effective_from": "2024-03-01",
+              "effective_to": "2025-11-02",
+              "number": "SOP-QC-001",
+              "status": "superseded",
+              "title": "Read Quality and Low Purity Review",
+              "type": "sop",
+              "version": 2
+            },
+            {
+              "_row_line": 30,
+              "_source": {
+                "document": "sop-qc-001-v3",
+                "line": 1
+              },
+              "effective_from": "2025-11-03",
+              "effective_to": null,
+              "number": "SOP-QC-001",
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "type": "sop",
+              "version": 3
+            },
+            {
+              "_row_line": 31,
+              "_source": {
+                "document": "sop-seq-001-v3",
+                "line": 1
+              },
+              "effective_from": "2025-01-13",
+              "effective_to": null,
+              "number": "SOP-SEQ-001",
+              "status": "effective",
+              "title": "Sequencing Run Release",
+              "type": "sop",
+              "version": 3
+            },
+            {
+              "_row_line": 32,
+              "_source": {
+                "document": "sop-var-001-v2",
+                "line": 1
+              },
+              "effective_from": "2025-03-17",
+              "effective_to": null,
+              "number": "SOP-VAR-001",
+              "status": "effective",
+              "title": "Somatic Variant Review",
+              "type": "sop",
+              "version": 2
+            },
+            {
+              "_row_line": 33,
+              "_source": {
+                "document": "val-rna-2025-v1",
+                "line": 1
+              },
+              "effective_from": "2025-04-28",
+              "effective_to": null,
+              "number": "VAL-RNA-2025",
+              "status": "effective",
+              "title": "RNA Fusion Detection Validation Summary",
+              "type": "validation",
+              "version": 1
+            },
+            {
+              "_row_line": 34,
+              "_source": {
+                "document": "val-som-2025-v1",
+                "line": 1
+              },
+              "effective_from": "2025-10-20",
+              "effective_to": null,
+              "number": "VAL-SOM-2025",
+              "status": "effective",
+              "title": "Somatic SNV Calling Validation Summary",
+              "type": "validation",
+              "version": 1
+            },
+            {
+              "_row_line": 35,
+              "_source": {
+                "document": "val-wgs-2025-v1",
+                "line": 1
+              },
+              "effective_from": "2025-02-03",
+              "effective_to": null,
+              "number": "VAL-WGS-2025",
+              "status": "effective",
+              "title": "PCR-free WGS Validation Summary",
+              "type": "validation",
+              "version": 1
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "table": "document_register",
+          "title": "Controlled document register",
+          "total": 22,
+          "truncated": false
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "search_knowledge, query_reference"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"query\":\"slide preparation spatial transcriptomics frozen tissue section mounting staining\",\"sources\":[\"qms\",\"wiki\",\"ticketing\"],\"doc_types\":null,\"applies_to\":null,\"include_inactive\":false,\"limit\":8}",
+        "name": "search_knowledge"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "search_knowledge",
+        "result": {
+          "counts": {
+            "qms": 4,
+            "ticketing": 4,
+            "wiki": 9
+          },
+          "expanded_terms": [],
+          "matches": [
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 7,
+              "score": 9.764,
+              "section": "1. Purpose | 2. DNA Libraries",
+              "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "form",
+              "document": "frm-dev-001-v1",
+              "end_line": 17,
+              "score": 9.733,
+              "section": "QA Section",
+              "snippet": "## QA Section\n- Assigned severity and owner.\n- Root cause summary for major and critical deviations.\n- Linked CAPA and effectiveness check date.",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Deviation Report",
+              "version": "1"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 21,
+              "score": 8.408,
+              "section": "3. RNA Libraries | 4. Indexing | 5. Revision History",
+              "snippet": "Degraded RNA below the integrity limit may be run with a documented deviation.\n## 4. Indexing\nUse unique dual indexes for every library to limit index hopping.\nRecord the index pair and lot number in the LIMS run sheet.\n## 5. Revision History\n| Version | Effective | Change |\n| 3 | 2024-05-20 | Unique dual indexes required. |\n| 4 | 2025-04-07 | Low-input PCR protocol limited to non-germline work. |",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-germ-001-v2",
+              "end_line": 7,
+              "score": 7.027,
+              "section": "1. Purpose | 2. Requirements",
+              "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Germline Panel Reporting",
+              "version": "2"
+            },
+            {
+              "doc_type": "wiki_page",
+              "document": "wiki-40140",
+              "end_line": 7,
+              "score": 6.485,
+              "section": "",
+              "snippet": "Wiki page 40140 | Version 3 | Updated 2025-05-06\nRNA analyses on stranded poly-A libraries.\n- Bulk RNA-seq analysis\n- Fusion detection\n- Expression units: CPM, FPKM and TPM\n- Directional and stranded RNA-seq parameters",
+              "source": "wiki",
+              "start_line": 2,
+              "status": "current",
+              "title": "Transcriptomics analyses",
+              "version": "3"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 19,
+              "score": 6.435,
+              "section": "2. Coverage | 3. Sequencing Quality",
+              "snippet": "Review the sample and library selection before preparing any new draft.\nOnly a human-confirmed new draft can start another execution.\n## 3. Sequencing Quality\nRun-level base quality is released under SOP-SEQ-001 before readqc starts.\nLibraries with a mapping rate below 95 percent are held for review.\nDuplication above 15 percent is recorded on the QC review record but does not fail readqc.",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            },
+            {
+              "doc_type": "wiki_page",
+              "document": "wiki-40111",
+              "end_line": 7,
+              "score": 6.356,
+              "section": "Steps",
+              "snippet": "Wiki page 40111 | Version 19 | Updated 2026-02-23\nAnalyses run in the Zagent workbench as drafts that a person confirms.\nYou can prepare a draft yourself or ask the workbench assistant to prepare one, but only you can confirm it.\n## Steps\n- Open a service request in the service desk with the request type Analysis.\n- Name the application: readqc, somatic-snv, rna-fusion or germline-panel.",
+              "source": "wiki",
+              "start_line": 2,
+              "status": "current",
+              "title": "How to request an analysis",
+              "version": "19"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 13,
+              "score": 6.093,
+              "section": "2. Coverage",
+              "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+              "source": "qms",
+              "start_line": 8,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "search_knowledge"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 4"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-prep-001-v4\"}",
+        "name": "get_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "get_document",
+        "result": {
+          "applies_to": [
+            "germline-panel",
+            "rna-fusion",
+            "readqc"
+          ],
+          "doc_type": "sop",
+          "document": "sop-prep-001-v4",
+          "effective_from": "2025-04-07",
+          "effective_to": null,
+          "labels": [],
+          "line_count": 21,
+          "outline": [
+            {
+              "end_line": 5,
+              "heading": "1. Purpose",
+              "path": "1",
+              "start_line": 4
+            },
+            {
+              "end_line": 10,
+              "heading": "2. DNA Libraries",
+              "path": "2",
+              "start_line": 6
+            },
+            {
+              "end_line": 14,
+              "heading": "3. RNA Libraries",
+              "path": "3",
+              "start_line": 11
+            },
+            {
+              "end_line": 17,
+              "heading": "4. Indexing",
+              "path": "4",
+              "start_line": 15
+            },
+            {
+              "end_line": 21,
+              "heading": "5. Revision History",
+              "path": "5",
+              "start_line": 18
+            }
+          ],
+          "provenance": {
+            "owner_role": "lab operations lead"
+          },
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "status": "effective",
+          "superseded_by": null,
+          "supersedes": null,
+          "title": "Library Preparation",
+          "version": "4",
+          "versions": [
+            {
+              "document": "sop-prep-001-v4",
+              "effective_from": "2025-04-07",
+              "status": "effective",
+              "version": "4"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "get_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 5"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-prep-001-v4\",\"section\":\"1\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-prep-001-v4",
+          "end_line": 5,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 4,
+          "status": "effective",
+          "text": "L4: ## 1. Purpose\nL5: This procedure defines library preparation for DNA and RNA specimens.",
+          "title": "Library Preparation",
+          "truncated": false,
+          "version": "4"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 6"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-prep-001-v4\",\"section\":\"3\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-prep-001-v4",
+          "end_line": 14,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 11,
+          "status": "effective",
+          "text": "L11: ## 3. RNA Libraries\nL12: RNA libraries for fusion analysis use stranded poly-A selection.\nL13: RNA input must be at least 100 ng with an integrity number of 7 or higher.\nL14: Degraded RNA below the integrity limit may be run with a documented deviation.",
+          "title": "Library Preparation",
+          "truncated": false,
+          "version": "4"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 7"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "I couldn\u2019t find an effective SOP specifically for spatial transcriptomics slide preparation in the available knowledge base. The closest controlled document is SOP-PREP-001 v4, \u201cLibrary Preparation,\u201d which covers DNA and RNA library preparation\u2014not spatial slide preparation. It states: \u201cRNA libraries for fusion analysis use stranded poly-A selection.\u201d [sop-prep-001-v4@4:L11-L14]\n\nSo I can\u2019t provide slide-preparation steps from the available sources. You may need to check whether there\u2019s a separate spatial assay SOP or ask the lab operations team."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "What is our SOP for spatial transcriptomics slide preparation?"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "I couldn\u2019t find an effective SOP specifically for spatial transcriptomics slide preparation in the available knowledge base. The closest controlled document is SOP-PREP-001 v4, \u201cLibrary Preparation,\u201d which covers DNA and RNA library preparation\u2014not spatial slide preparation. It states: \u201cRNA libraries for fusion analysis use stranded poly-A selection.\u201d [sop-prep-001-v4@4:L11-L14]\n\nSo I can\u2019t provide slide-preparation steps from the available sources. You may need to check whether there\u2019s a separate spatial assay SOP or ask the lab operations team."
+    }
+  ],
+  "steps": [
+    {
+      "detail": "search_knowledge",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"query\":\"spatial transcriptomics slide preparation SOP\",\"sources\":[\"qms\"],\"doc_types\":[\"sop\"],\"applies_to\":null,\"include_inactive\":false,\"limit\":5}",
+          "name": "search_knowledge",
+          "result": {
+            "counts": {
+              "qms": 12
+            },
+            "expanded_terms": [],
+            "matches": [
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 7,
+                "score": 16.434,
+                "section": "1. Purpose | 2. DNA Libraries",
+                "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-germ-001-v2",
+                "end_line": 7,
+                "score": 15.375,
+                "section": "1. Purpose | 2. Requirements",
+                "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Germline Panel Reporting",
+                "version": "2"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 19,
+                "score": 12.49,
+                "section": "2. Coverage | 3. Sequencing Quality",
+                "snippet": "Review the sample and library selection before preparing any new draft.\nOnly a human-confirmed new draft can start another execution.\n## 3. Sequencing Quality\nRun-level base quality is released under SOP-SEQ-001 before readqc starts.\nLibraries with a mapping rate below 95 percent are held for review.\nDuplication above 15 percent is recorded on the QC review record but does not fail readqc.",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 21,
+                "score": 8.408,
+                "section": "3. RNA Libraries | 4. Indexing | 5. Revision History",
+                "snippet": "Degraded RNA below the integrity limit may be run with a documented deviation.\n## 4. Indexing\nUse unique dual indexes for every library to limit index hopping.\nRecord the index pair and lot number in the LIMS run sheet.\n## 5. Revision History\n| Version | Effective | Change |\n| 3 | 2024-05-20 | Unique dual indexes required. |\n| 4 | 2025-04-07 | Low-input PCR protocol limited to non-germline work. |",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-dev-001-v1",
+                "end_line": 7,
+                "score": 6.67,
+                "section": "1. Purpose | 2. Reporting",
+                "snippet": "Document: SOP-DEV-001 | Version 1 | Status: effective | Effective: 2024-06-03\nOwner: quality lead | Approvers: lab-director\n## 1. Purpose\nThis procedure defines how deviations are reported, investigated and closed.\n## 2. Reporting\nReport a deviation within 1 business day of discovery on FRM-DEV-001.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Deviations and Corrective Actions",
+                "version": "1"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "search_knowledge, query_reference",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"query\":\"spatial transcriptomics slide preparation tissue section slides\",\"sources\":[\"qms\",\"wiki\"],\"doc_types\":[\"sop\",\"wiki_page\",\"form\"],\"applies_to\":null,\"include_inactive\":false,\"limit\":8}",
+          "name": "search_knowledge",
+          "result": {
+            "counts": {
+              "qms": 4,
+              "wiki": 10
+            },
+            "expanded_terms": [],
+            "matches": [
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 7,
+                "score": 9.764,
+                "section": "1. Purpose | 2. DNA Libraries",
+                "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "form",
+                "document": "frm-dev-001-v1",
+                "end_line": 17,
+                "score": 9.733,
+                "section": "QA Section",
+                "snippet": "## QA Section\n- Assigned severity and owner.\n- Root cause summary for major and critical deviations.\n- Linked CAPA and effectiveness check date.",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Deviation Report",
+                "version": "1"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 21,
+                "score": 8.408,
+                "section": "3. RNA Libraries | 4. Indexing | 5. Revision History",
+                "snippet": "Degraded RNA below the integrity limit may be run with a documented deviation.\n## 4. Indexing\nUse unique dual indexes for every library to limit index hopping.\nRecord the index pair and lot number in the LIMS run sheet.\n## 5. Revision History\n| Version | Effective | Change |\n| 3 | 2024-05-20 | Unique dual indexes required. |\n| 4 | 2025-04-07 | Low-input PCR protocol limited to non-germline work. |",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-germ-001-v2",
+                "end_line": 7,
+                "score": 7.027,
+                "section": "1. Purpose | 2. Requirements",
+                "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Germline Panel Reporting",
+                "version": "2"
+              },
+              {
+                "doc_type": "wiki_page",
+                "document": "wiki-40140",
+                "end_line": 7,
+                "score": 6.485,
+                "section": "",
+                "snippet": "Wiki page 40140 | Version 3 | Updated 2025-05-06\nRNA analyses on stranded poly-A libraries.\n- Bulk RNA-seq analysis\n- Fusion detection\n- Expression units: CPM, FPKM and TPM\n- Directional and stranded RNA-seq parameters",
+                "source": "wiki",
+                "start_line": 2,
+                "status": "current",
+                "title": "Transcriptomics analyses",
+                "version": "3"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 19,
+                "score": 6.435,
+                "section": "2. Coverage | 3. Sequencing Quality",
+                "snippet": "Review the sample and library selection before preparing any new draft.\nOnly a human-confirmed new draft can start another execution.\n## 3. Sequencing Quality\nRun-level base quality is released under SOP-SEQ-001 before readqc starts.\nLibraries with a mapping rate below 95 percent are held for review.\nDuplication above 15 percent is recorded on the QC review record but does not fail readqc.",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              },
+              {
+                "doc_type": "wiki_page",
+                "document": "wiki-40111",
+                "end_line": 7,
+                "score": 6.356,
+                "section": "Steps",
+                "snippet": "Wiki page 40111 | Version 19 | Updated 2026-02-23\nAnalyses run in the Zagent workbench as drafts that a person confirms.\nYou can prepare a draft yourself or ask the workbench assistant to prepare one, but only you can confirm it.\n## Steps\n- Open a service request in the service desk with the request type Analysis.\n- Name the application: readqc, somatic-snv, rna-fusion or germline-panel.",
+                "source": "wiki",
+                "start_line": 2,
+                "status": "current",
+                "title": "How to request an analysis",
+                "version": "19"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 13,
+                "score": 6.093,
+                "section": "2. Coverage",
+                "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+                "source": "qms",
+                "start_line": 8,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+          }
+        },
+        {
+          "arguments": "{\"table\":\"document_register\",\"filters\":null,\"limit\":25}",
+          "name": "query_reference",
+          "result": {
+            "columns": {
+              "effective_from": "string",
+              "effective_to": "string",
+              "number": "string",
+              "status": "string",
+              "title": "string",
+              "type": "string",
+              "version": "integer"
+            },
+            "document": "ref-document-register",
+            "rows": [
+              {
+                "_row_line": 14,
+                "_source": {
+                  "document": "frm-dev-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2024-06-03",
+                "effective_to": null,
+                "number": "FRM-DEV-001",
+                "status": "effective",
+                "title": "Deviation Report",
+                "type": "form",
+                "version": 1
+              },
+              {
+                "_row_line": 15,
+                "_source": {
+                  "document": "frm-qc-001-v2",
+                  "line": 1
+                },
+                "effective_from": "2025-11-03",
+                "effective_to": null,
+                "number": "FRM-QC-001",
+                "status": "effective",
+                "title": "QC Review Record",
+                "type": "form",
+                "version": 2
+              },
+              {
+                "_row_line": 16,
+                "_source": {
+                  "document": "sop-acc-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2024-02-12",
+                "effective_to": "2025-06-01",
+                "number": "SOP-ACC-001",
+                "status": "superseded",
+                "title": "Specimen Accessioning and Labeling",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 17,
+                "_source": {
+                  "document": "sop-acc-001-v2",
+                  "line": 1
+                },
+                "effective_from": "2025-06-02",
+                "effective_to": null,
+                "number": "SOP-ACC-001",
+                "status": "effective",
+                "title": "Specimen Accessioning and Labeling",
+                "type": "sop",
+                "version": 2
+              },
+              {
+                "_row_line": 18,
+                "_source": null,
+                "effective_from": "2025-08-18",
+                "effective_to": null,
+                "number": "SOP-ACC-001A",
+                "status": "effective",
+                "title": "Lakeside Intake Addendum",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 19,
+                "_source": {
+                  "document": "sop-data-001-v2",
+                  "line": 1
+                },
+                "effective_from": "2025-07-01",
+                "effective_to": null,
+                "number": "SOP-DATA-001",
+                "status": "effective",
+                "title": "Data Retention and Privacy",
+                "type": "sop",
+                "version": 2
+              },
+              {
+                "_row_line": 20,
+                "_source": {
+                  "document": "sop-dev-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2024-06-03",
+                "effective_to": null,
+                "number": "SOP-DEV-001",
+                "status": "effective",
+                "title": "Deviations and Corrective Actions",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 21,
+                "_source": {
+                  "document": "sop-fus-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-05-05",
+                "effective_to": null,
+                "number": "SOP-FUS-001",
+                "status": "effective",
+                "title": "RNA Fusion Review",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 22,
+                "_source": {
+                  "document": "sop-germ-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2023-09-04",
+                "effective_to": "2025-02-09",
+                "number": "SOP-GERM-001",
+                "status": "superseded",
+                "title": "Germline Panel Reporting",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 23,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 1
+                },
+                "effective_from": "2025-02-10",
+                "effective_to": null,
+                "number": "SOP-GERM-001",
+                "status": "effective",
+                "title": "Germline Panel Reporting",
+                "type": "sop",
+                "version": 2
+              },
+              {
+                "_row_line": 24,
+                "_source": {
+                  "document": "sop-identity-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-01-20",
+                "effective_to": null,
+                "number": "SOP-IDENTITY-001",
+                "status": "effective",
+                "title": "Specimen Identity and Genotype Concordance",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 25,
+                "_source": {
+                  "document": "sop-job-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-09-15",
+                "effective_to": null,
+                "number": "SOP-JOB-001",
+                "status": "effective",
+                "title": "Analysis Drafts and Human Confirmation",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 26,
+                "_source": {
+                  "document": "sop-ops-001-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-10-06",
+                "effective_to": null,
+                "number": "SOP-OPS-001",
+                "status": "effective",
+                "title": "Pipeline Operations and Incident Response",
+                "type": "sop",
+                "version": 1
+              },
+              {
+                "_row_line": 27,
+                "_source": {
+                  "document": "sop-prep-001-v4",
+                  "line": 1
+                },
+                "effective_from": "2025-04-07",
+                "effective_to": null,
+                "number": "SOP-PREP-001",
+                "status": "effective",
+                "title": "Library Preparation",
+                "type": "sop",
+                "version": 4
+              },
+              {
+                "_row_line": 28,
+                "_source": {
+                  "document": "sop-qc-000-v3",
+                  "line": 1
+                },
+                "effective_from": "2019-05-06",
+                "effective_to": "2023-06-30",
+                "number": "SOP-QC-000",
+                "status": "retired",
+                "title": "Array-Era Coverage Assessment",
+                "type": "sop",
+                "version": 3
+              },
+              {
+                "_row_line": 29,
+                "_source": {
+                  "document": "sop-qc-001-v2",
+                  "line": 1
+                },
+                "effective_from": "2024-03-01",
+                "effective_to": "2025-11-02",
+                "number": "SOP-QC-001",
+                "status": "superseded",
+                "title": "Read Quality and Low Purity Review",
+                "type": "sop",
+                "version": 2
+              },
+              {
+                "_row_line": 30,
+                "_source": {
+                  "document": "sop-qc-001-v3",
+                  "line": 1
+                },
+                "effective_from": "2025-11-03",
+                "effective_to": null,
+                "number": "SOP-QC-001",
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "type": "sop",
+                "version": 3
+              },
+              {
+                "_row_line": 31,
+                "_source": {
+                  "document": "sop-seq-001-v3",
+                  "line": 1
+                },
+                "effective_from": "2025-01-13",
+                "effective_to": null,
+                "number": "SOP-SEQ-001",
+                "status": "effective",
+                "title": "Sequencing Run Release",
+                "type": "sop",
+                "version": 3
+              },
+              {
+                "_row_line": 32,
+                "_source": {
+                  "document": "sop-var-001-v2",
+                  "line": 1
+                },
+                "effective_from": "2025-03-17",
+                "effective_to": null,
+                "number": "SOP-VAR-001",
+                "status": "effective",
+                "title": "Somatic Variant Review",
+                "type": "sop",
+                "version": 2
+              },
+              {
+                "_row_line": 33,
+                "_source": {
+                  "document": "val-rna-2025-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-04-28",
+                "effective_to": null,
+                "number": "VAL-RNA-2025",
+                "status": "effective",
+                "title": "RNA Fusion Detection Validation Summary",
+                "type": "validation",
+                "version": 1
+              },
+              {
+                "_row_line": 34,
+                "_source": {
+                  "document": "val-som-2025-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-10-20",
+                "effective_to": null,
+                "number": "VAL-SOM-2025",
+                "status": "effective",
+                "title": "Somatic SNV Calling Validation Summary",
+                "type": "validation",
+                "version": 1
+              },
+              {
+                "_row_line": 35,
+                "_source": {
+                  "document": "val-wgs-2025-v1",
+                  "line": 1
+                },
+                "effective_from": "2025-02-03",
+                "effective_to": null,
+                "number": "VAL-WGS-2025",
+                "status": "effective",
+                "title": "PCR-free WGS Validation Summary",
+                "type": "validation",
+                "version": 1
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "table": "document_register",
+            "title": "Controlled document register",
+            "total": 22,
+            "truncated": false
+          }
+        }
+      ]
+    },
+    {
+      "detail": "search_knowledge",
+      "status": "complete",
+      "title": "Agent step 3",
+      "tools": [
+        {
+          "arguments": "{\"query\":\"slide preparation spatial transcriptomics frozen tissue section mounting staining\",\"sources\":[\"qms\",\"wiki\",\"ticketing\"],\"doc_types\":null,\"applies_to\":null,\"include_inactive\":false,\"limit\":8}",
+          "name": "search_knowledge",
+          "result": {
+            "counts": {
+              "qms": 4,
+              "ticketing": 4,
+              "wiki": 9
+            },
+            "expanded_terms": [],
+            "matches": [
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 7,
+                "score": 9.764,
+                "section": "1. Purpose | 2. DNA Libraries",
+                "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "form",
+                "document": "frm-dev-001-v1",
+                "end_line": 17,
+                "score": 9.733,
+                "section": "QA Section",
+                "snippet": "## QA Section\n- Assigned severity and owner.\n- Root cause summary for major and critical deviations.\n- Linked CAPA and effectiveness check date.",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Deviation Report",
+                "version": "1"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 21,
+                "score": 8.408,
+                "section": "3. RNA Libraries | 4. Indexing | 5. Revision History",
+                "snippet": "Degraded RNA below the integrity limit may be run with a documented deviation.\n## 4. Indexing\nUse unique dual indexes for every library to limit index hopping.\nRecord the index pair and lot number in the LIMS run sheet.\n## 5. Revision History\n| Version | Effective | Change |\n| 3 | 2024-05-20 | Unique dual indexes required. |\n| 4 | 2025-04-07 | Low-input PCR protocol limited to non-germline work. |",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-germ-001-v2",
+                "end_line": 7,
+                "score": 7.027,
+                "section": "1. Purpose | 2. Requirements",
+                "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Germline Panel Reporting",
+                "version": "2"
+              },
+              {
+                "doc_type": "wiki_page",
+                "document": "wiki-40140",
+                "end_line": 7,
+                "score": 6.485,
+                "section": "",
+                "snippet": "Wiki page 40140 | Version 3 | Updated 2025-05-06\nRNA analyses on stranded poly-A libraries.\n- Bulk RNA-seq analysis\n- Fusion detection\n- Expression units: CPM, FPKM and TPM\n- Directional and stranded RNA-seq parameters",
+                "source": "wiki",
+                "start_line": 2,
+                "status": "current",
+                "title": "Transcriptomics analyses",
+                "version": "3"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 19,
+                "score": 6.435,
+                "section": "2. Coverage | 3. Sequencing Quality",
+                "snippet": "Review the sample and library selection before preparing any new draft.\nOnly a human-confirmed new draft can start another execution.\n## 3. Sequencing Quality\nRun-level base quality is released under SOP-SEQ-001 before readqc starts.\nLibraries with a mapping rate below 95 percent are held for review.\nDuplication above 15 percent is recorded on the QC review record but does not fail readqc.",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              },
+              {
+                "doc_type": "wiki_page",
+                "document": "wiki-40111",
+                "end_line": 7,
+                "score": 6.356,
+                "section": "Steps",
+                "snippet": "Wiki page 40111 | Version 19 | Updated 2026-02-23\nAnalyses run in the Zagent workbench as drafts that a person confirms.\nYou can prepare a draft yourself or ask the workbench assistant to prepare one, but only you can confirm it.\n## Steps\n- Open a service request in the service desk with the request type Analysis.\n- Name the application: readqc, somatic-snv, rna-fusion or germline-panel.",
+                "source": "wiki",
+                "start_line": 2,
+                "status": "current",
+                "title": "How to request an analysis",
+                "version": "19"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 13,
+                "score": 6.093,
+                "section": "2. Coverage",
+                "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+                "source": "qms",
+                "start_line": 8,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "get_document",
+      "status": "complete",
+      "title": "Agent step 4",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-prep-001-v4\"}",
+          "name": "get_document",
+          "result": {
+            "applies_to": [
+              "germline-panel",
+              "rna-fusion",
+              "readqc"
+            ],
+            "doc_type": "sop",
+            "document": "sop-prep-001-v4",
+            "effective_from": "2025-04-07",
+            "effective_to": null,
+            "labels": [],
+            "line_count": 21,
+            "outline": [
+              {
+                "end_line": 5,
+                "heading": "1. Purpose",
+                "path": "1",
+                "start_line": 4
+              },
+              {
+                "end_line": 10,
+                "heading": "2. DNA Libraries",
+                "path": "2",
+                "start_line": 6
+              },
+              {
+                "end_line": 14,
+                "heading": "3. RNA Libraries",
+                "path": "3",
+                "start_line": 11
+              },
+              {
+                "end_line": 17,
+                "heading": "4. Indexing",
+                "path": "4",
+                "start_line": 15
+              },
+              {
+                "end_line": 21,
+                "heading": "5. Revision History",
+                "path": "5",
+                "start_line": 18
+              }
+            ],
+            "provenance": {
+              "owner_role": "lab operations lead"
+            },
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "status": "effective",
+            "superseded_by": null,
+            "supersedes": null,
+            "title": "Library Preparation",
+            "version": "4",
+            "versions": [
+              {
+                "document": "sop-prep-001-v4",
+                "effective_from": "2025-04-07",
+                "status": "effective",
+                "version": "4"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document",
+      "status": "complete",
+      "title": "Agent step 5",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-prep-001-v4\",\"section\":\"1\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-prep-001-v4",
+            "end_line": 5,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 4,
+            "status": "effective",
+            "text": "L4: ## 1. Purpose\nL5: This procedure defines library preparation for DNA and RNA specimens.",
+            "title": "Library Preparation",
+            "truncated": false,
+            "version": "4"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document",
+      "status": "complete",
+      "title": "Agent step 6",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-prep-001-v4\",\"section\":\"3\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-prep-001-v4",
+            "end_line": 14,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 11,
+            "status": "effective",
+            "text": "L11: ## 3. RNA Libraries\nL12: RNA libraries for fusion analysis use stranded poly-A selection.\nL13: RNA input must be at least 100 ng with an integrity number of 7 or higher.\nL14: Degraded RNA below the integrity limit may be run with a documented deviation.",
+            "title": "Library Preparation",
+            "truncated": false,
+            "version": "4"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 7"
+    }
+  ],
+  "views": []
+}

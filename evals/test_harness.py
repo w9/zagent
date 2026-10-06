@@ -269,7 +269,8 @@ def test_adversarial_corpus_covers_every_family_and_injection_ingress():
         if case.adversarial.family == "prompt_injection"
     } == {
         "job_log",
-        "kb_document",
+        "kb_wiki",
+        "kb_ticket",
         "tool_result",
         "specimen_note",
     }
@@ -281,7 +282,8 @@ def test_adversarial_corpus_covers_every_family_and_injection_ingress():
     "identity",
     [
         "ADV-INJECT-LOG",
-        "ADV-INJECT-KB",
+        "ADV-INJECT-WIKI",
+        "ADV-INJECT-TICKET",
         "ADV-INJECT-TOOL",
         "ADV-INJECT-NOTE",
         "ADV-GROUND-VARIANTS",
@@ -324,12 +326,29 @@ async def test_adversarial_fixtures_exercise_real_ingress_and_state_checks(
         elif not previous:
             operation, arguments = {
                 "job_log": ("get_job", {"job_id": "job-0001"}),
-                "kb_document": ("search_knowledge", {"query": "coverage failure"}),
+                "kb_wiki": (
+                    "search_knowledge",
+                    {"query": "readqc coverage failure guidance", "sources": ["wiki"]},
+                ),
+                "kb_ticket": (
+                    "search_knowledge",
+                    {"query": "readqc coverage failure update", "sources": ["ticketing"]},
+                ),
                 "tool_result": ("find_patients", {}),
                 "specimen_note": ("find_specimens", {"received_within": "P7D"}),
                 "user_message": ("get_job", {"job_id": "job-0001"}),
             }[case.adversarial.ingress]
             message = tool(operation, arguments)
+        elif len(previous) == 1 and case.adversarial.ingress in {"kb_wiki", "kb_ticket"}:
+            top = json.loads(previous[0]["content"])["matches"][0]
+            message = tool(
+                "read_document",
+                {
+                    "document": top["document"],
+                    "start_line": top["start_line"],
+                    "end_line": top["start_line"] + 29,
+                },
+            )
         else:
             message = {
                 "content": "The recorded job failed its coverage check. "
@@ -453,14 +472,13 @@ def test_simulated_user_cases_have_separate_model_targets_and_never_confirm():
     assert SIMULATOR_MODEL and SampleGateway
 
 
-@pytest.mark.parametrize("prefix", ["", "document:"])
-def test_job_citations_must_be_retrieved_and_quote_the_cited_range(tmp_path, prefix):
-    from zagent.evals.assertions import sop_citations
+def test_citations_must_name_the_retrieved_range_and_quote_it_accurately(tmp_path):
+    from zagent.evals.assertions import citations, never_cites, uncited
 
     evidence = sample_evidence(
-        f'"Verified identity determines specimen roles." [{prefix}specimen-identity:L12-L12]'
+        '"Verified identity determines specimen roles." [sop-identity-001-v1@1:L12-L12]'
     )
-    assert "was not retrieved" in sop_citations(evidence, True, tmp_path, "EXEC-TEST")
+    assert "was not retrieved" in citations(evidence, True, tmp_path, "EXEC-TEST")
     reference = evidence.events[0].model_copy(
         update={
             "type": "tool_result",
@@ -468,21 +486,34 @@ def test_job_citations_must_be_retrieved_and_quote_the_cited_range(tmp_path, pre
             "payload": {
                 "name": "read_document",
                 "result": {
-                    "document": "specimen-identity",
+                    "document": "sop-identity-001-v1",
+                    "version": "1",
                     "start_line": 12,
                     "end_line": 12,
-                    "text": "Verified identity determines specimen roles.",
+                    "text": "L12: - Verified identity determines specimen roles.",
                 },
             },
         }
     )
     evidence.events.insert(2, reference)
     evidence.projection.messages[-1].seq = 3
-    assert sop_citations(evidence, True, tmp_path, "EXEC-TEST") is None
-    reference.payload["result"]["text"] = "A different unrelated supporting sentence."
-    assert "missing cited supporting quotation" in sop_citations(
-        evidence, True, tmp_path, "EXEC-TEST"
-    )
+    assert citations(evidence, True, tmp_path, "EXEC-TEST") is None
+    assert citations(evidence, {"documents": ["sop-identity-001-v1"]}, tmp_path, "T") is None
+    assert "missing" in citations(evidence, {"documents": ["sop-qc-001-v3"]}, tmp_path, "T")
+    assert "must not use" in never_cites(evidence, ["sop-identity-001-v1"], tmp_path, "T")
+    assert "cites documents" in uncited(evidence, True, tmp_path, "T")
+    reference.payload["result"]["version"] = "2"
+    assert "was not retrieved" in citations(evidence, True, tmp_path, "EXEC-TEST")
+    reference.payload["result"]["version"] = "1"
+    reference.payload["result"]["text"] = "L12: A different unrelated supporting sentence."
+    assert "quotation is not in its cited lines" in citations(evidence, True, tmp_path, "T")
+    message = evidence.projection.messages[-1]
+    message.text = "Verified identity sets the roles. [sop-identity-001-v1@1:L12-L12]"
+    assert citations(evidence, True, tmp_path, "EXEC-TEST") is None
+    message.text = '"A different unrelated supporting sentence." [sop-identity-001-v1@1:L12]'
+    assert citations(evidence, True, tmp_path, "EXEC-TEST") is None
+    message.text = "No citation here."
+    assert "no citation" in citations(evidence, True, tmp_path, "EXEC-TEST")
 
 
 def test_execution_cases_pin_knowledge_and_cover_each_new_tool():

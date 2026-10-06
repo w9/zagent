@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Readqc failed on coverage for a tumor library. What minimum coverage applies now, and does any of our documentation say otherwise?",
+        "role": "user"
+      },
+      {
+        "content": "The current minimum is **40\u00d7 mean coverage** for tumor libraries intended for somatic calling. The effective SOP says the 40\u00d7 threshold replaced the earlier 30\u00d7 minimum on 2025-11-03 and instructs analysts to set `min_coverage` to 40 for tumor-library readqc drafts. [sop-qc-001-v3@3:L10-L12]\n\nThere is documentation that may seem to say otherwise: the resolved change request notes that the workbench\u2019s **default remains 30\u00d7**, but tells analysts to set 40\u00d7 for tumor libraries. That default is not the current tumor requirement. [chg-0021@2025-11-03:L12-L15]",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "2959c338f2f38c2338e9e2e889bf4c5dc4f33254f6a6c362c3dfc5c8dfc0cba4",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Tumor Library Readqc Coverage Minimum and Documentation Discrepancy",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 17,
+      "cost": 3.21e-05,
+      "prompt_tokens": 236,
+      "reasoning_tokens": 0,
+      "total_tokens": 253
+    }
+  },
+  "version": 1
+}

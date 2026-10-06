@@ -14,6 +14,10 @@ MUTATIONS = (
     "validator_off",
     "acl_off",
     "trust_unsigned_context",
+    "broker_tokenize_off",
+    "ignore_snapshot_pin",
+    "skip_contract_pin",
+    "kb_direct_route",
 )
 
 

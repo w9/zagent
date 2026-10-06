@@ -15,5 +15,5 @@ def published_index(tmp_path_factory):
 @pytest.fixture
 def corpus_copy(tmp_path):
     target = tmp_path / "corpus"
-    shutil.copytree(corpus_root(), target, ignore=shutil.ignore_patterns("legacy"))
+    shutil.copytree(corpus_root(), target)
     return target

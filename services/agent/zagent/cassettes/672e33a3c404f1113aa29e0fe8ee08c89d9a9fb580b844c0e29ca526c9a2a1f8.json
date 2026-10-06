@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "What does TPM mean in our glossary?",
+        "role": "user"
+      },
+      {
+        "content": "TPM means \u201ctranscripts per million\u201d: an expression unit normalized for gene length and then library size, so values sum to one million in every sample. [ref-glossary@2026-09:L140-L141]",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "672e33a3c404f1113aa29e0fe8ee08c89d9a9fb580b844c0e29ca526c9a2a1f8",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "TPM Glossary Definition Lookup",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 10,
+      "cost": 1.7e-05,
+      "prompt_tokens": 120,
+      "reasoning_tokens": 0,
+      "total_tokens": 130
+    }
+  },
+  "version": 1
+}

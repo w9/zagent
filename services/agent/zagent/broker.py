@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import time
 from contextlib import asynccontextmanager
 from typing import Any
@@ -24,6 +25,7 @@ from zagent.kb_tools import (
     KB_DESCRIPTIONS,
     KB_INPUTS,
     KB_OUTPUTS,
+    KB_SNAPSHOT_META,
     contract_hash,
 )
 from zagent.privacy import Raw
@@ -32,6 +34,7 @@ from zagent.tools import McpToolClient, failure
 
 SNAPSHOT_META = "zknowledge/snapshot"
 CALLER_META = "zknowledge/caller"
+SNAPSHOT_ID = re.compile(r"[a-f0-9]{64}")
 CONTRACT_TTL_SECONDS = 60
 SERVICE_ROLES = tuple(sorted({role for persona in PERSONAS.values() for role in persona.roles}))
 logger = logging.getLogger("zagent.broker")
@@ -63,6 +66,8 @@ class KnowledgeBroker:
         self.verified_at: float | None = None
 
     async def verify_contract(self) -> None:
+        if enabled("skip_contract_pin"):
+            return
         if self.verified_at and time.monotonic() - self.verified_at < CONTRACT_TTL_SECONDS:
             return
         observed = contract_hash(await self.upstream.tool_schemas())
@@ -72,12 +77,13 @@ class KnowledgeBroker:
             raise ContractChanged(observed)
         self.verified_at = time.monotonic()
 
-    def upstream_meta(self, caller: CallerContext) -> dict:
+    def upstream_meta(self, caller: CallerContext, pinned: str | None = None) -> dict:
         """Request metadata for the knowledge service: the verified caller, never model input."""
         roles = SERVICE_ROLES if enabled("acl_off") else caller.roles
         meta: dict = {CALLER_META: {"site": caller.site, "roles": list(roles)}}
-        if self.snapshot:
-            meta[SNAPSHOT_META] = self.snapshot
+        snapshot = self.snapshot or (None if enabled("ignore_snapshot_pin") else pinned)
+        if snapshot:
+            meta[SNAPSHOT_META] = snapshot
         return meta
 
     async def dispatch(
@@ -87,6 +93,7 @@ class KnowledgeBroker:
         name: str,
         arguments: dict,
         caller_context: str | None = None,
+        snapshot: str | None = None,
     ) -> dict:
         try:
             params = KB_INPUTS[name].model_validate(arguments)
@@ -100,19 +107,26 @@ class KnowledgeBroker:
                 "unavailable", "Knowledge access could not be verified for this conversation turn"
             )
         else:
-            result = await self.fetch(name, params.model_dump(), caller)
+            pinned = (
+                snapshot if isinstance(snapshot, str) and SNAPSHOT_ID.fullmatch(snapshot) else None
+            )
+            result = await self.fetch(name, params.model_dump(exclude_none=True), caller, pinned)
+        if enabled("broker_tokenize_off"):
+            return result
         return (
             await self.tokenizer.tokenize(
                 session_id, Raw(value=result), path="retrieved_document", external=True
             )
         ).value
 
-    async def fetch(self, name: str, arguments: dict, caller: CallerContext) -> dict:
+    async def fetch(
+        self, name: str, arguments: dict, caller: CallerContext, pinned: str | None = None
+    ) -> dict:
         try:
             async with asyncio.timeout(self.timeout):
                 await self.verify_contract()
                 result = await self.upstream.invoke(
-                    name, arguments, meta=self.upstream_meta(caller)
+                    name, arguments, meta=self.upstream_meta(caller, pinned)
                 )
         except ContractChanged:
             return failure(
@@ -125,7 +139,7 @@ class KnowledgeBroker:
             error = result["error"] if isinstance(result["error"], dict) else {}
             code = error.get("code")
             return failure(
-                code if code == "invalid_arguments" else "unavailable",
+                code if code in {"invalid_arguments", "not_found"} else "unavailable",
                 str(error.get("message") or "Knowledge request failed"),
             )
         try:
@@ -154,6 +168,7 @@ def create_broker_server(broker: KnowledgeBroker) -> FastMCP:
                 name,
                 arguments,
                 caller_context=extra.get(CALLER_CONTEXT_META),
+                snapshot=extra.get(KB_SNAPSHOT_META),
             )
 
         server.add_tool(

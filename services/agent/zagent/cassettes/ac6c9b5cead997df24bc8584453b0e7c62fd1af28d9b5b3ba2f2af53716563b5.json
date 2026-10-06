@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Which versions of SOP-QC-001 can I see, and which one is effective?",
+        "role": "user"
+      },
+      {
+        "content": "I can see **versions 2 and 3** of SOP-QC-001. **Version 3** is effective from 2025-11-03; version 2 is superseded.\n\n\u201cDocument: SOP-QC-001 | Version 3 | Status: effective | Effective: 2025-11-03\u201d [sop-qc-001-v3@3:L2]  \n\u201cDocument: SOP-QC-001 | Version 2 | Status: superseded | Effective: 2024-03-01\u201d [sop-qc-001-v2@2:L2]",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "ac6c9b5cead997df24bc8584453b0e7c62fd1af28d9b5b3ba2f2af53716563b5",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "SOP-QC-001 Version Review and Effective Version",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 15,
+      "cost": 2.84e-05,
+      "prompt_tokens": 209,
+      "reasoning_tokens": 0,
+      "total_tokens": 224
+    }
+  },
+  "version": 1
+}

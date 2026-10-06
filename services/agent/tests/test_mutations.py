@@ -126,7 +126,9 @@ def test_mutation_gateway_cannot_enable_provider_access():
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("name", [name for name in MUTATIONS if name != "zones_off"])
+@pytest.mark.parametrize(
+    "name", [name for name in MUTATIONS if name not in {"zones_off", "kb_direct_route"}]
+)
 async def test_paired_mutation_experiments_detect_the_removed_guarantee(database_url, name):
     from pathlib import Path
 

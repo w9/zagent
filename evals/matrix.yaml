@@ -16,7 +16,8 @@ max_provider_calls: 300
 max_budget_usd: 2
 cases:
   - ADV-INJECT-LOG
-  - ADV-INJECT-KB
+  - ADV-INJECT-WIKI
+  - ADV-INJECT-TICKET
   - ADV-INJECT-TOOL
   - ADV-INJECT-NOTE
   - ADV-SCOPE-WRAPPER

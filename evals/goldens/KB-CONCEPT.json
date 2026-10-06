@@ -1,0 +1,487 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "What is VAF, and what minimum do we use for somatic calling?"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"term\":\"VAF\"}",
+        "name": "lookup_term"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "lookup_term",
+        "result": {
+          "definition": "The fraction of sequencing reads at a position that carry the variant allele. A heterozygous germline variant sits near 0.5; somatic variants are diluted by normal cells, copy number and subclonality.",
+          "glossary": {
+            "document": "ref-glossary",
+            "end_line": 7,
+            "start_line": 4
+          },
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": {
+            "document": "wiki-40184",
+            "line": 3,
+            "version": "6"
+          },
+          "synonyms": [
+            "VAF",
+            "allele fraction",
+            "variant allele fraction",
+            "AF"
+          ],
+          "term": "Variant allele frequency"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"table\":\"assay_metrics\",\"filters\":{\"assay\":\"somatic-snv\",\"metric\":\"VAF\"},\"limit\":10}",
+        "name": "query_reference"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "query_reference",
+        "result": {
+          "columns": {
+            "assay": "string",
+            "libraries": "integer",
+            "median": "number",
+            "metric": "string",
+            "p5": "number",
+            "p95": "number",
+            "period": "string",
+            "unit": "string"
+          },
+          "document": "ref-assay-metrics",
+          "rows": [],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "table": "assay_metrics",
+          "title": "In-house assay metric distributions",
+          "total": 0,
+          "truncated": false
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"query\":\"somatic-snv minimum VAF threshold min_vaf\",\"sources\":[\"qms\"],\"doc_types\":[\"sop\",\"validation\"],\"applies_to\":\"somatic-snv\",\"include_inactive\":false,\"limit\":5}",
+        "name": "search_knowledge"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "search_knowledge",
+        "result": {
+          "counts": {
+            "qms": 5
+          },
+          "expanded_terms": [
+            "af",
+            "allele fraction",
+            "somatic calling",
+            "somatic snv",
+            "somatic snv calling",
+            "somatic variant calling",
+            "vaf",
+            "variant allele fraction",
+            "variant allele frequency"
+          ],
+          "matches": [
+            {
+              "doc_type": "validation",
+              "document": "val-som-2025-v1",
+              "end_line": 12,
+              "score": 75.395,
+              "section": "Results | Conclusions",
+              "snippet": "At 30x tumor coverage the limit of detection rose to 0.08 VAF.\nBelow 0.20 tumor purity, sensitivity for subclonal variants fell by roughly one third.\n## Conclusions\nThe default min_vaf of 0.05 is supported only with at least 40x tumor coverage.\nA 45x tumor minimum was modelled and is being evaluated under CHG-0024.",
+              "source": "qms",
+              "start_line": 8,
+              "status": "effective",
+              "title": "Somatic SNV Calling Validation Summary",
+              "version": "1"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-var-001-v2",
+              "end_line": 7,
+              "score": 60.173,
+              "section": "1. Purpose | 2. Parameters",
+              "snippet": "Document: SOP-VAR-001 | Version 2 | Status: effective | Effective: 2025-03-17\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs review of somatic SNV and indel calls produced by somatic-snv jobs.\n## 2. Parameters\nThe default minimum variant allele frequency is 0.05 for reportable somatic calls.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Somatic Variant Review",
+              "version": "2"
+            },
+            {
+              "doc_type": "validation",
+              "document": "val-som-2025-v1",
+              "end_line": 7,
+              "score": 52.718,
+              "section": "Scope | Results",
+              "snippet": "Document: VAL-SOM-2025 | Version 1 | Status: effective | Effective: 2025-10-20\nOwner: quality lead | Approvers: lab-director\n## Scope\nThis summary covers the limit of detection of somatic-snv calling on PCR-free WGS tumor and normal pairs.\n## Results\nAt 40x tumor coverage the limit of detection was 0.05 VAF with 95 percent sensitivity.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Somatic SNV Calling Validation Summary",
+              "version": "1"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-var-001-v2",
+              "end_line": 23,
+              "score": 48.24,
+              "section": "5. Revision History",
+              "snippet": "## 5. Revision History\n| Version | Effective | Change |\n| 1 | 2024-01-15 | Initial release with min_vaf 0.10. |\n| 2 | 2025-03-17 | Default min_vaf lowered to 0.05 after VAL-WGS-2025. |",
+              "source": "qms",
+              "start_line": 20,
+              "status": "effective",
+              "title": "Somatic Variant Review",
+              "version": "2"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 13,
+              "score": 43.973,
+              "section": "2. Coverage",
+              "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+              "source": "qms",
+              "start_line": 8,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "lookup_term, query_reference, search_knowledge"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-var-001-v2\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-var-001-v2",
+          "end_line": 11,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 6,
+          "status": "effective",
+          "text": "L6: ## 2. Parameters\nL7: The default minimum variant allele frequency is 0.05 for reportable somatic calls.\nL8: Calls also need a minimum depth of 20 reads at the variant position in the tumor library.\nL9: Analysts may lower min_vaf to 0.03 only when tumor coverage is at least 100x and the request documents why.\nL10: There is no matched_normal parameter; the specimen query must contain both tumor and normal specimens.\nL11: Missing normal specimens leave the draft invalid until a normal is added to the selection.",
+          "title": "Somatic Variant Review",
+          "truncated": false,
+          "version": "2"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"val-som-2025-v1\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "validation",
+          "document": "val-som-2025-v1",
+          "end_line": 9,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 6,
+          "status": "effective",
+          "text": "L6: ## Results\nL7: At 40x tumor coverage the limit of detection was 0.05 VAF with 95 percent sensitivity.\nL8: At 30x tumor coverage the limit of detection rose to 0.08 VAF.\nL9: Below 0.20 tumor purity, sensitivity for subclonal variants fell by roughly one third.",
+          "title": "Somatic SNV Calling Validation Summary",
+          "truncated": false,
+          "version": "1"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document, read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "VAF (variant allele frequency) is the fraction of sequencing reads at a position that carry the variant. The default minimum for reportable somatic calls is **0.05 (5%)**, with at least 20 reads at the variant position in the tumor library. [sop-var-001-v2@2:L6-L8]\n\nThe validation supports a 0.05 detection limit at 40\u00d7 tumor coverage; at 30\u00d7, the limit rises to 0.08. [val-som-2025-v1@1:L6-L8]"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "What is VAF, and what minimum do we use for somatic calling?"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "VAF (variant allele frequency) is the fraction of sequencing reads at a position that carry the variant. The default minimum for reportable somatic calls is **0.05 (5%)**, with at least 20 reads at the variant position in the tumor library. [sop-var-001-v2@2:L6-L8]\n\nThe validation supports a 0.05 detection limit at 40\u00d7 tumor coverage; at 30\u00d7, the limit rises to 0.08. [val-som-2025-v1@1:L6-L8]"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "lookup_term, query_reference, search_knowledge",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"term\":\"VAF\"}",
+          "name": "lookup_term",
+          "result": {
+            "definition": "The fraction of sequencing reads at a position that carry the variant allele. A heterozygous germline variant sits near 0.5; somatic variants are diluted by normal cells, copy number and subclonality.",
+            "glossary": {
+              "document": "ref-glossary",
+              "end_line": 7,
+              "start_line": 4
+            },
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": {
+              "document": "wiki-40184",
+              "line": 3,
+              "version": "6"
+            },
+            "synonyms": [
+              "VAF",
+              "allele fraction",
+              "variant allele fraction",
+              "AF"
+            ],
+            "term": "Variant allele frequency"
+          }
+        },
+        {
+          "arguments": "{\"table\":\"assay_metrics\",\"filters\":{\"assay\":\"somatic-snv\",\"metric\":\"VAF\"},\"limit\":10}",
+          "name": "query_reference",
+          "result": {
+            "columns": {
+              "assay": "string",
+              "libraries": "integer",
+              "median": "number",
+              "metric": "string",
+              "p5": "number",
+              "p95": "number",
+              "period": "string",
+              "unit": "string"
+            },
+            "document": "ref-assay-metrics",
+            "rows": [],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "table": "assay_metrics",
+            "title": "In-house assay metric distributions",
+            "total": 0,
+            "truncated": false
+          }
+        },
+        {
+          "arguments": "{\"query\":\"somatic-snv minimum VAF threshold min_vaf\",\"sources\":[\"qms\"],\"doc_types\":[\"sop\",\"validation\"],\"applies_to\":\"somatic-snv\",\"include_inactive\":false,\"limit\":5}",
+          "name": "search_knowledge",
+          "result": {
+            "counts": {
+              "qms": 5
+            },
+            "expanded_terms": [
+              "af",
+              "allele fraction",
+              "somatic calling",
+              "somatic snv",
+              "somatic snv calling",
+              "somatic variant calling",
+              "vaf",
+              "variant allele fraction",
+              "variant allele frequency"
+            ],
+            "matches": [
+              {
+                "doc_type": "validation",
+                "document": "val-som-2025-v1",
+                "end_line": 12,
+                "score": 75.395,
+                "section": "Results | Conclusions",
+                "snippet": "At 30x tumor coverage the limit of detection rose to 0.08 VAF.\nBelow 0.20 tumor purity, sensitivity for subclonal variants fell by roughly one third.\n## Conclusions\nThe default min_vaf of 0.05 is supported only with at least 40x tumor coverage.\nA 45x tumor minimum was modelled and is being evaluated under CHG-0024.",
+                "source": "qms",
+                "start_line": 8,
+                "status": "effective",
+                "title": "Somatic SNV Calling Validation Summary",
+                "version": "1"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-var-001-v2",
+                "end_line": 7,
+                "score": 60.173,
+                "section": "1. Purpose | 2. Parameters",
+                "snippet": "Document: SOP-VAR-001 | Version 2 | Status: effective | Effective: 2025-03-17\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs review of somatic SNV and indel calls produced by somatic-snv jobs.\n## 2. Parameters\nThe default minimum variant allele frequency is 0.05 for reportable somatic calls.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Somatic Variant Review",
+                "version": "2"
+              },
+              {
+                "doc_type": "validation",
+                "document": "val-som-2025-v1",
+                "end_line": 7,
+                "score": 52.718,
+                "section": "Scope | Results",
+                "snippet": "Document: VAL-SOM-2025 | Version 1 | Status: effective | Effective: 2025-10-20\nOwner: quality lead | Approvers: lab-director\n## Scope\nThis summary covers the limit of detection of somatic-snv calling on PCR-free WGS tumor and normal pairs.\n## Results\nAt 40x tumor coverage the limit of detection was 0.05 VAF with 95 percent sensitivity.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Somatic SNV Calling Validation Summary",
+                "version": "1"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-var-001-v2",
+                "end_line": 23,
+                "score": 48.24,
+                "section": "5. Revision History",
+                "snippet": "## 5. Revision History\n| Version | Effective | Change |\n| 1 | 2024-01-15 | Initial release with min_vaf 0.10. |\n| 2 | 2025-03-17 | Default min_vaf lowered to 0.05 after VAL-WGS-2025. |",
+                "source": "qms",
+                "start_line": 20,
+                "status": "effective",
+                "title": "Somatic Variant Review",
+                "version": "2"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 13,
+                "score": 43.973,
+                "section": "2. Coverage",
+                "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+                "source": "qms",
+                "start_line": 8,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document, read_document",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-var-001-v2\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-var-001-v2",
+            "end_line": 11,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 6,
+            "status": "effective",
+            "text": "L6: ## 2. Parameters\nL7: The default minimum variant allele frequency is 0.05 for reportable somatic calls.\nL8: Calls also need a minimum depth of 20 reads at the variant position in the tumor library.\nL9: Analysts may lower min_vaf to 0.03 only when tumor coverage is at least 100x and the request documents why.\nL10: There is no matched_normal parameter; the specimen query must contain both tumor and normal specimens.\nL11: Missing normal specimens leave the draft invalid until a normal is added to the selection.",
+            "title": "Somatic Variant Review",
+            "truncated": false,
+            "version": "2"
+          }
+        },
+        {
+          "arguments": "{\"document\":\"val-som-2025-v1\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "validation",
+            "document": "val-som-2025-v1",
+            "end_line": 9,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 6,
+            "status": "effective",
+            "text": "L6: ## Results\nL7: At 40x tumor coverage the limit of detection was 0.05 VAF with 95 percent sensitivity.\nL8: At 30x tumor coverage the limit of detection rose to 0.08 VAF.\nL9: Below 0.20 tumor purity, sensitivity for subclonal variants fell by roughly one third.",
+            "title": "Somatic SNV Calling Validation Summary",
+            "truncated": false,
+            "version": "1"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 3"
+    }
+  ],
+  "views": []
+}

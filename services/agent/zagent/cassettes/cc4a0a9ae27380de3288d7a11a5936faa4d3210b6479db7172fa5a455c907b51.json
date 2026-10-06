@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare somatic calling on specimens received in the last day for [PT_1].",
+        "role": "user"
+      },
+      {
+        "content": "I prepared the [Somatic variant calling](view:view-0001) draft for the two specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to use; the draft has not been submitted. Only the human Confirm control can submit it.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "cc4a0a9ae27380de3288d7a11a5936faa4d3210b6479db7172fa5a455c907b51",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Prepare somatic calling for recent specimens with matched normal check",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 15,
+      "cost": 2.2e-05,
+      "prompt_tokens": 145,
+      "reasoning_tokens": 0,
+      "total_tokens": 160
+    }
+  },
+  "version": 1
+}

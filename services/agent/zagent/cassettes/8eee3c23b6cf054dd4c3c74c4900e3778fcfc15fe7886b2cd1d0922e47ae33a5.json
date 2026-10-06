@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "What is VAF, and what minimum do we use for somatic calling?",
+        "role": "user"
+      },
+      {
+        "content": "VAF (variant allele frequency) is the fraction of sequencing reads at a position that carry the variant. The default minimum for reportable somatic calls is **0.05 (5%)**, with at least 20 reads at the variant position in the tumor library. [sop-var-001-v2@2:L6-L8]\n\nThe validation supports a 0.05 detection limit at 40\u00d7 tumor coverage; at 30\u00d7, the limit rises to 0.08. [val-som-2025-v1@1:L6-L8]",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "8eee3c23b6cf054dd4c3c74c4900e3778fcfc15fe7886b2cd1d0922e47ae33a5",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Somatic Variant Allele Frequency Thresholds",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 12,
+      "cost": 2.58e-05,
+      "prompt_tokens": 198,
+      "reasoning_tokens": 0,
+      "total_tokens": 210
+    }
+  },
+  "version": 1
+}

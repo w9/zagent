@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "What is our SOP for spatial transcriptomics slide preparation?",
+        "role": "user"
+      },
+      {
+        "content": "I couldn\u2019t find an effective SOP specifically for spatial transcriptomics slide preparation in the available knowledge base. The closest controlled document is SOP-PREP-001 v4, \u201cLibrary Preparation,\u201d which covers DNA and RNA library preparation\u2014not spatial slide preparation. It states: \u201cRNA libraries for fusion analysis use stranded poly-A selection.\u201d [sop-prep-001-v4@4:L11-L14]\n\nSo I can\u2019t provide slide-preparation steps from the available sources. You may need to check whether there\u2019s a separate spatial assay SOP or ask the lab operations team.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "039a396f59537129d554e1ca3c50bcf0e2b7b11d925db88981838ec890cda911",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Spatial Transcriptomics Slide Preparation SOP Lookup",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 11,
+      "cost": 2.46e-05,
+      "prompt_tokens": 191,
+      "reasoning_tokens": 0,
+      "total_tokens": 202
+    }
+  },
+  "version": 1
+}

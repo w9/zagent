@@ -222,8 +222,15 @@ def verify() -> None:
     raise SystemExit(0 if report["passed"] else 1)
 
 
-def mutation() -> None:
-    """Paired zones_off experiment: an agent-position probe, then one also on the clinical zone."""
+ZONE_MUTATIONS = {
+    "zones_off": ("clinical", CLINICAL_DATA, "REQ-PHI-05"),
+    "kb_direct_route": ("knowledge", KNOWLEDGE_DATA, "REQ-KB-01"),
+}
+
+
+def mutation(name: str = "zones_off") -> None:
+    """Paired experiment: an agent-position probe, then one also attached to a protected zone."""
+    zone, protected, requirement = ZONE_MUTATIONS[name]
     running = running_services()
     image = running["agent"]["Config"]["Image"]
     base = networks(running["agent"])
@@ -232,23 +239,29 @@ def mutation() -> None:
     def side(attached: list[str]) -> dict:
         checks = probe(image, attached, targets)["checks"]
         controls = {check["name"]: check["passed"] for check in checks if check["expected"]}
-        denials = [check for check in checks if check["name"] in denial_names(CLINICAL_DATA)]
+        denials = [check for check in checks if check["name"] in denial_names(protected)]
         return {
             "healthy": bool(controls) and all(controls.values()),
             "controls": controls,
-            "requirements": {"REQ-PHI-05": all(check["passed"] for check in denials)},
+            "requirements": {requirement: all(check["passed"] for check in denials)},
             "observed": {
                 "networks": attached,
-                "clinical_routes": sorted(check["name"] for check in denials if check["connected"]),
+                "protected_routes": sorted(
+                    check["name"] for check in denials if check["connected"]
+                ),
             },
         }
 
-    print(json.dumps({"control": side(base), "mutant": side([*base, f"{PROJECT}_clinical"])}))
+    print(json.dumps({"control": side(base), "mutant": side([*base, f"{PROJECT}_{zone}"])}))
 
 
 if __name__ == "__main__":
-    commands = {"verify": verify, "mutation": mutation}
-    if sys.argv[1:2] and sys.argv[1] in commands:
-        commands[sys.argv[1]]()
+    if sys.argv[1:2] == ["verify"]:
+        verify()
+    elif sys.argv[1:2] == ["mutation"] and sys.argv[2:3] in (
+        [],
+        *([name] for name in ZONE_MUTATIONS),
+    ):
+        mutation(*sys.argv[2:3])
     else:
-        raise SystemExit("Usage: zones.py verify|mutation")
+        raise SystemExit("Usage: zones.py verify|mutation [zones_off|kb_direct_route]")

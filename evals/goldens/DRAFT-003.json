@@ -205,7 +205,7 @@
     },
     {
       "payload": {
-        "text": "The RNA fusion analysis is prepared as a draft for the one RNA specimen received in the last 24 hours. Minimum support is 8; artifact filtering is enabled by default, and validation reports no issues. It has not been submitted. Review the [RNA fusion analysis draft](view:view-0001); only the human Confirm control can submit it."
+        "text": "The RNA fusion analysis is prepared as a draft for the one RNA specimen received in the last 24 hours. Minimum support is set to 8; validation reports no issues. It has not been submitted or run. Review the [RNA fusion analysis draft](view:view-0001); only the human Confirm control can submit it."
       },
       "type": "text_delta"
     },
@@ -233,7 +233,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "The RNA fusion analysis is prepared as a draft for the one RNA specimen received in the last 24 hours. Minimum support is 8; artifact filtering is enabled by default, and validation reports no issues. It has not been submitted. Review the [RNA fusion analysis draft](view:view-0001); only the human Confirm control can submit it."
+      "text": "The RNA fusion analysis is prepared as a draft for the one RNA specimen received in the last 24 hours. Minimum support is set to 8; validation reports no issues. It has not been submitted or run. Review the [RNA fusion analysis draft](view:view-0001); only the human Confirm control can submit it."
     }
   ],
   "steps": [

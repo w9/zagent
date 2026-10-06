@@ -282,7 +282,7 @@
     },
     {
       "payload": {
-        "text": "Found 3 libraries. See [Libraries for specimens received in the last 24 hours](view:view-0001)."
+        "text": "Found 3 libraries for specimens received in the last 24 hours. See [Libraries for specimens received in the last 24 hours](view:view-0001)."
       },
       "type": "text_delta"
     },
@@ -320,7 +320,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Found 3 libraries. See [Libraries for specimens received in the last 24 hours](view:view-0001)."
+      "text": "Found 3 libraries for specimens received in the last 24 hours. See [Libraries for specimens received in the last 24 hours](view:view-0001)."
     }
   ],
   "steps": [

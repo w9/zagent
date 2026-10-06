@@ -205,7 +205,7 @@
     },
     {
       "payload": {
-        "text": "The extended germline-panel draft is ready with minimum coverage 45. Validation shows no issues. It has not been submitted; review the [Germline panel](view:view-0001) draft and use its Confirm control if you want to submit it."
+        "text": "Prepared the extended germline-panel draft for the normal specimen(s) received in the last week, with minimum coverage set to 45. Validation reports no issues. It is still in editing status and has not been submitted; review the [Germline panel draft](view:view-0001) and use its Confirm control if you want to submit it."
       },
       "type": "text_delta"
     },
@@ -233,7 +233,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "The extended germline-panel draft is ready with minimum coverage 45. Validation shows no issues. It has not been submitted; review the [Germline panel](view:view-0001) draft and use its Confirm control if you want to submit it."
+      "text": "Prepared the extended germline-panel draft for the normal specimen(s) received in the last week, with minimum coverage set to 45. Validation reports no issues. It is still in editing status and has not been submitted; review the [Germline panel draft](view:view-0001) and use its Confirm control if you want to submit it."
     }
   ],
   "steps": [

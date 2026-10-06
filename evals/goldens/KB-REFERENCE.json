@@ -1,0 +1,1198 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Which genes on our germline panels have autosomal recessive inheritance?"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"table\":\"gene_panels\",\"filters\":{\"inheritance\":\"autosomal recessive\"},\"limit\":25}",
+        "name": "query_reference"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "query_reference",
+        "result": {
+          "columns": {
+            "added_in_version": "integer",
+            "gene": "string",
+            "inheritance": "string",
+            "panel": "string"
+          },
+          "document": "ref-gene-panels",
+          "rows": [],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "table": "gene_panels",
+          "title": "Germline panel genes",
+          "total": 0,
+          "truncated": false
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "query_reference"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"table\":\"gene_panels\",\"filters\":null,\"limit\":25}",
+        "name": "query_reference"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "query_reference",
+        "result": {
+          "columns": {
+            "added_in_version": "integer",
+            "gene": "string",
+            "inheritance": "string",
+            "panel": "string"
+          },
+          "document": "ref-gene-panels",
+          "rows": [
+            {
+              "_row_line": 11,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "TP53",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 12,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "RB1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 13,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "WT1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 14,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "NF1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 15,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "APC",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 16,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "BRCA1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 17,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "BRCA2",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 18,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "PALB2",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 19,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "MLH1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 20,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "MSH2",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 21,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "MSH6",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 22,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "PMS2",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 23,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "DICER1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 24,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "SMARCB1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 25,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "PTCH1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 26,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "SUFU",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 27,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "VHL",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 28,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "RET",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 29,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "MEN1",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 30,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "CDKN2A",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 31,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "ALK",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 32,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 11
+              },
+              "added_in_version": 1,
+              "gene": "PHOX2B",
+              "inheritance": "AD",
+              "panel": "predisposition"
+            },
+            {
+              "_row_line": 33,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "CHEK2",
+              "inheritance": "AD",
+              "panel": "extended"
+            },
+            {
+              "_row_line": 34,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "ATM",
+              "inheritance": "AD",
+              "panel": "extended"
+            },
+            {
+              "_row_line": 35,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "NBN",
+              "inheritance": "AR",
+              "panel": "extended"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "table": "gene_panels",
+          "title": "Germline panel genes",
+          "total": 41,
+          "truncated": true
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "query_reference"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"table\":\"gene_panels\",\"filters\":{\"inheritance\":\"AR\"},\"limit\":25}",
+        "name": "query_reference"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "query_reference",
+        "result": {
+          "columns": {
+            "added_in_version": "integer",
+            "gene": "string",
+            "inheritance": "string",
+            "panel": "string"
+          },
+          "document": "ref-gene-panels",
+          "rows": [
+            {
+              "_row_line": 35,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "NBN",
+              "inheritance": "AR",
+              "panel": "extended"
+            },
+            {
+              "_row_line": 36,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "BLM",
+              "inheritance": "AR",
+              "panel": "extended"
+            },
+            {
+              "_row_line": 37,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "FANCA",
+              "inheritance": "AR",
+              "panel": "extended"
+            },
+            {
+              "_row_line": 38,
+              "_source": {
+                "document": "sop-germ-001-v2",
+                "line": 12
+              },
+              "added_in_version": 2,
+              "gene": "MUTYH",
+              "inheritance": "AR",
+              "panel": "extended"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "table": "gene_panels",
+          "title": "Germline panel genes",
+          "total": 4,
+          "truncated": false
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "query_reference"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 4"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-germ-001-v2\"}",
+        "name": "get_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "get_document",
+        "result": {
+          "applies_to": [
+            "germline-panel"
+          ],
+          "doc_type": "sop",
+          "document": "sop-germ-001-v2",
+          "effective_from": "2025-02-10",
+          "effective_to": null,
+          "labels": [],
+          "line_count": 20,
+          "outline": [
+            {
+              "end_line": 5,
+              "heading": "1. Purpose",
+              "path": "1",
+              "start_line": 4
+            },
+            {
+              "end_line": 9,
+              "heading": "2. Requirements",
+              "path": "2",
+              "start_line": 6
+            },
+            {
+              "end_line": 12,
+              "heading": "3. Panel Content",
+              "path": "3",
+              "start_line": 10
+            },
+            {
+              "end_line": 16,
+              "heading": "4. Classification",
+              "path": "4",
+              "start_line": 13
+            },
+            {
+              "end_line": 20,
+              "heading": "5. Revision History",
+              "path": "5",
+              "start_line": 17
+            }
+          ],
+          "provenance": {
+            "owner_role": "bioinformatics lead"
+          },
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "status": "effective",
+          "superseded_by": null,
+          "supersedes": "sop-germ-001-v1",
+          "title": "Germline Panel Reporting",
+          "version": "2",
+          "versions": [
+            {
+              "document": "sop-germ-001-v1",
+              "effective_from": "2023-09-04",
+              "status": "superseded",
+              "version": "1"
+            },
+            {
+              "document": "sop-germ-001-v2",
+              "effective_from": "2025-02-10",
+              "status": "effective",
+              "version": "2"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "get_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 5"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-germ-001-v2\",\"section\":\"3\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-germ-001-v2",
+          "end_line": 12,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 10,
+          "status": "effective",
+          "text": "L10: ## 3. Panel Content\nL11: Predisposition panel genes: TP53, RB1, WT1, NF1, APC, BRCA1, BRCA2, PALB2, MLH1, MSH2, MSH6, PMS2, DICER1, SMARCB1, PTCH1, SUFU, VHL, RET, MEN1, CDKN2A, ALK, PHOX2B.\nL12: Extended panel adds: CHEK2, ATM, NBN, BLM, FANCA, MUTYH, SDHB, SDHD, TSC1, TSC2, NF2, SMARCA4, BAP1, RUNX1, GATA2, CEBPA, ETV6, PAX5, IKZF1.",
+          "title": "Germline Panel Reporting",
+          "truncated": false,
+          "version": "2"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 6"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-germ-001-v2\",\"section\":\"4\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-germ-001-v2",
+          "end_line": 16,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 13,
+          "status": "effective",
+          "text": "L13: ## 4. Classification\nL14: Variant classification is performed by a qualified reviewer using the laboratory's interpretation guide.\nL15: The workbench never releases a germline result and never contacts patients or families.\nL16: Variants of uncertain significance are reported only under the reviewer's signed decision.",
+          "title": "Germline Panel Reporting",
+          "truncated": false,
+          "version": "2"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 7"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "The reference table lists these autosomal recessive (AR) genes, all on the **extended** panel: **NBN, BLM, FANCA, and MUTYH**. The effective SOP identifies the panel genes but does not specify inheritance classifications; this list comes from the panel reference table. [sop-germ-001-v2@2:L10-L12]"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Which genes on our germline panels have autosomal recessive inheritance?"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "The reference table lists these autosomal recessive (AR) genes, all on the **extended** panel: **NBN, BLM, FANCA, and MUTYH**. The effective SOP identifies the panel genes but does not specify inheritance classifications; this list comes from the panel reference table. [sop-germ-001-v2@2:L10-L12]"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "query_reference",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"table\":\"gene_panels\",\"filters\":{\"inheritance\":\"autosomal recessive\"},\"limit\":25}",
+          "name": "query_reference",
+          "result": {
+            "columns": {
+              "added_in_version": "integer",
+              "gene": "string",
+              "inheritance": "string",
+              "panel": "string"
+            },
+            "document": "ref-gene-panels",
+            "rows": [],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "table": "gene_panels",
+            "title": "Germline panel genes",
+            "total": 0,
+            "truncated": false
+          }
+        }
+      ]
+    },
+    {
+      "detail": "query_reference",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"table\":\"gene_panels\",\"filters\":null,\"limit\":25}",
+          "name": "query_reference",
+          "result": {
+            "columns": {
+              "added_in_version": "integer",
+              "gene": "string",
+              "inheritance": "string",
+              "panel": "string"
+            },
+            "document": "ref-gene-panels",
+            "rows": [
+              {
+                "_row_line": 11,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "TP53",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 12,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "RB1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 13,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "WT1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 14,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "NF1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 15,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "APC",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 16,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "BRCA1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 17,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "BRCA2",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 18,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "PALB2",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 19,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "MLH1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 20,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "MSH2",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 21,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "MSH6",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 22,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "PMS2",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 23,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "DICER1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 24,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "SMARCB1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 25,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "PTCH1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 26,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "SUFU",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 27,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "VHL",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 28,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "RET",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 29,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "MEN1",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 30,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "CDKN2A",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 31,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "ALK",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 32,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 11
+                },
+                "added_in_version": 1,
+                "gene": "PHOX2B",
+                "inheritance": "AD",
+                "panel": "predisposition"
+              },
+              {
+                "_row_line": 33,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "CHEK2",
+                "inheritance": "AD",
+                "panel": "extended"
+              },
+              {
+                "_row_line": 34,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "ATM",
+                "inheritance": "AD",
+                "panel": "extended"
+              },
+              {
+                "_row_line": 35,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "NBN",
+                "inheritance": "AR",
+                "panel": "extended"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "table": "gene_panels",
+            "title": "Germline panel genes",
+            "total": 41,
+            "truncated": true
+          }
+        }
+      ]
+    },
+    {
+      "detail": "query_reference",
+      "status": "complete",
+      "title": "Agent step 3",
+      "tools": [
+        {
+          "arguments": "{\"table\":\"gene_panels\",\"filters\":{\"inheritance\":\"AR\"},\"limit\":25}",
+          "name": "query_reference",
+          "result": {
+            "columns": {
+              "added_in_version": "integer",
+              "gene": "string",
+              "inheritance": "string",
+              "panel": "string"
+            },
+            "document": "ref-gene-panels",
+            "rows": [
+              {
+                "_row_line": 35,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "NBN",
+                "inheritance": "AR",
+                "panel": "extended"
+              },
+              {
+                "_row_line": 36,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "BLM",
+                "inheritance": "AR",
+                "panel": "extended"
+              },
+              {
+                "_row_line": 37,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "FANCA",
+                "inheritance": "AR",
+                "panel": "extended"
+              },
+              {
+                "_row_line": 38,
+                "_source": {
+                  "document": "sop-germ-001-v2",
+                  "line": 12
+                },
+                "added_in_version": 2,
+                "gene": "MUTYH",
+                "inheritance": "AR",
+                "panel": "extended"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "table": "gene_panels",
+            "title": "Germline panel genes",
+            "total": 4,
+            "truncated": false
+          }
+        }
+      ]
+    },
+    {
+      "detail": "get_document",
+      "status": "complete",
+      "title": "Agent step 4",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-germ-001-v2\"}",
+          "name": "get_document",
+          "result": {
+            "applies_to": [
+              "germline-panel"
+            ],
+            "doc_type": "sop",
+            "document": "sop-germ-001-v2",
+            "effective_from": "2025-02-10",
+            "effective_to": null,
+            "labels": [],
+            "line_count": 20,
+            "outline": [
+              {
+                "end_line": 5,
+                "heading": "1. Purpose",
+                "path": "1",
+                "start_line": 4
+              },
+              {
+                "end_line": 9,
+                "heading": "2. Requirements",
+                "path": "2",
+                "start_line": 6
+              },
+              {
+                "end_line": 12,
+                "heading": "3. Panel Content",
+                "path": "3",
+                "start_line": 10
+              },
+              {
+                "end_line": 16,
+                "heading": "4. Classification",
+                "path": "4",
+                "start_line": 13
+              },
+              {
+                "end_line": 20,
+                "heading": "5. Revision History",
+                "path": "5",
+                "start_line": 17
+              }
+            ],
+            "provenance": {
+              "owner_role": "bioinformatics lead"
+            },
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "status": "effective",
+            "superseded_by": null,
+            "supersedes": "sop-germ-001-v1",
+            "title": "Germline Panel Reporting",
+            "version": "2",
+            "versions": [
+              {
+                "document": "sop-germ-001-v1",
+                "effective_from": "2023-09-04",
+                "status": "superseded",
+                "version": "1"
+              },
+              {
+                "document": "sop-germ-001-v2",
+                "effective_from": "2025-02-10",
+                "status": "effective",
+                "version": "2"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document",
+      "status": "complete",
+      "title": "Agent step 5",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-germ-001-v2\",\"section\":\"3\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-germ-001-v2",
+            "end_line": 12,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 10,
+            "status": "effective",
+            "text": "L10: ## 3. Panel Content\nL11: Predisposition panel genes: TP53, RB1, WT1, NF1, APC, BRCA1, BRCA2, PALB2, MLH1, MSH2, MSH6, PMS2, DICER1, SMARCB1, PTCH1, SUFU, VHL, RET, MEN1, CDKN2A, ALK, PHOX2B.\nL12: Extended panel adds: CHEK2, ATM, NBN, BLM, FANCA, MUTYH, SDHB, SDHD, TSC1, TSC2, NF2, SMARCA4, BAP1, RUNX1, GATA2, CEBPA, ETV6, PAX5, IKZF1.",
+            "title": "Germline Panel Reporting",
+            "truncated": false,
+            "version": "2"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document",
+      "status": "complete",
+      "title": "Agent step 6",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-germ-001-v2\",\"section\":\"4\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-germ-001-v2",
+            "end_line": 16,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 13,
+            "status": "effective",
+            "text": "L13: ## 4. Classification\nL14: Variant classification is performed by a qualified reviewer using the laboratory's interpretation guide.\nL15: The workbench never releases a germline result and never contacts patients or families.\nL16: Variants of uncertain significance are reported only under the reviewer's signed decision.",
+            "title": "Germline Panel Reporting",
+            "truncated": false,
+            "version": "2"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 7"
+    }
+  ],
+  "views": []
+}

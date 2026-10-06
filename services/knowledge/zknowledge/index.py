@@ -444,8 +444,8 @@ class KnowledgeIndex:
             if found is None:
                 raise ValueError("Section is not in this document's outline")
             start_line, end_line = found["start_line"], found["end_line"]
-        end_line = end_line or start_line
-        if not 1 <= start_line <= end_line <= row["line_count"]:
+        end_line = min(end_line or start_line, row["line_count"])
+        if not 1 <= start_line <= end_line:
             raise ValueError(f"Line range must lie within 1-{row['line_count']}")
         requested = end_line
         lines, size = [], 0
@@ -464,7 +464,9 @@ class KnowledgeIndex:
             "start_line": start_line,
             "end_line": end_line,
             "truncated": end_line < requested,
-            "text": "\n".join(lines),
+            "text": "\n".join(
+                f"L{number}: {line}" for number, line in enumerate(lines, start_line)
+            ),
         }
 
     def lookup_term(self, caller: Caller, term: str) -> dict:
@@ -520,7 +522,9 @@ class KnowledgeIndex:
         filters = filters or {}
         unknown = sorted(set(filters) - set(columns))
         if unknown:
-            raise ValueError(f"Unknown filter columns: {', '.join(unknown)}")
+            raise ValueError(
+                f"Unknown filter columns: {', '.join(unknown)}; columns: {', '.join(columns)}"
+            )
         matched = []
         for row in self.connection.execute(
             "SELECT * FROM reference_rows WHERE table_name=? ORDER BY ordinal", (table,)

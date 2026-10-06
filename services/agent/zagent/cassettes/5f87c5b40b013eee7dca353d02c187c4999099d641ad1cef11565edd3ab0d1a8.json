@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "How many specimens arrived in the last 24 hours? Show a table and report only the count.",
+        "role": "user"
+      },
+      {
+        "content": "29 [Specimens received in the last 24 hours](view:view-0001)",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "5f87c5b40b013eee7dca353d02c187c4999099d641ad1cef11565edd3ab0d1a8",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Specimen arrivals in the last 24 hours",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 13,
+      "cost": 1.69e-05,
+      "prompt_tokens": 104,
+      "reasoning_tokens": 0,
+      "total_tokens": 117
+    }
+  },
+  "version": 1
+}

@@ -1,0 +1,511 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Readqc failed on coverage for a tumor library. What minimum coverage applies now, and does any of our documentation say otherwise?"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"query\":\"readqc tumor library minimum coverage threshold current effective documentation\",\"sources\":[\"qms\",\"wiki\",\"ticketing\"],\"doc_types\":[\"sop\",\"validation\",\"wiki_page\",\"incident\",\"service_request\",\"change_request\",\"problem\"],\"applies_to\":\"readqc\",\"include_inactive\":false,\"limit\":8}",
+        "name": "search_knowledge"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "search_knowledge",
+        "result": {
+          "counts": {
+            "qms": 7,
+            "ticketing": 4,
+            "wiki": 4
+          },
+          "expanded_terms": [
+            "coverage",
+            "depth of coverage",
+            "mean coverage",
+            "read depth",
+            "read qc",
+            "read quality control",
+            "readqc",
+            "readqc job",
+            "sequencing depth"
+          ],
+          "matches": [
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 13,
+              "score": 65.004,
+              "section": "2. Coverage",
+              "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+              "source": "qms",
+              "start_line": 8,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 7,
+              "score": 33.957,
+              "section": "1. Purpose | 2. Coverage",
+              "snippet": "Document: SOP-QC-001 | Version 3 | Status: effective | Effective: 2025-11-03\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines read quality review for libraries analyzed in the Zagent workbench.\nIt applies to readqc, somatic-snv and germline-panel executions at every site.\n## 2. Coverage",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            },
+            {
+              "doc_type": "change_request",
+              "document": "chg-0021",
+              "end_line": 7,
+              "score": 33.367,
+              "section": "Description",
+              "snippet": "Type: change_request | Status: resolved | Priority: high | Site: all\nComponents: readqc, somatic-snv\nCreated: 2025-10-22 | Resolved: 2025-11-03\nLinks: SOP-QC-001, VAL-WGS-2025\n## Description\nRaise the minimum mean coverage for tumor libraries used in somatic calling from 30x to 40x, based on VAL-WGS-2025.",
+              "source": "ticketing",
+              "start_line": 2,
+              "status": "resolved",
+              "title": "Raise the tumor minimum coverage to 40x",
+              "version": "2025-11-03"
+            },
+            {
+              "doc_type": "validation",
+              "document": "val-wgs-2025-v1",
+              "end_line": 21,
+              "score": 30.04,
+              "section": "Results | Conclusions | Limitations",
+              "snippet": "| 60x | 99.6 percent | 98.8 percent |\nGermline SNV sensitivity was 99.1 percent at 30x mean coverage.\nSomatic SNV sensitivity at 0.10 VAF rose from 91.2 percent at 30x to 96.4 percent at 40x.\n## Conclusions\nA 30x minimum is adequate for germline panels.\nThe results support a higher minimum for tumor libraries, which was adopted later under CHG-0021.\n## Limitations\nReference materials do not reproduce formalin damage\u2026",
+              "source": "qms",
+              "start_line": 14,
+              "status": "effective",
+              "title": "PCR-free WGS Validation Summary",
+              "version": "1"
+            },
+            {
+              "doc_type": "change_request",
+              "document": "chg-0021",
+              "end_line": 15,
+              "score": 27.153,
+              "section": "Description | Comments | Comments > Comment 1 (lab director, 2025-10-30) | Comments > Comment 2 (platform engineering lead, 2025-11-03)",
+              "snippet": "Normal and germline libraries stay at 30x.\n## Comments\n### Comment 1 (lab director, 2025-10-30)\nApproved.\nEffective with SOP-QC-001 version 3 on 2025-11-03.\n### Comment 2 (platform engineering lead, 2025-11-03)\nRelease notes 2025.3 published.\nThe readqc default in the workbench stays 30; analysts set 40 for tumor libraries.",
+              "source": "ticketing",
+              "start_line": 8,
+              "status": "resolved",
+              "title": "Raise the tumor minimum coverage to 40x",
+              "version": "2025-11-03"
+            },
+            {
+              "doc_type": "wiki_page",
+              "document": "wiki-40161",
+              "end_line": 11,
+              "score": 25.82,
+              "section": "",
+              "snippet": "| Mapping rate (percent) | 97.6 | 99.2 | 99.7 | 1184 |\n| Bases at Q30 (percent) | 88.9 | 92.4 | 94.6 | 1184 |\n| Median insert size (bp) | 352 | 401 | 446 | 1184 |\nTumor libraries are sequenced deeper since the 40x minimum; their median mean coverage is 58.7x.",
+              "source": "wiki",
+              "start_line": 8,
+              "status": "current",
+              "title": "WGS in-house metrics",
+              "version": "9"
+            },
+            {
+              "doc_type": "service_request",
+              "document": "sr-1024",
+              "end_line": 7,
+              "score": 21.058,
+              "section": "Description",
+              "snippet": "Type: service_request | Status: resolved | Priority: high | Site: northgate\nComponents: readqc\nCreated: 2025-11-12 | Resolved: 2025-11-14\nLinks: SOP-QC-001, CHG-0021\n## Description\nA tumor library failed readqc at 34x after the 40x minimum came in.",
+              "source": "ticketing",
+              "start_line": 2,
+              "status": "resolved",
+              "title": "Rerun readqc after top-up sequencing",
+              "version": "2025-11-14"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 7,
+              "score": 20.578,
+              "section": "1. Purpose | 2. DNA Libraries",
+              "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"table\":\"qc_thresholds\",\"filters\":{\"app_id\":\"readqc\",\"metric\":\"coverage\",\"specimen\":\"tumor\"},\"limit\":10}",
+        "name": "query_reference"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "query_reference",
+        "result": {
+          "columns": {
+            "comparator": "string",
+            "effective_from": "string",
+            "effective_to": "string",
+            "metric": "string",
+            "specimen": "string",
+            "status": "string",
+            "threshold": "number",
+            "unit": "string"
+          },
+          "document": "ref-qc-thresholds",
+          "rows": [],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "table": "qc_thresholds",
+          "title": "QC thresholds by application",
+          "total": 0,
+          "truncated": false
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "search_knowledge, query_reference"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001-v3\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-qc-001-v3",
+          "end_line": 15,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 7,
+          "status": "effective",
+          "text": "L7: ## 2. Coverage\nL8: Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nL9: Normal and germline libraries require a mean coverage of at least 30x.\nL10: Tumor libraries intended for somatic calling require a mean coverage of at least 40x.\nL11: The 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nL12: Confirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nL13: Report the recorded observed coverage and confirmed threshold, not a guessed new threshold.\nL14: Review the sample and library selection before preparing any new draft.\nL15: Only a human-confirmed new draft can start another execution.",
+          "title": "Read Quality and Low Purity Review",
+          "truncated": false,
+          "version": "3"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"chg-0021\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "change_request",
+          "document": "chg-0021",
+          "end_line": 15,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "ticketing",
+          "start_line": 9,
+          "status": "resolved",
+          "text": "L9: ## Comments\nL10: ### Comment 1 (lab director, 2025-10-30)\nL11: Approved.\nL12: Effective with SOP-QC-001 version 3 on 2025-11-03.\nL13: ### Comment 2 (platform engineering lead, 2025-11-03)\nL14: Release notes 2025.3 published.\nL15: The readqc default in the workbench stays 30; analysts set 40 for tumor libraries.",
+          "title": "Raise the tumor minimum coverage to 40x",
+          "truncated": false,
+          "version": "2025-11-03"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document, read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "The current minimum is **40\u00d7 mean coverage** for tumor libraries intended for somatic calling. The effective SOP says the 40\u00d7 threshold replaced the earlier 30\u00d7 minimum on 2025-11-03 and instructs analysts to set `min_coverage` to 40 for tumor-library readqc drafts. [sop-qc-001-v3@3:L10-L12]\n\nThere is documentation that may seem to say otherwise: the resolved change request notes that the workbench\u2019s **default remains 30\u00d7**, but tells analysts to set 40\u00d7 for tumor libraries. That default is not the current tumor requirement. [chg-0021@2025-11-03:L12-L15]"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Readqc failed on coverage for a tumor library. What minimum coverage applies now, and does any of our documentation say otherwise?"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "The current minimum is **40\u00d7 mean coverage** for tumor libraries intended for somatic calling. The effective SOP says the 40\u00d7 threshold replaced the earlier 30\u00d7 minimum on 2025-11-03 and instructs analysts to set `min_coverage` to 40 for tumor-library readqc drafts. [sop-qc-001-v3@3:L10-L12]\n\nThere is documentation that may seem to say otherwise: the resolved change request notes that the workbench\u2019s **default remains 30\u00d7**, but tells analysts to set 40\u00d7 for tumor libraries. That default is not the current tumor requirement. [chg-0021@2025-11-03:L12-L15]"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "search_knowledge, query_reference",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"query\":\"readqc tumor library minimum coverage threshold current effective documentation\",\"sources\":[\"qms\",\"wiki\",\"ticketing\"],\"doc_types\":[\"sop\",\"validation\",\"wiki_page\",\"incident\",\"service_request\",\"change_request\",\"problem\"],\"applies_to\":\"readqc\",\"include_inactive\":false,\"limit\":8}",
+          "name": "search_knowledge",
+          "result": {
+            "counts": {
+              "qms": 7,
+              "ticketing": 4,
+              "wiki": 4
+            },
+            "expanded_terms": [
+              "coverage",
+              "depth of coverage",
+              "mean coverage",
+              "read depth",
+              "read qc",
+              "read quality control",
+              "readqc",
+              "readqc job",
+              "sequencing depth"
+            ],
+            "matches": [
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 13,
+                "score": 65.004,
+                "section": "2. Coverage",
+                "snippet": "Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nNormal and germline libraries require a mean coverage of at least 30x.\nTumor libraries intended for somatic calling require a mean coverage of at least 40x.\nThe 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nConfirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nReport\u2026",
+                "source": "qms",
+                "start_line": 8,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 7,
+                "score": 33.957,
+                "section": "1. Purpose | 2. Coverage",
+                "snippet": "Document: SOP-QC-001 | Version 3 | Status: effective | Effective: 2025-11-03\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines read quality review for libraries analyzed in the Zagent workbench.\nIt applies to readqc, somatic-snv and germline-panel executions at every site.\n## 2. Coverage",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              },
+              {
+                "doc_type": "change_request",
+                "document": "chg-0021",
+                "end_line": 7,
+                "score": 33.367,
+                "section": "Description",
+                "snippet": "Type: change_request | Status: resolved | Priority: high | Site: all\nComponents: readqc, somatic-snv\nCreated: 2025-10-22 | Resolved: 2025-11-03\nLinks: SOP-QC-001, VAL-WGS-2025\n## Description\nRaise the minimum mean coverage for tumor libraries used in somatic calling from 30x to 40x, based on VAL-WGS-2025.",
+                "source": "ticketing",
+                "start_line": 2,
+                "status": "resolved",
+                "title": "Raise the tumor minimum coverage to 40x",
+                "version": "2025-11-03"
+              },
+              {
+                "doc_type": "validation",
+                "document": "val-wgs-2025-v1",
+                "end_line": 21,
+                "score": 30.04,
+                "section": "Results | Conclusions | Limitations",
+                "snippet": "| 60x | 99.6 percent | 98.8 percent |\nGermline SNV sensitivity was 99.1 percent at 30x mean coverage.\nSomatic SNV sensitivity at 0.10 VAF rose from 91.2 percent at 30x to 96.4 percent at 40x.\n## Conclusions\nA 30x minimum is adequate for germline panels.\nThe results support a higher minimum for tumor libraries, which was adopted later under CHG-0021.\n## Limitations\nReference materials do not reproduce formalin damage\u2026",
+                "source": "qms",
+                "start_line": 14,
+                "status": "effective",
+                "title": "PCR-free WGS Validation Summary",
+                "version": "1"
+              },
+              {
+                "doc_type": "change_request",
+                "document": "chg-0021",
+                "end_line": 15,
+                "score": 27.153,
+                "section": "Description | Comments | Comments > Comment 1 (lab director, 2025-10-30) | Comments > Comment 2 (platform engineering lead, 2025-11-03)",
+                "snippet": "Normal and germline libraries stay at 30x.\n## Comments\n### Comment 1 (lab director, 2025-10-30)\nApproved.\nEffective with SOP-QC-001 version 3 on 2025-11-03.\n### Comment 2 (platform engineering lead, 2025-11-03)\nRelease notes 2025.3 published.\nThe readqc default in the workbench stays 30; analysts set 40 for tumor libraries.",
+                "source": "ticketing",
+                "start_line": 8,
+                "status": "resolved",
+                "title": "Raise the tumor minimum coverage to 40x",
+                "version": "2025-11-03"
+              },
+              {
+                "doc_type": "wiki_page",
+                "document": "wiki-40161",
+                "end_line": 11,
+                "score": 25.82,
+                "section": "",
+                "snippet": "| Mapping rate (percent) | 97.6 | 99.2 | 99.7 | 1184 |\n| Bases at Q30 (percent) | 88.9 | 92.4 | 94.6 | 1184 |\n| Median insert size (bp) | 352 | 401 | 446 | 1184 |\nTumor libraries are sequenced deeper since the 40x minimum; their median mean coverage is 58.7x.",
+                "source": "wiki",
+                "start_line": 8,
+                "status": "current",
+                "title": "WGS in-house metrics",
+                "version": "9"
+              },
+              {
+                "doc_type": "service_request",
+                "document": "sr-1024",
+                "end_line": 7,
+                "score": 21.058,
+                "section": "Description",
+                "snippet": "Type: service_request | Status: resolved | Priority: high | Site: northgate\nComponents: readqc\nCreated: 2025-11-12 | Resolved: 2025-11-14\nLinks: SOP-QC-001, CHG-0021\n## Description\nA tumor library failed readqc at 34x after the 40x minimum came in.",
+                "source": "ticketing",
+                "start_line": 2,
+                "status": "resolved",
+                "title": "Rerun readqc after top-up sequencing",
+                "version": "2025-11-14"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 7,
+                "score": 20.578,
+                "section": "1. Purpose | 2. DNA Libraries",
+                "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+          }
+        },
+        {
+          "arguments": "{\"table\":\"qc_thresholds\",\"filters\":{\"app_id\":\"readqc\",\"metric\":\"coverage\",\"specimen\":\"tumor\"},\"limit\":10}",
+          "name": "query_reference",
+          "result": {
+            "columns": {
+              "app_id": "string",
+              "comparator": "string",
+              "effective_from": "string",
+              "effective_to": "string",
+              "metric": "string",
+              "specimen": "string",
+              "status": "string",
+              "threshold": "number",
+              "unit": "string"
+            },
+            "document": "ref-qc-thresholds",
+            "rows": [],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "table": "qc_thresholds",
+            "title": "QC thresholds by application",
+            "total": 0,
+            "truncated": false
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document, read_document",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-qc-001-v3\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-qc-001-v3",
+            "end_line": 15,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 7,
+            "status": "effective",
+            "text": "L7: ## 2. Coverage\nL8: Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nL9: Normal and germline libraries require a mean coverage of at least 30x.\nL10: Tumor libraries intended for somatic calling require a mean coverage of at least 40x.\nL11: The 40x tumor minimum replaced the earlier 30x minimum on 2025-11-03 under change CHG-0021.\nL12: Confirm min_coverage 40 when preparing a readqc draft for tumor libraries.\nL13: Report the recorded observed coverage and confirmed threshold, not a guessed new threshold.\nL14: Review the sample and library selection before preparing any new draft.\nL15: Only a human-confirmed new draft can start another execution.",
+            "title": "Read Quality and Low Purity Review",
+            "truncated": false,
+            "version": "3"
+          }
+        },
+        {
+          "arguments": "{\"document\":\"chg-0021\",\"section\":\"2\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "change_request",
+            "document": "chg-0021",
+            "end_line": 15,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "ticketing",
+            "start_line": 9,
+            "status": "resolved",
+            "text": "L9: ## Comments\nL10: ### Comment 1 (lab director, 2025-10-30)\nL11: Approved.\nL12: Effective with SOP-QC-001 version 3 on 2025-11-03.\nL13: ### Comment 2 (platform engineering lead, 2025-11-03)\nL14: Release notes 2025.3 published.\nL15: The readqc default in the workbench stays 30; analysts set 40 for tumor libraries.",
+            "title": "Raise the tumor minimum coverage to 40x",
+            "truncated": false,
+            "version": "2025-11-03"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 3"
+    }
+  ],
+  "views": []
+}

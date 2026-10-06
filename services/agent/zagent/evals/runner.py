@@ -121,7 +121,7 @@ async def case_agent(
         agent = LlmAgent(
             store,
             private_gateway(mode, store.privacy, record_missing=record_missing),
-            ToolsGateway(store, local_tools(clinical)),
+            ToolsGateway(store, local_tools(clinical, knowledge=case.knowledge == "available")),
             route=case.agent.removeprefix("llm:"),
         )
         yield (
@@ -146,7 +146,9 @@ async def capture_case(
     previous: Evidence | None = None,
 ) -> Evidence:
     if previous is None:
-        response = await client.post("/sessions")
+        response = await client.post(
+            "/sessions", json={"persona": case.persona} if case.persona else None
+        )
         response.raise_for_status()
         session_id = UUID(response.json()["id"])
         state = Projection(session_id=session_id)

@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare two separate readqc drafts for all specimens received in the last week for [PT_1]. Use default parameters for both and do not submit either.",
+        "role": "user"
+      },
+      {
+        "content": "Created two separate readqc drafts covering all 3 specimens received in the last week for [PT_1], both with default parameters and no validation issues. Neither was submitted; human confirmation is still required.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "f65db88f74aca653012cc22520efc11ab9470e29ec3e028758fbaf133e6b07bd",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Drafting two default-parameter readqc runs for recently received specimens",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 17,
+      "cost": 2.55e-05,
+      "prompt_tokens": 170,
+      "reasoning_tokens": 0,
+      "total_tokens": 187
+    }
+  },
+  "version": 1
+}

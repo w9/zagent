@@ -483,7 +483,9 @@ token resolution, result tokenization, and audit logging. Concentrating policy i
 what makes it auditable.
 
 Results from third-party MCP servers are treated as untrusted content on the same footing as
-user input. They are tokenized, and they are never interpreted as instructions.
+user input. They are tokenized, and they are never interpreted as instructions. Knowledge tools
+reach the tools gateway through `mcp-broker` (section 12), which verifies the caller context,
+pins the upstream contract and tokenizes results before they enter the agent zone.
 
 ---
 
@@ -491,28 +493,35 @@ user input. They are tokenized, and they are never interpreted as instructions.
 
 A separately owned service in its own `knowledge` zone (PLAN12). Its package,
 `services/knowledge` (`zknowledge`), imports nothing from the agent and publishes its MCP tool
-contract as JSON. An offline `kb-publish` job builds immutable SQLite FTS5 snapshots from
-versioned sources into a volume; the server serves the current snapshot or any retained snapshot
-named in request metadata, and every result carries its snapshot ID.
+contract as JSON. An offline `kb-publish` job builds immutable SQLite FTS5 snapshots into a
+volume. Connectors normalize five source systems (a Confluence-style wiki export, a QMS register
+with Markdown and PDF-text bodies, a ticketing export, reference tables, and pinned Wikipedia
+articles) into canonical citation lines and section outlines. Publishing checks gate provenance,
+access labels, supersession and table-to-document consistency. The server serves the current
+snapshot or a retained one named in request metadata, and every result carries its snapshot ID.
+
+Five read-only tools: `search_knowledge` ranks fixed-size passages with BM25, glossary synonym
+expansion and an authority prior; `get_document` returns status, visible versions and an outline;
+`read_document` returns one section or at most thirty numbered lines; `lookup_term` returns a cited
+glossary entry; `query_reference` returns bounded reference-table rows, each with its source line.
+The index filters by the caller's site and roles before ranking, so restricted and missing
+documents look the same. Retrieval quality is measured on labeled queries in
+`services/knowledge/evals`.
 
 The agent zone reaches it only through `mcp-broker`, which sits on the agent and knowledge
-networks. The broker exposes agent-owned tool definitions, pins a hash of the upstream input
-schemas and disables the tools when it changes, forwards a configured snapshot, bounds time, and
-validates results. Results are tokenized as external content before they enter the agent zone,
-so the agent no longer relies on the corpus being free of identifiers.
+networks. The model sees tool definitions owned by the agent repository (`kb_tools.py`); the
+broker pins a hash of the upstream input schemas and disables the tools when it changes,
+validates every result against agent-owned output models, bounds time, and tokenizes results as
+external content before they enter the agent zone. The agent therefore does not rely on the
+corpus being free of identifiers. The runtime records the snapshot a conversation turn first read
+on the turn itself and sends it with every later knowledge call of that turn, including after a
+resume, so one answer never mixes snapshots.
 
-A digest of ordered source names and contents is a snapshot's ID. `search_knowledge` returns
-matching line numbers; `read_document` requires that ID and at most thirty lines. Execution cases
-pin the digest and fail on drift.
-
-The knowledge team's v2 API is served at `/v2/mcp` beside that legacy contract until the agent
-cuts over. Connectors normalize five source systems (a Confluence-style wiki export, a QMS
-register with Markdown and PDF-text bodies, a ticketing export, reference tables, and pinned
-Wikipedia articles) into canonical citation lines and section outlines. Publishing checks gate
-provenance, access labels, supersession and table-to-document consistency. The index ranks
-fixed-size passages with BM25, glossary synonym expansion and an authority prior, and filters by
-the caller's site and roles before ranking, so restricted and missing documents look the same.
-Retrieval quality is measured on labeled queries in `services/knowledge/evals`.
+The prompt states the authority rule: effective controlled documents govern; wiki pages and
+tickets are context; public articles explain concepts and never set a threshold. Answers cite
+`[document@version:Lstart-Lend]`, where the document version is the human-facing version and
+the snapshot ID stays in the tool audit. Reference-table rows are the one documented exception
+to "handles, not rows": they are non-clinical, bounded and cited.
 
 Identity is simulated but verified. A session records one of four personas, each with knowledge
 roles. For every conversation turn the BFF mints a short-lived Ed25519-signed caller context
@@ -525,8 +534,9 @@ cannot carry site or role fields because the tool schemas forbid extra propertie
 
 Immutability buys determinism: a KB version is a build artifact, so a retrieval result is
 reproducible and the eval report can pin it. Indexing at line granularity lets answers cite
-line ranges. The current deterministic check validates retrieved ranges and supporting verbatim
-quotations; it does not prove that every paraphrased claim is semantically entailed.
+line ranges. The current deterministic check validates that every cited range was read at that
+version and that quotations are verbatim; it does not prove that every paraphrased claim is
+semantically entailed.
 
 ---
 

@@ -48,14 +48,29 @@ const TOOL_LABELS: Record<string, { pending: string; failed: string; done: (resu
     done: (r) => (r.status ? `Checked job (${r.status})` : 'Checked job'),
   },
   search_knowledge: {
-    pending: 'Searching SOPs',
-    failed: 'SOP search failed',
-    done: (r) => `Searched SOPs (${plural(r.matches?.length, 'match', 'matches')})`,
+    pending: 'Searching knowledge base',
+    failed: 'Knowledge search failed',
+    done: (r) => `Searched knowledge base (${plural(r.matches?.length, 'match', 'matches')})`,
+  },
+  get_document: {
+    pending: 'Checking document',
+    failed: 'Document lookup failed',
+    done: (r) => (r.document ? `Checked ${r.document}` : 'Checked document'),
   },
   read_document: {
     pending: 'Reading document',
     failed: 'Document read failed',
     done: (r) => (r.document ? `Read ${r.document} L${r.start_line}–${r.end_line}` : 'Read document'),
+  },
+  lookup_term: {
+    pending: 'Looking up term',
+    failed: 'Term lookup failed',
+    done: (r) => (r.term ? `Looked up ${r.term}` : 'Looked up term'),
+  },
+  query_reference: {
+    pending: 'Querying reference table',
+    failed: 'Reference query failed',
+    done: (r) => `Queried ${r.table ?? 'reference table'} (${plural(r.rows?.length, 'row', 'rows')})`,
   },
   submit_job: { pending: 'Submitting job', failed: 'Submission failed', done: () => 'Submitted job' },
 }

@@ -17,7 +17,8 @@ from zagent.tools import (
 
 
 @given(
-    name=strategies.sampled_from(list(INPUTS)),
+    # Reference rows are non-clinical: the documented exception to handles-only results.
+    name=strategies.sampled_from([name for name in INPUTS if name != "query_reference"]),
     rows=strategies.lists(strategies.dictionaries(strategies.text(), strategies.integers())),
     field=strategies.sampled_from(["rows", "data", "records", "values"]),
 )
@@ -68,13 +69,51 @@ def test_no_tool_response_schema_permits_row_data(name, rows, field):
             "logs": [],
             "history": [],
         },
-        "search_knowledge": {"version": "a" * 64, "matches": []},
+        "search_knowledge": {
+            "snapshot": "a" * 64,
+            "expanded_terms": [],
+            "matches": [],
+            "counts": {},
+        },
+        "get_document": {
+            "snapshot": "a" * 64,
+            "document": "sop-qc-001-v3",
+            "title": "Read quality",
+            "source": "qms",
+            "doc_type": "sop",
+            "version": "3",
+            "status": "effective",
+            "effective_from": "2025-11-03",
+            "effective_to": None,
+            "applies_to": ["readqc"],
+            "labels": [],
+            "supersedes": None,
+            "superseded_by": None,
+            "versions": [],
+            "provenance": {},
+            "line_count": 1,
+            "outline": [],
+        },
         "read_document": {
-            "version": "a" * 64,
-            "document": "specimen-identity",
+            "snapshot": "a" * 64,
+            "document": "sop-identity-001-v1",
+            "title": "Specimen identity",
+            "source": "qms",
+            "doc_type": "sop",
+            "version": "1",
+            "status": "effective",
             "start_line": 1,
             "end_line": 1,
+            "truncated": False,
             "text": "Specimen identity",
+        },
+        "lookup_term": {
+            "snapshot": "a" * 64,
+            "term": "TPM",
+            "definition": "Transcripts per million.",
+            "synonyms": [],
+            "glossary": {"document": "ref-glossary", "start_line": 1, "end_line": 2},
+            "source": None,
         },
     }.get(name, valid)
     assert validator.is_valid(valid)

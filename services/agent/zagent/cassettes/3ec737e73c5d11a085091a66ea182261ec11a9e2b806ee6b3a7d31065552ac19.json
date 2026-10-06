@@ -1,0 +1,41 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare readqc for recent specimens from [PT_1]. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"The readqc draft is ready for your preferred parameters. It currently has the defaults `min_coverage=30` and `check_identity=true`, with no validation issues. It is not submitted; the human Confirm control is required to submit the reviewed draft.\\n\\nI also published [Recent specimens for [PT_1]](view:view-0001). The editable [Read quality control draft](view:view-0002) is available to review.\",\"role\":\"assistant\"},{\"content\":\"Change min_coverage to 42.\",\"role\":\"user\"},{\"content\":\"Updated the [Read quality control draft](view:view-0002): `min_coverage` is now 42. The draft has no validation issues and remains unsubmitted; use the human Confirm control to submit it.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"readqc\",\"content_hash\":\"01d59ee89c5f607a70aea7194675c465674e1acf684c6b2621265f164a364c77\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"check_identity\":true,\"min_coverage\":42},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":2,\"view_id\":\"view-0002\"}],\"target\":{\"app_id\":\"readqc\",\"max_turns\":5,\"parameters\":{\"check_identity\":false,\"min_coverage\":42}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "3ec737e73c5d11a085091a66ea182261ec11a9e2b806ee6b3a7d31065552ac19",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Change check_identity to false.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "cost": 0.0001542,
+        "prompt_tokens": 482,
+        "reasoning_tokens": 0,
+        "total_tokens": 490
+      }
+    }
+  },
+  "version": 2
+}

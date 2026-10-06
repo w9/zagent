@@ -205,7 +205,7 @@
     },
     {
       "payload": {
-        "text": "The readqc draft for the three specimens received in the last day is ready, with minimum coverage set to 40 and identity checking enabled. It has no validation issues and was not submitted. Review it in [Read quality control](view:view-0001)."
+        "text": "Prepared the [Read quality control](view:view-0001) draft for the 3 specimens received in the last day. Minimum coverage is 40, and identity checking is enabled. Validation shows no issues. It has not been submitted; only the human Confirm control can submit it."
       },
       "type": "text_delta"
     },
@@ -233,7 +233,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "The readqc draft for the three specimens received in the last day is ready, with minimum coverage set to 40 and identity checking enabled. It has no validation issues and was not submitted. Review it in [Read quality control](view:view-0001)."
+      "text": "Prepared the [Read quality control](view:view-0001) draft for the 3 specimens received in the last day. Minimum coverage is 40, and identity checking is enabled. Validation shows no issues. It has not been submitted; only the human Confirm control can submit it."
     }
   ],
   "steps": [

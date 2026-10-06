@@ -161,7 +161,7 @@ def test_reads_terms_and_tables_are_cited_and_bounded(published_index):
     index = store.open()
     try:
         section = index.read_document(ANALYST, "sop-qc-001-v3", section="2")
-        assert section["text"].startswith("## 2. Coverage")
+        assert section["text"].startswith("L7: ## 2. Coverage")
         assert "at least 40x" in section["text"]
         long = index.read_document(ANALYST, "wp-p53", start_line=2, end_line=140)
         assert long["truncated"] and long["end_line"] - long["start_line"] < 30
@@ -179,11 +179,11 @@ def test_reads_terms_and_tables_are_cited_and_bounded(published_index):
         assert [row["threshold"] for row in rows["rows"]] == [40]
         assert rows["rows"][0]["_source"] == {"document": "sop-qc-001-v3", "line": 10}
         assert index.read_document(ANALYST, "sop-qc-001-v3", start_line=10)["text"].startswith(
-            "Tumor libraries intended for somatic calling require a mean coverage of at least 40x"
+            "L10: Tumor libraries intended for somatic calling require a mean coverage of at least"
         )
         with pytest.raises(NotFound, match="available: assay_contacts"):
             index.query_reference(ANALYST, "thresholds")
-        with pytest.raises(ValueError, match="Unknown filter columns"):
+        with pytest.raises(ValueError, match="Unknown filter columns: site; columns: app_id"):
             index.query_reference(ANALYST, "qc_thresholds", {"site": "northgate"})
     finally:
         index.close()

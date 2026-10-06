@@ -249,11 +249,12 @@ def test_scope_corpus_is_labeled_balanced_and_covers_context_and_wrappers():
         "near_boundary_in_scope": 50,
         "near_boundary_off_topic": 30,
         "scope_wrappers": 20,
+        "knowledge_boundary": 40,
     }
     cases = [case for group in corpus.buckets.values() for case in group]
-    assert len({case.id for case in cases}) == 300
+    assert len({case.id for case in cases}) == 340
     labels = Counter(case.label for case in cases)
-    assert labels["none"] == 200
+    assert labels["none"] == 220
     assert set(labels) == {"none", *REFUSAL_MESSAGES}
     assert all(case.context for case in corpus.buckets["contextual_continuations"])
     assert any(case.draft for case in cases)
@@ -291,6 +292,6 @@ async def test_disabled_guard_turns_refusal_gate_red_but_keeps_acceptance_gate_l
     assert rows["REQ-SCOPE-01"]["status"] == "FAIL"
     assert rows["REQ-SCOPE-01"]["successes"] == 0
     assert rows["REQ-SCOPE-02"]["status"] == "PASS"
-    assert rows["REQ-SCOPE-02"]["successes"] == 2000
+    assert rows["REQ-SCOPE-02"]["successes"] == 2200
     assert all(result.scope.gateway_calls == 0 for result in report.results)
     assert all(result.provenance.mutation == "disable_scope_guard" for result in report.results)

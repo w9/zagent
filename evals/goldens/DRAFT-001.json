@@ -223,7 +223,7 @@
     },
     {
       "payload": {
-        "text": "I prepared the [Somatic variant calling](view:view-0001) draft using the specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to include; the draft has not been submitted."
+        "text": "I prepared the [Somatic variant calling](view:view-0001) draft for the two specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to use; the draft has not been submitted. Only the human Confirm control can submit it."
       },
       "type": "text_delta"
     },
@@ -328,7 +328,7 @@
     },
     {
       "payload": {
-        "text": "Updated the somatic-calling draft\u2019s minimum VAF to 0.03. Validation still requires a matched normal specimen; the draft has not been submitted."
+        "text": "Updated the [Somatic variant calling](view:view-0001) draft to min VAF 0.03. It still needs a matched normal specimen; it has not been submitted. Only the human Confirm control can submit it."
       },
       "type": "text_delta"
     },
@@ -356,7 +356,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "I prepared the [Somatic variant calling](view:view-0001) draft using the specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to include; the draft has not been submitted."
+      "text": "I prepared the [Somatic variant calling](view:view-0001) draft for the two specimens received in the last 24 hours. Validation reports that a matched normal specimen is missing. Please clarify which normal specimen to use; the draft has not been submitted. Only the human Confirm control can submit it."
     },
     {
       "role": "user",
@@ -366,7 +366,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Updated the somatic-calling draft\u2019s minimum VAF to 0.03. Validation still requires a matched normal specimen; the draft has not been submitted."
+      "text": "Updated the [Somatic variant calling](view:view-0001) draft to min VAF 0.03. It still needs a matched normal specimen; it has not been submitted. Only the human Confirm control can submit it."
     }
   ],
   "steps": [

@@ -1,0 +1,41 @@
+{
+  "request": {
+    "max_tokens": 160,
+    "messages": [
+      {
+        "content": "You simulate a user editing a genomics analysis draft with an assistant.\nYour private target and the conversation are supplied as data. Reply with only your next short\nuser message, no role labels. Do not reveal the whole target at once. Answer the assistant's\nmost recent clarification; otherwise correct just one parameter that differs from your target.\nUse the exact parameter name and desired value when correcting it. Refer to the existing draft\ninstead of requesting a second draft. Never ask to submit or confirm: stop at an editable draft.\nIf no draft exists yet, ask for a draft of the target application for the patient already mentioned.",
+        "role": "system"
+      },
+      {
+        "content": "{\"conversation\":[{\"content\":\"Prepare readqc for recent specimens from [PT_1]. I will give you my preferred parameters after I see the draft.\",\"role\":\"user\"},{\"content\":\"Prepared the [Read quality control](view:view-0001) draft for 3 specimens received in the past 7 days. It\\u2019s in editing status with the current defaults: minimum coverage 30 and identity check enabled. Tell me your preferred parameters and I\\u2019ll update this draft; it has not been submitted.\",\"role\":\"assistant\"}],\"drafts\":[{\"app_id\":\"readqc\",\"content_hash\":\"3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39\",\"draft_id\":\"draft-0001\",\"job_id\":null,\"parameters\":{\"check_identity\":true,\"min_coverage\":30},\"specimen_handle\":\"query-0002\",\"status\":\"editing\",\"validation\":[],\"version\":1,\"view_id\":\"view-0001\"}],\"target\":{\"app_id\":\"readqc\",\"max_turns\":5,\"parameters\":{\"check_identity\":false,\"min_coverage\":42}}}",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek/deepseek-v4.1-flash",
+    "prompt_hash": "664c76bfd5774fd104cd7e9dc69761c1f00f744d14d389883e2836d2e06bee47",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "simulator",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "21cd83bad339db2d083a016255eddaf8a7f5650bb1f5d65670cdf58e0dfc1c91",
+  "samples": {
+    "2": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Set min_coverage to 42.",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 9,
+        "cost": 3.699e-05,
+        "prompt_tokens": 393,
+        "reasoning_tokens": 0,
+        "total_tokens": 402
+      }
+    }
+  },
+  "version": 2
+}

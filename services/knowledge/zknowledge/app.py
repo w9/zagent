@@ -1,25 +1,20 @@
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
 from zknowledge.index import IndexStore
 from zknowledge.server import create_server
-from zknowledge.server_v2 import create_server_v2
-from zknowledge.snapshot import SnapshotStore
+from zknowledge.snapshot import snapshot_directory
 from zknowledge.telemetry import configure_telemetry
 
 
-def create_app(snapshots: SnapshotStore | None = None) -> FastAPI:
-    snapshots = snapshots or SnapshotStore.configured()
-    index = IndexStore(snapshots.directory / "v2")
-    server = create_server(snapshots)
-    server_v2 = create_server_v2(index)
+def create_app(store: IndexStore | None = None) -> FastAPI:
+    store = store or IndexStore(snapshot_directory())
+    server = create_server(store)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        async with AsyncExitStack() as stack:
-            await stack.enter_async_context(server.session_manager.run())
-            await stack.enter_async_context(server_v2.session_manager.run())
+        async with server.session_manager.run():
             yield
 
     app = FastAPI(title="Knowledge MCP", lifespan=lifespan)
@@ -27,14 +22,12 @@ def create_app(snapshots: SnapshotStore | None = None) -> FastAPI:
 
     @app.get("/health")
     async def health():
-        legacy, current = snapshots.open(), index.open()
+        index = store.open()
         try:
-            return {"status": "ok", "snapshot": legacy.version, "snapshot_v2": current.snapshot}
+            return {"status": "ok", "snapshot": index.snapshot}
         finally:
-            legacy.close()
-            current.close()
+            index.close()
 
-    app.mount("/v2", server_v2.streamable_http_app())
     app.mount("/", server.streamable_http_app())
     return app
 

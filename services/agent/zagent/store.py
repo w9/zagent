@@ -70,6 +70,7 @@ class AgentSession(BaseModel):
     message: str
     site_id: str = "northgate"
     caller_context: str | None = Field(default=None, repr=False)
+    kb_snapshot: str | None = None
 
 
 SESSION_COLUMNS = "id, last_seq AS seq, created_at, site_id, persona, title, title_source"

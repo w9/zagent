@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Have we had an incident where a tumor/normal swap caused a genotype concordance failure? Summarize the ticket and what was done.",
+        "role": "user"
+      },
+      {
+        "content": "Yes. Incident **inc-0142**, \u201cGenotype concordance failure from a tumor/normal swap,\u201d was resolved. Somatic-SNV failed with `genotype_concordance_failed` because the manifest had the tumor and normal tubes listed in reverse; verified identity confirmed a swap at accessioning. The quality lead opened a deviation and specified that the specimen rows should not be edited. The analyst prepared a new somatic-SNV draft using the verified specimen identities; the requester confirmed it, and the rerun completed. [inc-0142@2025-12-04:L6-L16]\n\nThat corrective approach is consistent with the SOP: preserve the failed job and audit trail, use verified tumor/normal roles in a new draft, and require human confirmation before rerunning. [sop-identity-001-v1@1:L16-L22]",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "6395c4213a0e5c598f49ef59571b41379825d82d6e8657705719384f1aefd3a1",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Genotype concordance failure after tumor/normal swap",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 14,
+      "cost": 3.38e-05,
+      "prompt_tokens": 268,
+      "reasoning_tokens": 0,
+      "total_tokens": 282
+    }
+  },
+  "version": 1
+}

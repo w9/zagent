@@ -151,7 +151,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\"}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -208,7 +208,7 @@
     },
     {
       "payload": {
-        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+        "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\"}",
         "name": "update_draft"
       },
       "type": "tool_call"
@@ -277,7 +277,7 @@
     },
     {
       "payload": {
-        "text": "Prepared two separate read QC drafts using all 3 specimens received in the last week, with default parameters. Neither was submitted; both are valid and awaiting human confirmation.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)"
+        "text": "Created two separate readqc drafts covering all 3 specimens received in the last week for [PT_1], both with default parameters and no validation issues. Neither was submitted; human confirmation is still required.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)"
       },
       "type": "text_delta"
     },
@@ -508,7 +508,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "Prepared two separate read QC drafts using all 3 specimens received in the last week, with default parameters. Neither was submitted; both are valid and awaiting human confirmation.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)"
+      "text": "Created two separate readqc drafts covering all 3 specimens received in the last week for [PT_1], both with default parameters and no validation issues. Neither was submitted; human confirmation is still required.\n\n- [Read quality control \u2014 draft 1](view:view-0001)\n- [Read quality control \u2014 draft 2](view:view-0002)"
     },
     {
       "role": "user",
@@ -597,7 +597,7 @@
       "title": "Agent step 3",
       "tools": [
         {
-          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\"}",
           "name": "update_draft",
           "result": {
             "draft": {
@@ -622,7 +622,7 @@
           }
         },
         {
-          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\",\"parameters\":{}}",
+          "arguments": "{\"app_id\":\"readqc\",\"specimen_handle\":\"query-0002\"}",
           "name": "update_draft",
           "result": {
             "draft": {

@@ -232,7 +232,10 @@ def test_model_tool_registry_has_draft_mutation_but_no_submission_capability():
         "show_jobs",
         "get_job",
         "search_knowledge",
+        "get_document",
         "read_document",
+        "lookup_term",
+        "query_reference",
     }
     assert not any(
         "confirm" in tool["function"]["name"] or "submit" in tool["function"]["name"]

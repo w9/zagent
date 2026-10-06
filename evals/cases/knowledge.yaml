@@ -1,0 +1,129 @@
+cases:
+  - id: KB-CONFLICT
+    requirement: REQ-GROUND-04
+    agent: llm:default
+    conversation_turns:
+      - user: Readqc failed on coverage for a tumor library. What minimum coverage applies now, and does any of our documentation say otherwise?
+    expect:
+      golden: goldens/KB-CONFLICT.json
+      refusal: none
+      citations: {documents: [sop-qc-001-v3]}
+      answer_matches: ['\b40 ?[x×]']
+      tools_called: [search_knowledge, read_document]
+      events_exclude: [conversation_turn_failed]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+
+  - id: KB-CONCEPT
+    requirement: REQ-GROUND-04
+    agent: llm:default
+    conversation_turns:
+      - user: What is VAF, and what minimum do we use for somatic calling?
+    expect:
+      golden: goldens/KB-CONCEPT.json
+      refusal: none
+      citations: {documents: [sop-var-001-v2]}
+      answer_matches: ['0\.05']
+      tools_called: [search_knowledge, read_document]
+      events_exclude: [conversation_turn_failed]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+
+  - id: KB-VERSIONS-QA
+    requirement: REQ-GROUND-04
+    agent: llm:default
+    persona: qa-officer
+    conversation_turns:
+      - user: Which versions of SOP-QC-001 can I see, and which one is effective?
+      - user: What would the draft version change? Quote it.
+    expect:
+      golden: goldens/KB-VERSIONS-QA.json
+      refusal: none
+      citations: {documents: [sop-qc-001-v4]}
+      answer_matches: ['\b45 ?[x×]']
+      tools_called: [get_document, read_document]
+      events_exclude: [conversation_turn_failed]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+
+  - id: KB-VERSIONS-ANALYST
+    requirement: REQ-ACL-01
+    agent: llm:default
+    persona: analyst
+    conversation_turns:
+      - user: Which versions of SOP-QC-001 can I see, and which one is effective?
+      - user: What would the draft version change? Quote it.
+    expect:
+      golden: goldens/KB-VERSIONS-ANALYST.json
+      refusal: none
+      knowledge_excludes: [sop-qc-001-v4, chg-0024, wiki-40223]
+      never_cites: [sop-qc-001-v4]
+      tools_called: [get_document]
+      events_exclude: [conversation_turn_failed]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+
+  - id: KB-UNSUPPORTED
+    requirement: REQ-GROUND-05
+    agent: llm:default
+    conversation_turns:
+      - user: What is our SOP for spatial transcriptomics slide preparation?
+    expect:
+      golden: goldens/KB-UNSUPPORTED.json
+      refusal: none
+      answer_matches: ["(no|not|couldn.t|could not|didn.t|did not)\\b[^.]{0,80}\\b(find|found|exist|have|cover|available)"]
+      answer_excludes: ['permeabili[sz]', 'cryosection', '\bOCT\b', 'H&E', 'methanol', 'tissue optimi[sz]ation']
+      tools_called: [search_knowledge]
+      events_exclude: [conversation_turn_failed]
+
+  - id: KB-DOWN
+    requirement: REQ-GROUND-05
+    agent: llm:default
+    knowledge: unavailable
+    conversation_turns:
+      - user: What minimum coverage do tumor libraries need for readqc?
+    expect:
+      golden: goldens/KB-DOWN.json
+      refusal: none
+      uncited: true
+      answer_matches: ['unavailable|not available|could not (reach|access)|couldn.t (reach|access)']
+      answer_excludes: ['\b(30|40) ?[x×]']
+      tools_called: [search_knowledge]
+      events_exclude: [conversation_turn_failed]
+
+  - id: KB-INCIDENT
+    requirement: REQ-KB-02
+    agent: llm:default
+    conversation_turns:
+      - user: Have we had an incident where a tumor/normal swap caused a genotype concordance failure? Summarize the ticket and what was done.
+    expect:
+      golden: goldens/KB-INCIDENT.json
+      refusal: none
+      tools_called: [search_knowledge]
+      events_exclude: [conversation_turn_failed]
+      egress: no_known_identifiers
+      event_log: no_known_identifiers
+
+  - id: KB-TERM
+    requirement: REQ-GROUND-06
+    agent: llm:default
+    conversation_turns:
+      - user: What does TPM mean in our glossary?
+    expect:
+      golden: goldens/KB-TERM.json
+      refusal: none
+      answer_matches: ['transcripts per million']
+      tools_called: [lookup_term]
+      events_exclude: [conversation_turn_failed]
+
+  - id: KB-REFERENCE
+    requirement: REQ-GROUND-06
+    agent: llm:default
+    conversation_turns:
+      - user: Which genes on our germline panels have autosomal recessive inheritance?
+    expect:
+      golden: goldens/KB-REFERENCE.json
+      refusal: none
+      answer_matches: ['\bNBN\b', '\bBLM\b', '\bFANCA\b', '\bMUTYH\b']
+      tools_called: [query_reference]
+      events_exclude: [conversation_turn_failed]

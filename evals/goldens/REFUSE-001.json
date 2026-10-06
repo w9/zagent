@@ -17,7 +17,7 @@
     {
       "payload": {
         "code": "out_of_domain",
-        "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, and explain platform capabilities."
+        "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, answer questions about lab procedures and genomics concepts, and explain platform capabilities."
       },
       "type": "refused"
     },
@@ -36,7 +36,7 @@
   "refusals": [
     {
       "code": "out_of_domain",
-      "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, and explain platform capabilities."
+      "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, answer questions about lab procedures and genomics concepts, and explain platform capabilities."
     }
   ],
   "steps": [],

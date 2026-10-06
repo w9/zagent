@@ -5,6 +5,7 @@ from typing import Any, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zagent.identity import PersonaId
 from zagent.scope import ReasonCode
 
 
@@ -63,6 +64,7 @@ ScopeBucket = Literal[
     "near_boundary_in_scope",
     "near_boundary_off_topic",
     "scope_wrappers",
+    "knowledge_boundary",
 ]
 
 
@@ -99,9 +101,9 @@ class AdversarialSpec(StrictModel):
         "obfuscated_identifiers",
         "groundedness_pressure",
     ]
-    ingress: Literal["user_message", "job_log", "kb_document", "tool_result", "specimen_note"] = (
-        "user_message"
-    )
+    ingress: Literal[
+        "user_message", "job_log", "kb_wiki", "kb_ticket", "tool_result", "specimen_note"
+    ] = "user_message"
     payload: str | None = Field(default=None, max_length=1500)
     marker: str | None = None
     setup: Literal["empty", "draft", "failed_job"] = "empty"
@@ -132,6 +134,8 @@ class Case(StrictModel):
         ]
     ] = Field(default_factory=list)
     session_checks: bool = False
+    persona: PersonaId | None = None
+    knowledge: Literal["available", "unavailable"] = "available"
 
 
 class CaseGroup(StrictModel):

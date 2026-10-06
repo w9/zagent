@@ -185,7 +185,7 @@
     },
     {
       "payload": {
-        "text": "29 specimens. [Specimens received in the last 24 hours](view:view-0001)"
+        "text": "29 [Specimens received in the last 24 hours](view:view-0001)"
       },
       "type": "text_delta"
     },
@@ -213,7 +213,7 @@
     {
       "role": "assistant",
       "status": "complete",
-      "text": "29 specimens. [Specimens received in the last 24 hours](view:view-0001)"
+      "text": "29 [Specimens received in the last 24 hours](view:view-0001)"
     }
   ],
   "steps": [

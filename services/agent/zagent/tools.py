@@ -19,7 +19,7 @@ from zagent.drafts import AppId, DraftState, JobState
 from zagent.faults import enabled
 from zagent.identity import CALLER_CONTEXT_META
 from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
-from zagent.kb_tools import KB_DESCRIPTIONS, KB_INPUTS, KB_OUTPUTS
+from zagent.kb_tools import KB_DESCRIPTIONS, KB_INPUTS, KB_OUTPUTS, KB_SNAPSHOT_META
 from zagent.privacy import TOKEN, PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
 from zagent.views import ViewSpec
@@ -104,6 +104,7 @@ class ErrorDetail(StrictModel):
         "invalid_arguments",
         "invalid_handle",
         "invalid_view",
+        "not_found",
         "unavailable",
         "unsafe_result",
     ]
@@ -515,8 +516,15 @@ class McpToolClient:
                     "arguments": arguments,
                     "operation_id": operation_id,
                 },
-                meta={CALLER_CONTEXT_META: session.caller_context}
-                if name in KB_INPUTS and session.caller_context
+                meta={
+                    key: value
+                    for key, value in (
+                        (CALLER_CONTEXT_META, session.caller_context),
+                        (KB_SNAPSHOT_META, session.kb_snapshot),
+                    )
+                    if value
+                }
+                if name in KB_INPUTS
                 else None,
             )
         if result.isError or result.structuredContent is None:
@@ -584,6 +592,15 @@ class ToolsGateway:
                     )
                 ).value
                 params = model.model_validate(arguments)
+                if name in KB_INPUTS:
+                    session = session.model_copy(
+                        update={
+                            "kb_snapshot": await self.store.pool.fetchval(
+                                "SELECT kb_snapshot FROM conversation_turns WHERE id=$1",
+                                session.conversation_turn_id,
+                            )
+                        }
+                    )
                 result = await self.client.call(
                     session,
                     name,
@@ -597,6 +614,14 @@ class ToolsGateway:
                 ).is_valid(result):
                     result = failure(
                         "unsafe_result", "Tool returned an invalid or oversized result"
+                    )
+                elif name in KB_INPUTS and "snapshot" in result and not session.kb_snapshot:
+                    # A resumed turn must read the snapshot its earlier steps cited.
+                    await self.store.pool.execute(
+                        "UPDATE conversation_turns SET kb_snapshot=$2 "
+                        "WHERE id=$1 AND kb_snapshot IS NULL",
+                        session.conversation_turn_id,
+                        result["snapshot"],
                     )
         except ValidationError as error:
             details = "; ".join(

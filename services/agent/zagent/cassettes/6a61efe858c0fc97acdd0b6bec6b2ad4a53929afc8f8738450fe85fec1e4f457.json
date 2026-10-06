@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "What minimum coverage do tumor libraries need for readqc?",
+        "role": "user"
+      },
+      {
+        "content": "I can\u2019t verify the tumor-library minimum coverage right now because the knowledge service is unavailable.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "6a61efe858c0fc97acdd0b6bec6b2ad4a53929afc8f8738450fe85fec1e4f457",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "Tumor library minimum coverage for readqc",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 12,
+      "cost": 1.55e-05,
+      "prompt_tokens": 95,
+      "reasoning_tokens": 0,
+      "total_tokens": 107
+    }
+  },
+  "version": 1
+}

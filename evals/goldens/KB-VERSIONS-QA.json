@@ -1,0 +1,1091 @@
+{
+  "conversation_turn": {
+    "error": null,
+    "status": "finished"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Which versions of SOP-QC-001 can I see, and which one is effective?"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001\"}",
+        "name": "get_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "get_document",
+        "result": {
+          "error": {
+            "code": "not_found",
+            "message": "Document not found"
+          }
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "get_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"query\":\"SOP-QC-001 versions effective status\",\"sources\":[\"qms\"],\"doc_types\":[\"sop\"],\"applies_to\":null,\"include_inactive\":true,\"limit\":8}",
+        "name": "search_knowledge"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "search_knowledge",
+        "result": {
+          "counts": {
+            "qms": 17
+          },
+          "expanded_terms": [],
+          "matches": [
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v3",
+              "end_line": 7,
+              "score": 47.316,
+              "section": "1. Purpose | 2. Coverage",
+              "snippet": "Document: SOP-QC-001 | Version 3 | Status: effective | Effective: 2025-11-03\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines read quality review for libraries analyzed in the Zagent workbench.\nIt applies to readqc, somatic-snv and germline-panel executions at every site.\n## 2. Coverage",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Read Quality and Low Purity Review",
+              "version": "3"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v4",
+              "end_line": 7,
+              "score": 41.53,
+              "section": "1. Purpose",
+              "snippet": "Document: SOP-QC-001 | Version 4 | Status: draft | Effective: not yet effective\nOwner: quality lead | Approvers: qa-officer, lab-director\n> DRAFT for review under CHG-0024.\n> Not effective.\n> Do not use for routine work.\n## 1. Purpose",
+              "source": "qms",
+              "start_line": 2,
+              "status": "draft",
+              "title": "Read Quality and Low Purity Review",
+              "version": "4"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-qc-001-v2",
+              "end_line": 7,
+              "score": 37.576,
+              "section": "1. Purpose | 2. Coverage",
+              "snippet": "Document: SOP-QC-001 | Version 2 | Status: superseded | Effective: 2024-03-01\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines read quality review for libraries analyzed in the workbench.\n## 2. Coverage\nReadqc fails when a selected library's coverage is below the confirmed minimum coverage.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "superseded",
+              "title": "Read Quality and Low Purity Review",
+              "version": "2"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-germ-001-v2",
+              "end_line": 7,
+              "score": 34.419,
+              "section": "1. Purpose | 2. Requirements",
+              "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Germline Panel Reporting",
+              "version": "2"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-dev-001-v1",
+              "end_line": 7,
+              "score": 32.926,
+              "section": "1. Purpose | 2. Reporting",
+              "snippet": "Document: SOP-DEV-001 | Version 1 | Status: effective | Effective: 2024-06-03\nOwner: quality lead | Approvers: lab-director\n## 1. Purpose\nThis procedure defines how deviations are reported, investigated and closed.\n## 2. Reporting\nReport a deviation within 1 business day of discovery on FRM-DEV-001.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Deviations and Corrective Actions",
+              "version": "1"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-prep-001-v4",
+              "end_line": 7,
+              "score": 31.116,
+              "section": "1. Purpose | 2. DNA Libraries",
+              "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Library Preparation",
+              "version": "4"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-ops-001-v1",
+              "end_line": 7,
+              "score": 30.733,
+              "section": "1. Purpose | 2. Job States",
+              "snippet": "Document: SOP-OPS-001 | Version 1 | Status: effective | Effective: 2025-10-06\nOwner: platform engineering lead | Approvers: qa-officer\n## 1. Purpose\nThis procedure covers monitoring of analysis jobs and response to pipeline incidents.\n## 2. Job States\nJobs move through pending, running, retrying, completed and failed states.",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Pipeline Operations and Incident Response",
+              "version": "1"
+            },
+            {
+              "doc_type": "sop",
+              "document": "sop-identity-001-v1",
+              "end_line": 7,
+              "score": 30.608,
+              "section": "1. Purpose | 2. Concordance Rule",
+              "snippet": "Document: SOP-IDENTITY-001 | Version 1 | Status: effective | Effective: 2025-01-20\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure covers genotype concordance checks between tumor and normal specimens.\nIt applies to synthetic somatic-snv execution in the Zagent workbench.\n## 2. Concordance Rule",
+              "source": "qms",
+              "start_line": 2,
+              "status": "effective",
+              "title": "Specimen Identity and Genotype Concordance",
+              "version": "1"
+            }
+          ],
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "search_knowledge"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 3"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001-v2\"}",
+        "name": "get_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "get_document",
+        "result": {
+          "applies_to": [
+            "readqc",
+            "somatic-snv"
+          ],
+          "doc_type": "sop",
+          "document": "sop-qc-001-v2",
+          "effective_from": "2024-03-01",
+          "effective_to": "2025-11-02",
+          "labels": [],
+          "line_count": 19,
+          "outline": [
+            {
+              "end_line": 5,
+              "heading": "1. Purpose",
+              "path": "1",
+              "start_line": 4
+            },
+            {
+              "end_line": 10,
+              "heading": "2. Coverage",
+              "path": "2",
+              "start_line": 6
+            },
+            {
+              "end_line": 13,
+              "heading": "3. Tumor Purity",
+              "path": "3",
+              "start_line": 11
+            },
+            {
+              "end_line": 15,
+              "heading": "4. Records",
+              "path": "4",
+              "start_line": 14
+            },
+            {
+              "end_line": 19,
+              "heading": "5. Revision History",
+              "path": "5",
+              "start_line": 16
+            }
+          ],
+          "provenance": {
+            "owner_role": "quality lead"
+          },
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "status": "superseded",
+          "superseded_by": "sop-qc-001-v3",
+          "supersedes": null,
+          "title": "Read Quality and Low Purity Review",
+          "version": "2",
+          "versions": [
+            {
+              "document": "sop-qc-001-v2",
+              "effective_from": "2024-03-01",
+              "status": "superseded",
+              "version": "2"
+            },
+            {
+              "document": "sop-qc-001-v3",
+              "effective_from": "2025-11-03",
+              "status": "effective",
+              "version": "3"
+            },
+            {
+              "document": "sop-qc-001-v4",
+              "effective_from": null,
+              "status": "draft",
+              "version": "4"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001-v3\"}",
+        "name": "get_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "get_document",
+        "result": {
+          "applies_to": [
+            "readqc",
+            "somatic-snv"
+          ],
+          "doc_type": "sop",
+          "document": "sop-qc-001-v3",
+          "effective_from": "2025-11-03",
+          "effective_to": null,
+          "labels": [],
+          "line_count": 35,
+          "outline": [
+            {
+              "end_line": 6,
+              "heading": "1. Purpose",
+              "path": "1",
+              "start_line": 4
+            },
+            {
+              "end_line": 15,
+              "heading": "2. Coverage",
+              "path": "2",
+              "start_line": 7
+            },
+            {
+              "end_line": 19,
+              "heading": "3. Sequencing Quality",
+              "path": "3",
+              "start_line": 16
+            },
+            {
+              "end_line": 23,
+              "heading": "4. Tumor Purity",
+              "path": "4",
+              "start_line": 20
+            },
+            {
+              "end_line": 28,
+              "heading": "5. Infrastructure",
+              "path": "5",
+              "start_line": 24
+            },
+            {
+              "end_line": 31,
+              "heading": "6. Records",
+              "path": "6",
+              "start_line": 29
+            },
+            {
+              "end_line": 35,
+              "heading": "7. Revision History",
+              "path": "7",
+              "start_line": 32
+            }
+          ],
+          "provenance": {
+            "owner_role": "quality lead"
+          },
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "status": "effective",
+          "superseded_by": null,
+          "supersedes": "sop-qc-001-v2",
+          "title": "Read Quality and Low Purity Review",
+          "version": "3",
+          "versions": [
+            {
+              "document": "sop-qc-001-v2",
+              "effective_from": "2024-03-01",
+              "status": "superseded",
+              "version": "2"
+            },
+            {
+              "document": "sop-qc-001-v3",
+              "effective_from": "2025-11-03",
+              "status": "effective",
+              "version": "3"
+            },
+            {
+              "document": "sop-qc-001-v4",
+              "effective_from": null,
+              "status": "draft",
+              "version": "4"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001-v4\"}",
+        "name": "get_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "get_document",
+        "result": {
+          "applies_to": [
+            "readqc",
+            "somatic-snv"
+          ],
+          "doc_type": "sop",
+          "document": "sop-qc-001-v4",
+          "effective_from": null,
+          "effective_to": null,
+          "labels": [
+            "draft"
+          ],
+          "line_count": 22,
+          "outline": [
+            {
+              "end_line": 8,
+              "heading": "1. Purpose",
+              "path": "1",
+              "start_line": 7
+            },
+            {
+              "end_line": 13,
+              "heading": "2. Coverage",
+              "path": "2",
+              "start_line": 9
+            },
+            {
+              "end_line": 17,
+              "heading": "3. Sequencing Quality",
+              "path": "3",
+              "start_line": 14
+            },
+            {
+              "end_line": 19,
+              "heading": "4. Tumor Purity",
+              "path": "4",
+              "start_line": 18
+            },
+            {
+              "end_line": 22,
+              "heading": "5. Open Review Comments",
+              "path": "5",
+              "start_line": 20
+            }
+          ],
+          "provenance": {
+            "owner_role": "quality lead"
+          },
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "status": "draft",
+          "superseded_by": null,
+          "supersedes": null,
+          "title": "Read Quality and Low Purity Review",
+          "version": "4",
+          "versions": [
+            {
+              "document": "sop-qc-001-v2",
+              "effective_from": "2024-03-01",
+              "status": "superseded",
+              "version": "2"
+            },
+            {
+              "document": "sop-qc-001-v3",
+              "effective_from": "2025-11-03",
+              "status": "effective",
+              "version": "3"
+            },
+            {
+              "document": "sop-qc-001-v4",
+              "effective_from": null,
+              "status": "draft",
+              "version": "4"
+            }
+          ]
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "get_document, get_document, get_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 4"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001-v3\",\"section\":\"1\",\"start_line\":null,\"end_line\":null}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-qc-001-v3",
+          "end_line": 6,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 4,
+          "status": "effective",
+          "text": "L4: ## 1. Purpose\nL5: This procedure defines read quality review for libraries analyzed in the Zagent workbench.\nL6: It applies to readqc, somatic-snv and germline-panel executions at every site.",
+          "title": "Read Quality and Low Purity Review",
+          "truncated": false,
+          "version": "3"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 5"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "I can see **versions 2, 3, and 4** of SOP-QC-001:\n\n- **Version 2** \u2014 superseded; effective from 2024-03-01 to 2025-11-02.\n- **Version 3** \u2014 **effective** from 2025-11-03.\n- **Version 4** \u2014 draft and not yet effective.\n\nVersion 3 is the current effective version. It applies to readqc, somatic-snv, and germline-panel executions at every site: \u201cIt applies to readqc, somatic-snv and germline-panel executions at every site.\u201d [sop-qc-001-v3@3:L4-L6]"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    },
+    {
+      "payload": {
+        "text": "What would the draft version change? Quote it."
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "title": "Agent step 1"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "arguments": "{\"document\":\"sop-qc-001-v4\",\"section\":null,\"start_line\":1,\"end_line\":22}",
+        "name": "read_document"
+      },
+      "type": "tool_call"
+    },
+    {
+      "payload": {
+        "name": "read_document",
+        "result": {
+          "doc_type": "sop",
+          "document": "sop-qc-001-v4",
+          "end_line": 22,
+          "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+          "source": "qms",
+          "start_line": 1,
+          "status": "draft",
+          "text": "L1: # SOP-QC-001 v4: Read Quality and Low Purity Review\nL2: Document: SOP-QC-001 | Version 4 | Status: draft | Effective: not yet effective\nL3: Owner: quality lead | Approvers: qa-officer, lab-director\nL4: > DRAFT for review under CHG-0024.\nL5: > Not effective.\nL6: > Do not use for routine work.\nL7: ## 1. Purpose\nL8: This procedure defines read quality review for libraries analyzed in the Zagent workbench.\nL9: ## 2. Coverage\nL10: Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nL11: Normal and germline libraries require a mean coverage of at least 30x.\nL12: Tumor libraries intended for somatic calling would require a mean coverage of at least 45x.\nL13: The proposed 45x tumor minimum is based on the VAL-SOM-2025 low-VAF results and is still under review.\nL14: ## 3. Sequencing Quality\nL15: Libraries with a mapping rate below 95 percent are held for review.\nL16: Duplication above 15 percent would fail readqc instead of only being recorded.\nL17: The duplication rule needs an impact estimate from the bioinformatics team before approval.\nL18: ## 4. Tumor Purity\nL19: Tumor purity below 0.20 produces a warning because reduced sensitivity may affect interpretation.\nL20: ## 5. Open Review Comments\nL21: QA asks whether the 45x minimum should apply to RNA-only cases; it should not.\nL22: The lab director asks for the expected increase in top-up sequencing before sign-off.",
+          "title": "Read Quality and Low Purity Review",
+          "truncated": false,
+          "version": "4"
+        }
+      },
+      "type": "tool_result"
+    },
+    {
+      "payload": {
+        "detail": "read_document"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "title": "Agent step 2"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "text": "Version 4 is a **draft**, not effective and not for routine work. It proposes these changes:\n\n> \u201cTumor libraries intended for somatic calling would require a mean coverage of at least 45x.\u201d  \n> \u201cLibraries with a mapping rate below 95 percent are held for review.\u201d  \n> \u201cDuplication above 15 percent would fail readqc instead of only being recorded.\u201d  \n> \u201cTumor purity below 0.20 produces a warning because reduced sensitivity may affect interpretation.\u201d  \n> \u201cThe proposed 45x tumor minimum is based on the VAL-SOM-2025 low-VAF results and is still under review.\u201d  \n> \u201cThe duplication rule needs an impact estimate from the bioinformatics team before approval.\u201d  \n> \u201cThe lab director asks for the expected increase in top-up sequencing before sign-off.\u201d\n\n[sop-qc-001-v4@4:L10-L22]"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {
+        "detail": "Response complete"
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Which versions of SOP-QC-001 can I see, and which one is effective?"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "I can see **versions 2, 3, and 4** of SOP-QC-001:\n\n- **Version 2** \u2014 superseded; effective from 2024-03-01 to 2025-11-02.\n- **Version 3** \u2014 **effective** from 2025-11-03.\n- **Version 4** \u2014 draft and not yet effective.\n\nVersion 3 is the current effective version. It applies to readqc, somatic-snv, and germline-panel executions at every site: \u201cIt applies to readqc, somatic-snv and germline-panel executions at every site.\u201d [sop-qc-001-v3@3:L4-L6]"
+    },
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "What would the draft version change? Quote it."
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Version 4 is a **draft**, not effective and not for routine work. It proposes these changes:\n\n> \u201cTumor libraries intended for somatic calling would require a mean coverage of at least 45x.\u201d  \n> \u201cLibraries with a mapping rate below 95 percent are held for review.\u201d  \n> \u201cDuplication above 15 percent would fail readqc instead of only being recorded.\u201d  \n> \u201cTumor purity below 0.20 produces a warning because reduced sensitivity may affect interpretation.\u201d  \n> \u201cThe proposed 45x tumor minimum is based on the VAL-SOM-2025 low-VAF results and is still under review.\u201d  \n> \u201cThe duplication rule needs an impact estimate from the bioinformatics team before approval.\u201d  \n> \u201cThe lab director asks for the expected increase in top-up sequencing before sign-off.\u201d\n\n[sop-qc-001-v4@4:L10-L22]"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "get_document",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-qc-001\"}",
+          "name": "get_document",
+          "result": {
+            "error": {
+              "code": "not_found",
+              "message": "Document not found"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "detail": "search_knowledge",
+      "status": "complete",
+      "title": "Agent step 2",
+      "tools": [
+        {
+          "arguments": "{\"query\":\"SOP-QC-001 versions effective status\",\"sources\":[\"qms\"],\"doc_types\":[\"sop\"],\"applies_to\":null,\"include_inactive\":true,\"limit\":8}",
+          "name": "search_knowledge",
+          "result": {
+            "counts": {
+              "qms": 17
+            },
+            "expanded_terms": [],
+            "matches": [
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v3",
+                "end_line": 7,
+                "score": 47.316,
+                "section": "1. Purpose | 2. Coverage",
+                "snippet": "Document: SOP-QC-001 | Version 3 | Status: effective | Effective: 2025-11-03\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines read quality review for libraries analyzed in the Zagent workbench.\nIt applies to readqc, somatic-snv and germline-panel executions at every site.\n## 2. Coverage",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Read Quality and Low Purity Review",
+                "version": "3"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v4",
+                "end_line": 7,
+                "score": 41.53,
+                "section": "1. Purpose",
+                "snippet": "Document: SOP-QC-001 | Version 4 | Status: draft | Effective: not yet effective\nOwner: quality lead | Approvers: qa-officer, lab-director\n> DRAFT for review under CHG-0024.\n> Not effective.\n> Do not use for routine work.\n## 1. Purpose",
+                "source": "qms",
+                "start_line": 2,
+                "status": "draft",
+                "title": "Read Quality and Low Purity Review",
+                "version": "4"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-qc-001-v2",
+                "end_line": 7,
+                "score": 37.576,
+                "section": "1. Purpose | 2. Coverage",
+                "snippet": "Document: SOP-QC-001 | Version 2 | Status: superseded | Effective: 2024-03-01\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines read quality review for libraries analyzed in the workbench.\n## 2. Coverage\nReadqc fails when a selected library's coverage is below the confirmed minimum coverage.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "superseded",
+                "title": "Read Quality and Low Purity Review",
+                "version": "2"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-germ-001-v2",
+                "end_line": 7,
+                "score": 34.419,
+                "section": "1. Purpose | 2. Requirements",
+                "snippet": "Document: SOP-GERM-001 | Version 2 | Status: effective | Effective: 2025-02-10\nOwner: bioinformatics lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure governs germline panel analysis and reporting for inherited cancer predisposition.\n## 2. Requirements\nGermline panels require PCR-free WGS libraries prepared under SOP-PREP-001.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Germline Panel Reporting",
+                "version": "2"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-dev-001-v1",
+                "end_line": 7,
+                "score": 32.926,
+                "section": "1. Purpose | 2. Reporting",
+                "snippet": "Document: SOP-DEV-001 | Version 1 | Status: effective | Effective: 2024-06-03\nOwner: quality lead | Approvers: lab-director\n## 1. Purpose\nThis procedure defines how deviations are reported, investigated and closed.\n## 2. Reporting\nReport a deviation within 1 business day of discovery on FRM-DEV-001.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Deviations and Corrective Actions",
+                "version": "1"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-prep-001-v4",
+                "end_line": 7,
+                "score": 31.116,
+                "section": "1. Purpose | 2. DNA Libraries",
+                "snippet": "Document: SOP-PREP-001 | Version 4 | Status: effective | Effective: 2025-04-07\nOwner: lab operations lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure defines library preparation for DNA and RNA specimens.\n## 2. DNA Libraries\nGermline panels and somatic calling use PCR-free WGS libraries.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Library Preparation",
+                "version": "4"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-ops-001-v1",
+                "end_line": 7,
+                "score": 30.733,
+                "section": "1. Purpose | 2. Job States",
+                "snippet": "Document: SOP-OPS-001 | Version 1 | Status: effective | Effective: 2025-10-06\nOwner: platform engineering lead | Approvers: qa-officer\n## 1. Purpose\nThis procedure covers monitoring of analysis jobs and response to pipeline incidents.\n## 2. Job States\nJobs move through pending, running, retrying, completed and failed states.",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Pipeline Operations and Incident Response",
+                "version": "1"
+              },
+              {
+                "doc_type": "sop",
+                "document": "sop-identity-001-v1",
+                "end_line": 7,
+                "score": 30.608,
+                "section": "1. Purpose | 2. Concordance Rule",
+                "snippet": "Document: SOP-IDENTITY-001 | Version 1 | Status: effective | Effective: 2025-01-20\nOwner: quality lead | Approvers: qa-officer, lab-director\n## 1. Purpose\nThis procedure covers genotype concordance checks between tumor and normal specimens.\nIt applies to synthetic somatic-snv execution in the Zagent workbench.\n## 2. Concordance Rule",
+                "source": "qms",
+                "start_line": 2,
+                "status": "effective",
+                "title": "Specimen Identity and Genotype Concordance",
+                "version": "1"
+              }
+            ],
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "get_document, get_document, get_document",
+      "status": "complete",
+      "title": "Agent step 3",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-qc-001-v2\"}",
+          "name": "get_document",
+          "result": {
+            "applies_to": [
+              "readqc",
+              "somatic-snv"
+            ],
+            "doc_type": "sop",
+            "document": "sop-qc-001-v2",
+            "effective_from": "2024-03-01",
+            "effective_to": "2025-11-02",
+            "labels": [],
+            "line_count": 19,
+            "outline": [
+              {
+                "end_line": 5,
+                "heading": "1. Purpose",
+                "path": "1",
+                "start_line": 4
+              },
+              {
+                "end_line": 10,
+                "heading": "2. Coverage",
+                "path": "2",
+                "start_line": 6
+              },
+              {
+                "end_line": 13,
+                "heading": "3. Tumor Purity",
+                "path": "3",
+                "start_line": 11
+              },
+              {
+                "end_line": 15,
+                "heading": "4. Records",
+                "path": "4",
+                "start_line": 14
+              },
+              {
+                "end_line": 19,
+                "heading": "5. Revision History",
+                "path": "5",
+                "start_line": 16
+              }
+            ],
+            "provenance": {
+              "owner_role": "quality lead"
+            },
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "status": "superseded",
+            "superseded_by": "sop-qc-001-v3",
+            "supersedes": null,
+            "title": "Read Quality and Low Purity Review",
+            "version": "2",
+            "versions": [
+              {
+                "document": "sop-qc-001-v2",
+                "effective_from": "2024-03-01",
+                "status": "superseded",
+                "version": "2"
+              },
+              {
+                "document": "sop-qc-001-v3",
+                "effective_from": "2025-11-03",
+                "status": "effective",
+                "version": "3"
+              },
+              {
+                "document": "sop-qc-001-v4",
+                "effective_from": null,
+                "status": "draft",
+                "version": "4"
+              }
+            ]
+          }
+        },
+        {
+          "arguments": "{\"document\":\"sop-qc-001-v3\"}",
+          "name": "get_document",
+          "result": {
+            "applies_to": [
+              "readqc",
+              "somatic-snv"
+            ],
+            "doc_type": "sop",
+            "document": "sop-qc-001-v3",
+            "effective_from": "2025-11-03",
+            "effective_to": null,
+            "labels": [],
+            "line_count": 35,
+            "outline": [
+              {
+                "end_line": 6,
+                "heading": "1. Purpose",
+                "path": "1",
+                "start_line": 4
+              },
+              {
+                "end_line": 15,
+                "heading": "2. Coverage",
+                "path": "2",
+                "start_line": 7
+              },
+              {
+                "end_line": 19,
+                "heading": "3. Sequencing Quality",
+                "path": "3",
+                "start_line": 16
+              },
+              {
+                "end_line": 23,
+                "heading": "4. Tumor Purity",
+                "path": "4",
+                "start_line": 20
+              },
+              {
+                "end_line": 28,
+                "heading": "5. Infrastructure",
+                "path": "5",
+                "start_line": 24
+              },
+              {
+                "end_line": 31,
+                "heading": "6. Records",
+                "path": "6",
+                "start_line": 29
+              },
+              {
+                "end_line": 35,
+                "heading": "7. Revision History",
+                "path": "7",
+                "start_line": 32
+              }
+            ],
+            "provenance": {
+              "owner_role": "quality lead"
+            },
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "status": "effective",
+            "superseded_by": null,
+            "supersedes": "sop-qc-001-v2",
+            "title": "Read Quality and Low Purity Review",
+            "version": "3",
+            "versions": [
+              {
+                "document": "sop-qc-001-v2",
+                "effective_from": "2024-03-01",
+                "status": "superseded",
+                "version": "2"
+              },
+              {
+                "document": "sop-qc-001-v3",
+                "effective_from": "2025-11-03",
+                "status": "effective",
+                "version": "3"
+              },
+              {
+                "document": "sop-qc-001-v4",
+                "effective_from": null,
+                "status": "draft",
+                "version": "4"
+              }
+            ]
+          }
+        },
+        {
+          "arguments": "{\"document\":\"sop-qc-001-v4\"}",
+          "name": "get_document",
+          "result": {
+            "applies_to": [
+              "readqc",
+              "somatic-snv"
+            ],
+            "doc_type": "sop",
+            "document": "sop-qc-001-v4",
+            "effective_from": null,
+            "effective_to": null,
+            "labels": [
+              "draft"
+            ],
+            "line_count": 22,
+            "outline": [
+              {
+                "end_line": 8,
+                "heading": "1. Purpose",
+                "path": "1",
+                "start_line": 7
+              },
+              {
+                "end_line": 13,
+                "heading": "2. Coverage",
+                "path": "2",
+                "start_line": 9
+              },
+              {
+                "end_line": 17,
+                "heading": "3. Sequencing Quality",
+                "path": "3",
+                "start_line": 14
+              },
+              {
+                "end_line": 19,
+                "heading": "4. Tumor Purity",
+                "path": "4",
+                "start_line": 18
+              },
+              {
+                "end_line": 22,
+                "heading": "5. Open Review Comments",
+                "path": "5",
+                "start_line": 20
+              }
+            ],
+            "provenance": {
+              "owner_role": "quality lead"
+            },
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "status": "draft",
+            "superseded_by": null,
+            "supersedes": null,
+            "title": "Read Quality and Low Purity Review",
+            "version": "4",
+            "versions": [
+              {
+                "document": "sop-qc-001-v2",
+                "effective_from": "2024-03-01",
+                "status": "superseded",
+                "version": "2"
+              },
+              {
+                "document": "sop-qc-001-v3",
+                "effective_from": "2025-11-03",
+                "status": "effective",
+                "version": "3"
+              },
+              {
+                "document": "sop-qc-001-v4",
+                "effective_from": null,
+                "status": "draft",
+                "version": "4"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "detail": "read_document",
+      "status": "complete",
+      "title": "Agent step 4",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-qc-001-v3\",\"section\":\"1\",\"start_line\":null,\"end_line\":null}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-qc-001-v3",
+            "end_line": 6,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 4,
+            "status": "effective",
+            "text": "L4: ## 1. Purpose\nL5: This procedure defines read quality review for libraries analyzed in the Zagent workbench.\nL6: It applies to readqc, somatic-snv and germline-panel executions at every site.",
+            "title": "Read Quality and Low Purity Review",
+            "truncated": false,
+            "version": "3"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 5"
+    },
+    {
+      "detail": "read_document",
+      "status": "complete",
+      "title": "Agent step 1",
+      "tools": [
+        {
+          "arguments": "{\"document\":\"sop-qc-001-v4\",\"section\":null,\"start_line\":1,\"end_line\":22}",
+          "name": "read_document",
+          "result": {
+            "doc_type": "sop",
+            "document": "sop-qc-001-v4",
+            "end_line": 22,
+            "snapshot": "30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a",
+            "source": "qms",
+            "start_line": 1,
+            "status": "draft",
+            "text": "L1: # SOP-QC-001 v4: Read Quality and Low Purity Review\nL2: Document: SOP-QC-001 | Version 4 | Status: draft | Effective: not yet effective\nL3: Owner: quality lead | Approvers: qa-officer, lab-director\nL4: > DRAFT for review under CHG-0024.\nL5: > Not effective.\nL6: > Do not use for routine work.\nL7: ## 1. Purpose\nL8: This procedure defines read quality review for libraries analyzed in the Zagent workbench.\nL9: ## 2. Coverage\nL10: Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nL11: Normal and germline libraries require a mean coverage of at least 30x.\nL12: Tumor libraries intended for somatic calling would require a mean coverage of at least 45x.\nL13: The proposed 45x tumor minimum is based on the VAL-SOM-2025 low-VAF results and is still under review.\nL14: ## 3. Sequencing Quality\nL15: Libraries with a mapping rate below 95 percent are held for review.\nL16: Duplication above 15 percent would fail readqc instead of only being recorded.\nL17: The duplication rule needs an impact estimate from the bioinformatics team before approval.\nL18: ## 4. Tumor Purity\nL19: Tumor purity below 0.20 produces a warning because reduced sensitivity may affect interpretation.\nL20: ## 5. Open Review Comments\nL21: QA asks whether the 45x minimum should apply to RNA-only cases; it should not.\nL22: The lab director asks for the expected increase in top-up sequencing before sign-off.",
+            "title": "Read Quality and Low Purity Review",
+            "truncated": false,
+            "version": "4"
+          }
+        }
+      ]
+    },
+    {
+      "detail": "Response complete",
+      "status": "complete",
+      "title": "Agent step 2"
+    }
+  ],
+  "views": []
+}

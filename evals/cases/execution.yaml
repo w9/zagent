@@ -5,7 +5,7 @@ cases:
     conversation_turns:
       - user: Prepare a somatic-snv draft for all specimens from NGC-0041872 received in the last week. Use default parameters and do not submit.
     execution:
-      kb_version: 693ea2d31132a7fd07d85209a5824f2ccd579706f617399a3d46b390636f6640
+      kb_version: 30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a
       confirm_rerun: true
       followups:
         - user: Inspect job-0001 and explain its failure using the relevant SOP. Quote the supporting sentence with its exact line-range citation, then prepare a corrected rerun draft using verified specimen identity and the same parameters. Do not submit it.
@@ -14,7 +14,7 @@ cases:
       job_outcomes:
         - {status: failed, code: genotype_concordance_failed}
         - {status: completed, code: completed}
-      sop_citations: true
+      citations: {documents: [sop-identity-001-v1]}
       job_narration: true
       view_references: true
       tools_called: [get_job, search_knowledge, read_document, find_specimens, update_draft]
@@ -27,7 +27,7 @@ cases:
     conversation_turns:
       - user: Prepare a readqc draft for all specimens from NGC-0041878 received in the last week. Use default parameters and do not submit.
     execution:
-      kb_version: 693ea2d31132a7fd07d85209a5824f2ccd579706f617399a3d46b390636f6640
+      kb_version: 30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a
       followups:
         - user: Read the complete log range for job-0001 and report its actual outcome. Do not create, edit, or submit any draft.
     expect:
@@ -45,7 +45,7 @@ cases:
     conversation_turns:
       - user: Prepare a readqc draft for all specimens from NGC-0041873 received in the last week. Keep default parameters and do not submit.
     execution:
-      kb_version: 693ea2d31132a7fd07d85209a5824f2ccd579706f617399a3d46b390636f6640
+      kb_version: 30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a
       interrupt: text_delta
       followups:
         - user: Show a live job grid for this session and inspect job-0001. Report its outcome without changing any drafts.
@@ -67,7 +67,7 @@ cases:
     conversation_turns:
       - user: Prepare a readqc draft for all specimens from NGC-0041874 received in the last week. Keep minimum coverage 30 and do not submit.
     execution:
-      kb_version: 693ea2d31132a7fd07d85209a5824f2ccd579706f617399a3d46b390636f6640
+      kb_version: 30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a
       interrupt: tool_result
       followups:
         - user: Inspect job-0001, report its actual outcome and explain the recorded coverage failure. Do not change any drafts.

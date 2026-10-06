@@ -1,0 +1,45 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Prepare somatic-snv for specimens from [PT_1] received in the past week. I will give you my preferred parameters after I see the draft.",
+        "role": "user"
+      },
+      {
+        "content": "The somatic-SNV draft is ready for your preferred parameter changes: [Somatic variant calling](view:view-0001). It includes the three specimens received in the past week and currently has defaults of min VAF 0.05 and min depth 20. Send the values you prefer and I\u2019ll update this draft; it has not been submitted.",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "f3c7ca916d471072eea3823ce3db3698c3a1fe4a0af16cfd5fc4a40ed6a67cc2",
+  "samples": {
+    "0": {
+      "finish_reason": "stop",
+      "message": {
+        "content": "Draft somatic-SNV analysis for recent specimens",
+        "role": "assistant",
+        "tool_calls": []
+      },
+      "usage": {
+        "completion_tokens": 13,
+        "cost": 2.35e-05,
+        "prompt_tokens": 170,
+        "reasoning_tokens": 0,
+        "total_tokens": 183
+      }
+    }
+  },
+  "version": 2
+}

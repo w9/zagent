@@ -2,69 +2,60 @@ import ast
 import json
 from pathlib import Path
 
-import pytest
+from knowledge_fixtures import *  # noqa: F403
 from mcp.shared.memory import create_connected_server_and_client_session
-from zknowledge.server import SNAPSHOT_META, create_server
-from zknowledge.snapshot import SnapshotStore, build_snapshot, corpus_root
+from zknowledge.server import CALLER_META, SNAPSHOT_META, create_server
 
 PACKAGE = Path(__file__).parents[1]
-
-
-@pytest.fixture
-def published(tmp_path):
-    return SnapshotStore(tmp_path), build_snapshot(corpus_root() / "legacy", tmp_path)
+ANALYST = {CALLER_META: {"site": "northgate", "roles": ["analyst"]}}
+QA = {CALLER_META: {"site": "northgate", "roles": ["qa-officer"]}}
 
 
 async def call(server, name, arguments, meta=None):
     async with create_connected_server_and_client_session(server) as client:
         result = await client.call_tool(name, arguments, meta=meta)
-    assert not result.isError
+    assert not result.isError, result.content
     return result.structuredContent
 
 
-async def test_tools_serve_the_current_or_requested_snapshot(published, tmp_path):
-    store, version = published
+async def test_tools_apply_caller_context_from_request_metadata(published_index):
+    store, identifier, _warnings = published_index
     server = create_server(store)
-    found = await call(server, "search_knowledge", {"query": "genotype concordance"})
-    assert found["version"] == version and found["matches"]
-    match = found["matches"][0]
-    excerpt = await call(
+    found = await call(
         server,
-        "read_document",
-        {**{key: match[key] for key in ("document", "start_line", "end_line")}, "version": version},
+        "search_knowledge",
+        {"query": "tumor minimum coverage", "sources": ["qms"], "applies_to": "readqc"},
+        ANALYST,
     )
-    assert excerpt["text"] == match["text"]
-    changed = tmp_path / "changed"
-    changed.mkdir()
-    (changed / "read-quality.md").write_text("Coverage below 40x fails.\n")
-    newer = build_snapshot(changed, store.directory)
-    assert (await call(server, "search_knowledge", {"query": "coverage"}))["version"] == newer
-    pinned = await call(server, "search_knowledge", {"query": "coverage"}, {SNAPSHOT_META: version})
-    assert pinned["version"] == version
-
-
-async def test_tool_errors_are_structured(published):
-    store, version = published
-    server = create_server(store)
-    missing = await call(
-        server, "search_knowledge", {"query": "coverage"}, {SNAPSHOT_META: "b" * 64}
+    assert found["snapshot"] == identifier
+    assert found["matches"][0]["document"] == "sop-qc-001-v3"
+    assert all(match["source"] == "qms" for match in found["matches"])
+    draft = {"document": "sop-qc-001-v4"}
+    assert (await call(server, "get_document", draft, ANALYST))["error"]["code"] == "not_found"
+    assert (await call(server, "get_document", draft, QA))["status"] == "draft"
+    anonymous = await call(server, "get_document", draft)
+    assert anonymous == await call(server, "get_document", {"document": "no-such-document"})
+    section = await call(
+        server, "read_document", {"document": "sop-qc-001-v3", "section": "2"}, ANALYST
     )
-    assert missing["error"]["code"] == "unavailable"
-    mismatch = await call(
+    assert "at least 40x" in section["text"]
+    term = await call(server, "lookup_term", {"term": "VAF"}, ANALYST)
+    assert term["term"] == "Variant allele frequency"
+    rows = await call(
         server,
-        "read_document",
-        {"document": "read-quality", "start_line": 1, "end_line": 2, "version": "c" * 64},
+        "query_reference",
+        {"table": "fusion_targets", "filters": {"five_prime": "EWSR1"}},
+        ANALYST,
     )
-    assert mismatch == {
-        "error": {
-            "code": "invalid_arguments",
-            "message": "Knowledge version mismatch; search the current index again",
-        }
-    }
+    assert rows["total"] == 3
+    pinned = await call(
+        server, "search_knowledge", {"query": "coverage"}, {**ANALYST, SNAPSHOT_META: "f" * 64}
+    )
+    assert pinned["error"]["code"] == "unavailable"
 
 
-async def test_published_contract_matches_the_served_tools(published):
-    store, _version = published
+async def test_published_contract_matches_the_served_tools(published_index):
+    store, _identifier, _warnings = published_index
     async with create_connected_server_and_client_session(create_server(store)) as client:
         tools = (await client.list_tools()).tools
     served = [
@@ -72,6 +63,10 @@ async def test_published_contract_matches_the_served_tools(published):
         for tool in sorted(tools, key=lambda tool: tool.name)
     ]
     assert served == json.loads((PACKAGE / "contract.json").read_text())
+    assert all(
+        "site" not in json.dumps(tool.inputSchema) and "roles" not in json.dumps(tool.inputSchema)
+        for tool in tools
+    )
     assert all(
         tool.annotations.readOnlyHint and not tool.annotations.openWorldHint for tool in tools
     )

@@ -1,0 +1,43 @@
+{
+  "request": {
+    "max_tokens": 80,
+    "messages": [
+      {
+        "content": "Write a short plain-text topic title for this genomics workbench conversation.\nReturn only the title, at most 60 characters. Describe the activity, not patient identities.\nDo not include identifiers, privacy tokens, query handles, quotes, or Markdown.",
+        "role": "system"
+      },
+      {
+        "content": "Which versions of SOP-QC-001 can I see, and which one is effective?",
+        "role": "user"
+      },
+      {
+        "content": "I can see **versions 2, 3, and 4** of SOP-QC-001:\n\n- **Version 2** \u2014 superseded; effective from 2024-03-01 to 2025-11-02.\n- **Version 3** \u2014 **effective** from 2025-11-03.\n- **Version 4** \u2014 draft and not yet effective.\n\nVersion 3 is the current effective version. It applies to readqc, somatic-snv, and germline-panel executions at every site: \u201cIt applies to readqc, somatic-snv and germline-panel executions at every site.\u201d [sop-qc-001-v3@3:L4-L6]",
+        "role": "assistant"
+      }
+    ],
+    "model": "openai/gpt-6-luna",
+    "prompt_hash": "4d399697f72ee43428741b6d695b01ad30fd7cad735b8f4ef799d6a603929bee",
+    "provider": "openrouter",
+    "reasoning": "disabled",
+    "route": "default",
+    "temperature": 0.0,
+    "tools": []
+  },
+  "request_hash": "c85d623fe44a5fa8b0f3df536113ff47eaedaeab571a57b81a440a1d4e9cc774",
+  "response": {
+    "finish_reason": "stop",
+    "message": {
+      "content": "SOP-QC-001 versions 2, 3, and 4 are available. Version 3 is currently effective; version 2 is superseded, and version 4 is a draft.",
+      "role": "assistant",
+      "tool_calls": []
+    },
+    "usage": {
+      "completion_tokens": 45,
+      "cost": 4.56e-05,
+      "prompt_tokens": 231,
+      "reasoning_tokens": 0,
+      "total_tokens": 276
+    }
+  },
+  "version": 1
+}

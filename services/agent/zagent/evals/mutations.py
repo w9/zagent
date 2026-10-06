@@ -2,12 +2,14 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
 import time
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
@@ -27,7 +29,19 @@ EXPECTED = {
     "validator_off": ["REQ-VALID-01"],
     "acl_off": ["REQ-ACL-01"],
     "trust_unsigned_context": ["REQ-ACL-02"],
+    "broker_tokenize_off": ["REQ-KB-02"],
+    "ignore_snapshot_pin": ["REQ-KB-03"],
+    "skip_contract_pin": ["REQ-KB-04"],
+    "kb_direct_route": ["REQ-KB-01"],
 }
+ZONE_MUTATIONS = ("zones_off", "kb_direct_route")
+KNOWLEDGE_MUTATIONS = (
+    "acl_off",
+    "trust_unsigned_context",
+    "broker_tokenize_off",
+    "ignore_snapshot_pin",
+    "skip_contract_pin",
+)
 
 
 @asynccontextmanager
@@ -250,50 +264,88 @@ async def probe(name: str, root: Path) -> dict:
             )
             controls["human_confirm_works"] = response.status_code == 200
             await store.finish_conversation_turn(valid_turn.id, valid_turn.conversation_turn_id)
-        elif name in {"acl_off", "trust_unsigned_context"}:
+        elif name in KNOWLEDGE_MUTATIONS:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-            from zknowledge.index import IndexStore, build_index
-            from zknowledge.server_v2 import create_server_v2
+            from mcp.server.fastmcp import FastMCP
+            from zknowledge.index import build_index
             from zknowledge.snapshot import corpus_root
 
             from zagent.broker import KnowledgeBroker
-            from zagent.identity import CallerRejected, CallerSigner
+            from zagent.evals.local_knowledge import local_broker
+            from zagent.identity import CallerSigner
 
-            session, turn_id = await store.create_session(), uuid4()
-            with TemporaryDirectory(prefix="zagent-acl-") as directory:
-                await asyncio.to_thread(build_index, corpus_root(), Path(directory))
-                upstream = McpToolClient(server=create_server_v2(IndexStore(Path(directory))))
-                broker = KnowledgeBroker(upstream, store.privacy)
+            session, signer = await store.create_session(), CallerSigner.configured()
 
-                async def reads_draft(signer: CallerSigner, persona: str) -> bool:
-                    token = signer.mint(
-                        session_id=session.id, turn_id=turn_id, site="northgate", persona=persona
-                    )
-                    try:
-                        caller = broker.verifier.verify(
-                            token, session_id=session.id, turn_id=turn_id
-                        )
-                    except CallerRejected:
-                        return False
-                    result = await upstream.invoke(
-                        "get_document",
-                        {"document": "sop-qc-001-v4"},
-                        meta=broker.upstream_meta(caller),
-                    )
-                    return "error" not in result
+            async def ask(broker, tool, arguments, persona="analyst", key=signer, snapshot=None):
+                turn_id = uuid4()
+                token = key.mint(
+                    session_id=session.id, turn_id=turn_id, site="northgate", persona=persona
+                )
+                return await broker.dispatch(session.id, turn_id, tool, arguments, token, snapshot)
 
-                signer = CallerSigner.configured()
-                controls["qa_officer_reads_draft"] = await reads_draft(signer, "qa-officer")
+            broker = local_broker(store.privacy)
+            draft = {"document": "sop-qc-001-v4"}
+            if name in {"acl_off", "trust_unsigned_context"}:
+                result = await ask(broker, "get_document", draft, "qa-officer")
+                controls["qa_officer_reads_draft"] = "error" not in result
                 if name == "acl_off":
-                    leaked = await reads_draft(signer, "analyst")
+                    leaked = "error" not in await ask(broker, "get_document", draft)
                     outcomes["REQ-ACL-01"] = not leaked
                     observed["analyst_reads_restricted_draft"] = leaked
                 else:
-                    forged = await reads_draft(
-                        CallerSigner(Ed25519PrivateKey.generate()), "qa-officer"
+                    forged = CallerSigner(Ed25519PrivateKey.generate())
+                    accepted = "error" not in await ask(
+                        broker, "get_document", draft, "qa-officer", forged
                     )
-                    outcomes["REQ-ACL-02"] = not forged
-                    observed["forged_context_accepted"] = forged
+                    outcomes["REQ-ACL-02"] = not accepted
+                    observed["forged_context_accepted"] = accepted
+            elif name == "broker_tokenize_off":
+                result = await ask(
+                    broker,
+                    "read_document",
+                    {"document": "inc-0142", "start_line": 1, "end_line": 16},
+                )
+                controls["incident_read"] = "error" not in result
+                raw = "NGC-0041872" in json.dumps(result)
+                outcomes["REQ-KB-02"] = not raw
+                observed["raw_identifier_left_the_broker"] = raw
+            elif name == "ignore_snapshot_pin":
+                with TemporaryDirectory(prefix="zagent-snapshots-") as directory:
+                    snapshots, corpus = Path(directory) / "snapshots", Path(directory) / "corpus"
+                    pinned, _ = await asyncio.to_thread(build_index, corpus_root(), snapshots)
+                    shutil.copytree(corpus_root(), corpus)
+                    page = corpus / "wiki/pages/40218.xhtml"
+                    page.write_text(page.read_text() + "\n<p>Republished for review.</p>\n")
+                    newer, _ = await asyncio.to_thread(build_index, corpus, snapshots)
+                    broker = local_broker(store.privacy, snapshots)
+                    query = {"query": "tumor coverage minimum"}
+                    current = await ask(broker, "search_knowledge", query)
+                    controls["newer_snapshot_is_current"] = current.get("snapshot") == newer
+                    held = await ask(broker, "search_knowledge", query, snapshot=pinned)
+                    outcomes["REQ-KB-03"] = held.get("snapshot") == pinned
+                    observed["served_snapshot"] = held.get("snapshot")
+            else:
+                changed = FastMCP("changed-knowledge")
+
+                @changed.tool(name="search_knowledge")
+                def search_knowledge(
+                    query: str,
+                    include_inactive: bool = False,
+                    limit: int = 5,
+                    every_site: bool = False,
+                ) -> dict[str, Any]:
+                    return {"snapshot": "a" * 64, "expanded_terms": [], "matches": [], "counts": {}}
+
+                result = await ask(broker, "search_knowledge", {"query": "tumor coverage minimum"})
+                controls["published_contract_accepted"] = "error" not in result
+                result = await ask(
+                    KnowledgeBroker(McpToolClient(server=changed), store.privacy),
+                    "search_knowledge",
+                    {"query": "tumor coverage minimum"},
+                )
+                refused = result.get("error", {}).get("code") == "unavailable"
+                outcomes["REQ-KB-04"] = refused
+                observed["changed_contract_served"] = not refused
         else:
             raise ValueError("The zones mutation requires the running Compose stack probe")
         controls["http_health_after"] = (await client.get("/health")).status_code == 200
@@ -400,11 +452,12 @@ async def evaluate_mutations(database_url: str, root: Path, selection="all") -> 
     started = time.monotonic()
     results = []
     for name in selected:
-        if name == "zones_off":
+        if name in ZONE_MUTATIONS:
             process = await asyncio.create_subprocess_exec(
                 sys.executable,
                 str(root.parent / "deploy/compose/zones.py"),
                 "mutation",
+                name,
                 cwd=root.parent,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

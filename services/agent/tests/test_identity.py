@@ -27,6 +27,7 @@ from zagent.tools import McpToolClient
 SIGNER = CallerSigner.configured()
 VERIFIER = CallerVerifier.configured()
 SESSION, TURN = uuid4(), uuid4()
+EMPTY_SEARCH = {"snapshot": "a" * 64, "expanded_terms": [], "matches": [], "counts": {}}
 
 
 class PassThrough:
@@ -122,10 +123,12 @@ def recording_upstream(seen: list[dict]) -> FastMCP:
     server = FastMCP("recording-knowledge")
 
     @server.tool(name="search_knowledge")
-    def search_knowledge(query: str, ctx: Context) -> dict[str, Any]:
+    def search_knowledge(
+        query: str, ctx: Context, include_inactive: bool = False, limit: int = 5
+    ) -> dict[str, Any]:
         meta = ctx.request_context.meta
         seen.append((meta.model_extra or {}) if meta else {})
-        return {"version": "a" * 64, "matches": []}
+        return EMPTY_SEARCH
 
     return server
 
@@ -139,7 +142,7 @@ async def test_the_broker_forwards_only_the_verified_caller_never_model_input():
     result = await broker.dispatch(
         SESSION, TURN, "search_knowledge", {"query": "coverage"}, mint("qa-officer")
     )
-    assert result == {"version": "a" * 64, "matches": []}
+    assert result == EMPTY_SEARCH
     assert seen == [{CALLER_META: {"site": "northgate", "roles": ["qa-officer"]}}]
     widening = await broker.dispatch(
         SESSION,
@@ -188,26 +191,14 @@ async def test_the_runtime_sends_the_context_only_with_knowledge_calls():
     assert "caller_context" not in repr(session)
 
 
-@pytest.fixture(scope="module")
-def knowledge_v2(tmp_path_factory):
-    from zknowledge.index import IndexStore, build_index
-    from zknowledge.snapshot import corpus_root
+async def test_restricted_knowledge_follows_the_verified_persona():
+    from zagent.evals.local_knowledge import local_broker
 
-    directory = tmp_path_factory.mktemp("knowledge-v2")
-    build_index(corpus_root(), directory)
-    return IndexStore(directory)
-
-
-async def test_restricted_knowledge_follows_the_verified_persona(knowledge_v2):
-    from zknowledge.server_v2 import create_server_v2
-
-    upstream = McpToolClient(server=create_server_v2(knowledge_v2))
-    broker = KnowledgeBroker(upstream, PassThrough())
+    broker = local_broker(PassThrough())
 
     async def get_document(persona: str, document: str) -> dict:
-        caller = broker.verifier.verify(mint(persona), session_id=SESSION, turn_id=TURN)
-        return await upstream.invoke(
-            "get_document", {"document": document}, meta=broker.upstream_meta(caller)
+        return await broker.dispatch(
+            SESSION, TURN, "get_document", {"document": document}, mint(persona)
         )
 
     hidden = await get_document("analyst", "sop-qc-001-v4")

@@ -68,6 +68,30 @@ cases:
       events_include: [refused, conversation_turn_finished]
       events_exclude: [text_delta, tool_call, view_pushed, conversation_turn_failed]
 
+  - id: REFUSE-007
+    requirement: REQ-SCOPE-03
+    agent: llm:default
+    conversation_turns:
+      - user: "Who invented PCR?"
+    expect:
+      golden: goldens/REFUSE-007.json
+      refusal: {code: out_of_domain}
+      events_include: [refused, conversation_turn_finished]
+      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
+      view_stack_depth: 0
+
+  - id: REFUSE-008
+    requirement: REQ-SCOPE-03
+    agent: llm:default
+    conversation_turns:
+      - user: "What does the relocation guide say about moving expenses?"
+    expect:
+      golden: goldens/REFUSE-008.json
+      refusal: {code: out_of_domain}
+      events_include: [refused, conversation_turn_finished]
+      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
+      view_stack_depth: 0
+
   - id: ALLOW-001
     requirement: REQ-SCOPE-03
     agent: llm:default

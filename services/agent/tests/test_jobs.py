@@ -183,19 +183,15 @@ async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
         session.id,
         turn.conversation_turn_id,
         "search_knowledge",
-        {"query": "genotype concordance"},
+        {"query": "genotype concordance failure verified identity", "doc_types": ["sop"]},
         context,
     )
+    assert found["matches"][0]["document"] == "sop-identity-001-v1"
     excerpt = await knowledge.dispatch(
         session.id,
         turn.conversation_turn_id,
         "read_document",
-        {
-            "document": "specimen-identity",
-            "start_line": 12,
-            "end_line": 18,
-            "version": found["version"],
-        },
+        {"document": "sop-identity-001-v1", "start_line": 12, "end_line": 23},
         context,
     )
     assert 'identity="verified"' in excerpt["text"]

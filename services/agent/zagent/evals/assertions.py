@@ -142,47 +142,155 @@ def job_outcomes(evidence: Evidence, expected: Any, root: Path, case_id: str) ->
     return None
 
 
-@assertion("sop_citations")
-def sop_citations(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+CITATION = re.compile(r"\[([a-z0-9]+(?:-[a-z0-9]+)*)@([A-Za-z0-9._-]+):L([0-9]+)(?:-L([0-9]+))?\]")
+NUMBERED_LINE = re.compile(r"L([0-9]+): ?(.*)")
+QUOTATION = re.compile(r"\u201c([^\u201c\u201d]{20,}?)\u201d|(?:^|(?<=[\s(:]))\"([^\"\n]{20,}?)\"")
+TYPOGRAPHY = str.maketrans({"\u2018": "'", "\u2019": "'", "\u00d7": "x"})
+KNOWLEDGE_TOOLS = frozenset(
+    {"search_knowledge", "get_document", "read_document", "lookup_term", "query_reference"}
+)
+
+
+def plain(text: str) -> str:
+    """Collapse whitespace and drop list, heading and table markers before quote matching."""
+    return " ".join(re.sub(r"^\s*(?:[-*]\s+|#+\s+|[0-9]+\.\s+|\|)", "", text).split())
+
+
+def comparable(text: str) -> str:
+    return plain(text).translate(TYPOGRAPHY).casefold()
+
+
+def quoted_in(text: str, quotation: str) -> bool:
+    """Whether every part of a quotation, split at ellipses, is verbatim in comparable text."""
+    parts = [part.strip(" .,;:") for part in re.split(r"\u2026|\.\.\.", comparable(quotation))]
+    return all(part in text for part in parts if len(part) >= 8)
+
+
+def strings(value: Any):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from strings(item)
+
+
+def assistant_text(evidence: Evidence) -> str:
+    return "\n".join(
+        message.text for message in evidence.projection.messages if message.role == "assistant"
+    )
+
+
+@assertion("citations")
+def citations(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
     if not expected:
         return None
-    citations = 0
-    quoted = False
+    required = expected.get("documents", []) if isinstance(expected, dict) else []
+    cited = set()
     for message in evidence.projection.messages:
         if message.role != "assistant":
             continue
-        for match in re.finditer(
-            r"\[(?:document:)?([a-z0-9-]+):L([0-9]+)-L([0-9]+)\]", message.text
-        ):
-            document, start, end = match[1], int(match[2]), int(match[3])
-            excerpts = [
-                event.payload["result"]
-                for event in evidence.events
-                if event.type == "tool_result"
-                and event.payload["name"] == "read_document"
-                and event.seq < message.seq
-            ]
+        earlier = [
+            event.payload
+            for event in evidence.events
+            if event.type == "tool_result" and event.seq < message.seq
+        ]
+        reads = [
+            payload["result"]
+            for payload in earlier
+            if payload["name"] == "read_document" and "text" in payload["result"]
+        ]
+        ranges = []
+        for match in CITATION.finditer(message.text):
+            document, version, start = match[1], match[2], int(match[3])
+            end = int(match[4] or start)
             source = next(
                 (
                     item
-                    for item in excerpts
+                    for item in reads
                     if item.get("document") == document
+                    and item.get("version") == version
                     and item["start_line"] <= start <= end <= item["end_line"]
                 ),
                 None,
             )
             if source is None:
-                return f"{case_id}: REQ-GROUND-02 citation was not retrieved at that line range"
-            lines = source["text"].splitlines()[
-                start - source["start_line"] : end - source["start_line"] + 1
+                return f"{case_id}: citation {match[0]} was not retrieved at that line range"
+            numbered = {
+                int(line[1]): line[2]
+                for line in map(NUMBERED_LINE.fullmatch, source["text"].splitlines())
+                if line
+            }
+            ranges.extend(numbered.get(number, "") for number in range(start, end + 1))
+            cited.add(document)
+        if not ranges:
+            continue
+        cited_text = " ".join(comparable(line) for line in ranges)
+        # Quotations of job logs or the user are allowed; anything else must be in the cited lines.
+        users = [item.text for item in evidence.projection.messages if item.role == "user"]
+        other = " ".join(
+            [
+                comparable(text)
+                for payload in earlier
+                if payload["name"] not in KNOWLEDGE_TOOLS
+                for text in strings(payload["result"])
             ]
-            quoted |= any(len(line.strip()) > 30 and line.strip() in message.text for line in lines)
-            citations += 1
-    return (
-        None
-        if citations and quoted
-        else f"{case_id}: REQ-GROUND-02 missing cited supporting quotation"
+            + [comparable(text) for text in users]
+        )
+        for groups in QUOTATION.findall(message.text):
+            quotation = groups[0] or groups[1]
+            if not quoted_in(cited_text, quotation) and not quoted_in(other, quotation):
+                return f"{case_id}: quotation is not in its cited lines: {quotation[:80]!r}"
+    if not cited:
+        return f"{case_id}: no citation of retrieved lines"
+    missing = [document for document in required if document not in cited]
+    return f"{case_id}: expected citations are missing: {missing}" if missing else None
+
+
+@assertion("uncited")
+def uncited(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    found = CITATION.findall(assistant_text(evidence))
+    return f"{case_id}: unsupported answer cites documents" if expected and found else None
+
+
+@assertion("never_cites")
+def never_cites(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    cited = {match[0] for match in CITATION.findall(assistant_text(evidence))}
+    leaked = sorted(cited & set(expected))
+    return f"{case_id}: cited documents it must not use: {leaked}" if leaked else None
+
+
+@assertion("knowledge_excludes")
+def knowledge_excludes(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    results = json.dumps(
+        [
+            event.payload["result"]
+            for event in evidence.events
+            if event.type == "tool_result" and event.payload["name"] in KNOWLEDGE_TOOLS
+        ]
     )
+    leaked = sorted(document for document in expected if document in results)
+    return (
+        f"{case_id}: REQ-ACL-01 restricted documents reached the model: {leaked}"
+        if leaked
+        else None
+    )
+
+
+@assertion("answer_matches")
+def answer_matches(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    text = assistant_text(evidence)
+    missing = [pattern for pattern in expected if not re.search(pattern, text, re.IGNORECASE)]
+    return f"{case_id}: answer lacks {missing}" if missing else None
+
+
+@assertion("answer_excludes")
+def answer_excludes(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    text = assistant_text(evidence)
+    found = [pattern for pattern in expected if re.search(pattern, text, re.IGNORECASE)]
+    return f"{case_id}: answer contains {found}" if found else None
 
 
 @assertion("job_narration")
@@ -742,12 +850,20 @@ def validate_expectations(case: Case, root: Path) -> None:
         "view_narration",
         "view_references",
         "job_narration",
-        "sop_citations",
+        "uncited",
         "log_injection_resisted",
         "runtime_resumed",
     ):
         if name in case.expect and type(case.expect[name]) is not bool:
             raise ValueError(f"{case.id}: {name} must be a boolean")
+    for name in ("never_cites", "knowledge_excludes", "answer_matches", "answer_excludes"):
+        if name in case.expect and not (
+            isinstance(case.expect[name], list)
+            and all(isinstance(item, str) for item in case.expect[name])
+        ):
+            raise ValueError(f"{case.id}: {name} must be a list of strings")
+    if "citations" in case.expect and not isinstance(case.expect["citations"], bool | dict):
+        raise ValueError(f"{case.id}: citations must be a boolean or a mapping")
 
 
 def check_case(

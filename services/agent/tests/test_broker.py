@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Annotated, Any
 from uuid import uuid4
@@ -15,6 +16,7 @@ from zagent.store import AgentSession
 from zagent.tools import McpToolClient
 
 ROOT = Path(__file__).parents[3]
+EMPTY_SEARCH = {"snapshot": "a" * 64, "expanded_terms": [], "matches": [], "counts": {}}
 
 
 class RecordingTokenizer:
@@ -87,19 +89,55 @@ async def test_runtime_reads_knowledge_through_the_broker_with_external_tokeniza
     client = McpToolClient(server=create_broker_server(local_broker(tokenizer)))
     session = agent_session()
     found = await client.call(session, "search_knowledge", {"query": "genotype concordance"})
-    assert found["version"] == current_snapshot() and found["matches"]
+    assert found["snapshot"] == current_snapshot() and found["matches"]
     match = found["matches"][0]
     location = {key: match[key] for key in ("document", "start_line", "end_line")}
-    excerpt = await client.call(session, "read_document", {**location, "version": found["version"]})
-    assert excerpt["text"] == match["text"]
-    stale = await client.call(session, "read_document", {**location, "version": "a" * 64})
-    assert stale == {
-        "error": {
-            "code": "invalid_arguments",
-            "message": "Knowledge version mismatch; search the current index again",
-        }
-    }
-    assert tokenizer.calls == [("retrieved_document", True)] * 3
+    excerpt = await client.call(session, "read_document", location)
+    assert excerpt["version"] == match["version"]
+    assert match["snippet"].splitlines()[0] in excerpt["text"]
+    outline = await client.call(session, "get_document", {"document": match["document"]})
+    assert outline["line_count"] >= excerpt["end_line"]
+    term = await client.call(session, "lookup_term", {"term": "VAF"})
+    assert term["term"] == "Variant allele frequency"
+    rows = await client.call(
+        session, "query_reference", {"table": "gene_panels", "filters": {"gene": "TP53"}}
+    )
+    assert rows["rows"] and all(row["gene"] == "TP53" for row in rows["rows"])
+    missing = await client.call(session, "get_document", {"document": "sop-qc-001-v4"})
+    assert missing["error"]["code"] == "not_found"
+    assert tokenizer.calls == [("retrieved_document", True)] * 6
+
+
+async def test_the_turn_pin_selects_the_snapshot_and_never_comes_from_model_input(tmp_path):
+    from zknowledge.index import build_index
+    from zknowledge.snapshot import corpus_root
+
+    pinned, _ = build_index(corpus_root(), tmp_path / "snapshots")
+    shutil.copytree(corpus_root(), tmp_path / "corpus")
+    page = tmp_path / "corpus/wiki/pages/40218.xhtml"
+    page.write_text(page.read_text() + "\n<p>Republished for review.</p>\n")
+    newer, _ = build_index(tmp_path / "corpus", tmp_path / "snapshots")
+    broker = local_broker(RecordingTokenizer(), tmp_path / "snapshots")
+    session = agent_session()
+    query = {"query": "tumor coverage minimum"}
+
+    async def search(snapshot=None):
+        return await broker.dispatch(
+            session.id,
+            session.conversation_turn_id,
+            "search_knowledge",
+            query,
+            session.caller_context,
+            snapshot,
+        )
+
+    assert (await search())["snapshot"] == newer
+    assert (await search(pinned))["snapshot"] == pinned
+    assert (await search("not-a-snapshot"))["snapshot"] == newer
+    unknown = await search("f" * 64)
+    assert unknown["error"]["code"] == "unavailable"
+    smuggled = await dispatch(broker, "search_knowledge", {**query, "snapshot": pinned})
+    assert smuggled["error"]["code"] == "invalid_arguments"
 
 
 async def test_knowledge_tools_are_unavailable_without_a_broker():
@@ -110,7 +148,7 @@ async def test_knowledge_tools_are_unavailable_without_a_broker():
 
 async def test_a_changed_upstream_contract_disables_the_knowledge_tools():
     broker = KnowledgeBroker(
-        McpToolClient(server=fake_upstream({"version": "a" * 64, "matches": []})),
+        McpToolClient(server=fake_upstream(EMPTY_SEARCH)),
         RecordingTokenizer(),
     )
     result = await dispatch(broker, "search_knowledge", {"query": "coverage"})
@@ -119,9 +157,7 @@ async def test_a_changed_upstream_contract_disables_the_knowledge_tools():
 
 
 async def test_invalid_upstream_results_never_pass_the_broker():
-    upstream = McpToolClient(
-        server=fake_upstream({"version": "a" * 64, "matches": [], "rows": [{"mrn": "x"}]})
-    )
+    upstream = McpToolClient(server=fake_upstream({**EMPTY_SEARCH, "rows": [{"mrn": "x"}]}))
     broker = KnowledgeBroker(
         upstream,
         RecordingTokenizer(),
@@ -142,21 +178,13 @@ async def test_an_unreachable_knowledge_service_fails_closed():
 
 
 @pytest.mark.integration
-async def test_identifiers_in_knowledge_results_are_tokenized_by_the_broker(store, tmp_path):
-    from zknowledge.snapshot import build_snapshot
-
-    source = tmp_path / "incidents"
-    source.mkdir()
-    (source / "incident.md").write_text(
-        "Specimen swap reported for NGC-0041872 during intake review.\n"
-    )
-    build_snapshot(source, tmp_path / "snapshots")
+async def test_identifiers_in_knowledge_results_are_tokenized_by_the_broker(store):
     session = await store.create_session()
     result = await dispatch(
-        local_broker(store.privacy, tmp_path / "snapshots"),
-        "search_knowledge",
-        {"query": "specimen swap"},
+        local_broker(store.privacy),
+        "read_document",
+        {"document": "inc-0142", "start_line": 1, "end_line": 16},
         agent_session(session_id=session.id),
     )
     assert "NGC-0041872" not in json.dumps(result)
-    assert "[PT_" in result["matches"][0]["text"]
+    assert "[PT_" in result["text"]

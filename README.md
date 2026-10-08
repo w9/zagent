@@ -603,6 +603,7 @@ quality weaknesses remain visible even when regression gates pass.
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
 | [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Implemented (relocation, corpus, identity, cutover) |
+| [PLAN13](docs/PLAN13.md) | The intranet: clickable citations that open the source document | Planned |
 
 ---
 

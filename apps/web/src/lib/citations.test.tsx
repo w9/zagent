@@ -34,6 +34,21 @@ describe('citations', () => {
     expect(screen.queryByRole('link')).toBeNull()
   })
 
+  it('keeps the text of a link whose address is a citation and puts the chip after it', () => {
+    const text = 'VCF stands for **Variant Call Format**. [Wikipedia contributors describe VCF as \u201ca standard text file format used in bioinformatics for storing gene sequence or DNA sequence variations.\u201d](wp-variant-call-format@1373132868:L3) See also [the spec](<[wp-variant-call-format@1373132868:L26-L28]>).'
+    const found = citations(text)
+    expect(found).toEqual([
+      { document: 'wp-variant-call-format', version: '1373132868', start: 3, end: 3, quote: 'a standard text file format used in bioinformatics for storing gene sequence or DNA sequence variations.' },
+      { document: 'wp-variant-call-format', version: '1373132868', start: 26, end: 28, quote: undefined },
+    ])
+    expect(screen.getByTestId('message-text').textContent).toBe(
+      'VCF stands for Variant Call Format. Wikipedia contributors describe VCF as \u201ca standard text file format used in bioinformatics for storing gene sequence or DNA sequence variations.\u201dwp-variant-call-format See also the specwp-variant-call-format.',
+    )
+    expect(screen.queryByRole('link')).toBeNull()
+    cleanup()
+    expect(citations('A [plain link](https://docs.example.org/vcf) and [a relative one](wp-variant-call-format).')).toEqual([])
+  })
+
   it('renders every recorded citation as a chip backed by a read from its own conversation', () => {
     let total = 0
     for (const [path, golden] of Object.entries(goldens)) {

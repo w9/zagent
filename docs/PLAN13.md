@@ -370,6 +370,11 @@ side.
   is reported by `make zones` like REQ-KB-01.
 - Chip labels come from the document number (`SOP-QC-001 v3`, `INC-0142`, `Wiki 40152`), so even
   an unverified chip is readable. Reference and library citations use the title from the read.
+- In live mode the model once put a citation in a link's address,
+  `[quoted sentence](wp-variant-call-format@1373132868:L3)`, despite the prompt asking for plain
+  text. The chat dropped the unsafe address and showed no citation. The parser now keeps the link
+  text and adds a chip after it. The prompt is unchanged, and the evaluation still counts that form
+  as uncited.
 
 **Problems found while building.**
 

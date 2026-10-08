@@ -3,6 +3,8 @@ import type { StepState } from './events'
 /** The citation format the agent prompt asks for: `[document@version:Lstart-Lend]`. */
 const CITATION = /\[([a-z0-9]+(?:-[a-z0-9]+)*)@([A-Za-z0-9._-]+):L([0-9]+)(?:-L([0-9]+))?\]/g
 const WHOLE_CITATION = /^\[?\[([a-z0-9]+(?:-[a-z0-9]+)*)@([A-Za-z0-9._-]+):L([0-9]+)(?:-L([0-9]+))?\]\]?$/
+// Models sometimes put the citation in the link's address instead of its text.
+const CITATION_URL = /^\[?([a-z0-9]+(?:-[a-z0-9]+)*)@([A-Za-z0-9._-]+):L([0-9]+)(?:-L([0-9]+))?\]?$/
 const CITE_HREF = /^cite:([a-z0-9]+(?:-[a-z0-9]+)*)@([A-Za-z0-9._-]+):L([0-9]+)-L([0-9]+)$/
 const QUOTATION = /\u201c([^\u201c\u201d]{20,}?)\u201d|(?:^|(?<=[\s(:]))"([^"\n]{20,}?)"/g
 const NUMBERED_LINE = /^L([0-9]+): ?(.*)$/
@@ -96,6 +98,14 @@ function plainText(node: MarkdownNode): string {
   return node.value ?? (node.children ?? []).map(plainText).join('')
 }
 
+function citationUrl(url = '') {
+  try {
+    return decodeURIComponent(url).match(CITATION_URL)
+  } catch {
+    return null
+  }
+}
+
 function citationNode(match: RegExpMatchArray, quote?: string): MarkdownNode {
   const [raw, document, version, start, end] = match
   return {
@@ -118,8 +128,13 @@ function rewrite(parent: MarkdownNode) {
   let before = ''
   for (const child of merged) {
     const whole = child.type === 'link' ? plainText(child).match(WHOLE_CITATION) : null
+    const target = child.type === 'link' && !whole ? citationUrl(child.url) : null
     if (whole) {
       children.push(citationNode(whole, lastQuotation(before)))
+      before = ''
+    } else if (target) {
+      children.push(...(child.children ?? []))
+      children.push(citationNode(target, lastQuotation(before + plainText(child))))
       before = ''
     } else if (child.type === 'text') {
       const text = child.value ?? ''

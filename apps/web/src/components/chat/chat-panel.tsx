@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowDown, Dna, FlaskConical, Hash, UserRound } from 'lucide-react'
+import { ArchiveRestore, ArrowDown, Dna, FlaskConical, Hash, UserRound } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Persona, PrivacyBinding } from '../../lib/api'
@@ -8,6 +8,7 @@ import type { ChatMessage, Projection, RefusedState, StepState } from '../../lib
 import type { PushedView } from '../../lib/views'
 import { cn } from '../../lib/utils'
 import { Badge } from '../ui/badge'
+import { Button } from '../ui/button'
 import { EmptyState } from '../ui/empty-state'
 import { IconButton } from '../ui/icon-button'
 import { Notice } from '../ui/notice'
@@ -65,6 +66,7 @@ export function ChatPanel({
   connection,
   error,
   onSend,
+  onUnarchive,
   className,
 }: {
   sessionId: string
@@ -75,6 +77,8 @@ export function ChatPanel({
   connection: Connection
   error?: string | null
   onSend: (text: string) => Promise<void>
+  /** Set for an archived session, which is read-only until unarchived. */
+  onUnarchive?: () => void
   className?: string
 }) {
   const [draft, setDraft] = useState('')
@@ -223,7 +227,17 @@ export function ChatPanel({
       </div>
       <div className="mx-auto w-full max-w-prose shrink-0 px-4 pb-4 @medium:px-6 @medium:pb-6">
         {problem && <Notice tone="danger" role="alert" className="mb-3">{problem}</Notice>}
-        <Composer value={draft} onChange={setDraft} onSubmit={() => void send()} disabled={!state} canSend={canSend} />
+        {onUnarchive ? (
+          <Notice
+            tone="info"
+            title="Archived session"
+            action={<Button size="sm" icon={ArchiveRestore} onClick={onUnarchive}>Unarchive</Button>}
+          >
+            This session is read-only. Unarchive it to continue the conversation.
+          </Notice>
+        ) : (
+          <Composer value={draft} onChange={setDraft} onSubmit={() => void send()} disabled={!state} canSend={canSend} />
+        )}
         <footer data-testid="composer-footer" className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-muted">
           <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
             {persona && (

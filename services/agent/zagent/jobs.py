@@ -76,6 +76,13 @@ class JobStore:
     async def notify(self, connection, session_id: UUID) -> None:
         await connection.execute("SELECT pg_notify($1, $2)", NOTIFY_CHANNEL, f"jobs:{session_id}")
 
+    async def unfinished(self, session_id: UUID) -> int:
+        return await self.store.pool.fetchval(
+            """SELECT count(*) FROM jobs
+               WHERE session_id=$1 AND status NOT IN ('completed','failed')""",
+            session_id,
+        )
+
     async def create_handle(
         self,
         connection,

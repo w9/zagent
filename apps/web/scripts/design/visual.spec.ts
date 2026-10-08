@@ -51,6 +51,8 @@ function layoutProblems(page: Page, minTarget: number): Promise<string[]> {
       if (inText || (element.matches('[type=checkbox], [type=radio]') && element.closest('label'))) {
         continue
       }
+      // Resize handles are drawn as a line; the panel library hit-tests a wider band around it.
+      if (element.matches('[role=separator]')) continue
       if (box.width < minTarget || box.height < minTarget) {
         problems.push(`A11Y-02 ${describe(element)} is ${Math.round(box.width)}×${Math.round(box.height)}px, below ${minTarget}px`)
       }
@@ -76,11 +78,13 @@ async function focusProblems(page: Page): Promise<string[]> {
         key: element.outerHTML.slice(0, 120),
         name: `<${element.tagName.toLowerCase()}> "${(element.textContent ?? '').trim().slice(0, 30)}"`,
         ring: style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) >= 2,
+        // Radix places invisible sentinels around open layers to catch focus; they are not controls.
+        guard: element.hasAttribute('data-radix-focus-guard'),
       }
     })
     if (!focused || seen.has(focused.key)) break
     seen.add(focused.key)
-    if (!focused.ring) problems.push(`STATE-02 no focus ring on ${focused.name}`)
+    if (!focused.ring && !focused.guard) problems.push(`STATE-02 no focus ring on ${focused.name}`)
   }
   return problems
 }

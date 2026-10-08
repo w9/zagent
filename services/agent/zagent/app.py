@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
@@ -28,6 +29,9 @@ from zagent.store import DEFAULT_DATABASE_URL, ConversationTurnConflict, NotFoun
 from zagent.stream import Notifications, tail_events
 from zagent.titles import SessionTitles
 from zagent.tools import McpToolClient, ToolsGateway
+
+logger = logging.getLogger(__name__)
+ARCHIVED_REASON = "Stopped because the session was archived."
 
 
 class Settings(BaseModel):
@@ -114,6 +118,16 @@ class RenameInput(BaseModel):
     title: str = Field(min_length=1, max_length=120)
 
 
+class ArchiveInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    force: bool = False
+
+
+class StopInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    reason: str = Field(min_length=1, max_length=200)
+
+
 def create_app(settings: Settings | None = None, agent: Agent | None = None) -> FastAPI:
     settings = settings or Settings()
 
@@ -189,6 +203,18 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         session = await app.state.store.get_session(session_id)
         if session.site_id != settings.site_id:
             raise NotFound("Session not found")
+        return session
+
+    async def writable_session(session_id: UUID) -> Session:
+        session = await scoped_session(session_id)
+        if session.archived_at is not None:
+            raise HTTPException(409, "This session is archived. Unarchive it to continue.")
+        return session
+
+    async def displayed(session: Session) -> Session:
+        session.title = (
+            await app.state.store.privacy.resolve(session.id, Tokenized(value=session.title))
+        ).value
         return session
 
     @app.exception_handler(NotFound)
@@ -312,7 +338,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     @app.patch("/sessions/{session_id}/drafts/{draft_id}")
     async def edit_draft(session_id: UUID, draft_id: str, body: DraftEditInput):
         display_only()
-        await scoped_session(session_id)
+        await writable_session(session_id)
         if body.app_id is not None and body.app_id not in CATALOG:
             raise HTTPException(422, "Unknown application")
         params = (
@@ -335,7 +361,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     @app.post("/sessions/{session_id}/drafts/{draft_id}/confirm")
     async def confirm_draft(session_id: UUID, draft_id: str, body: ConfirmInput):
         display_only()
-        await scoped_session(session_id)
+        await writable_session(session_id)
         return await app.state.drafts.confirm(session_id, draft_id, body.content_hash)
 
     @app.get("/health")
@@ -362,20 +388,15 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         )
 
     @app.get("/sessions", response_model=list[Session])
-    async def list_sessions():
+    async def list_sessions(archived: bool = False):
         sessions = [
             session
-            for session in await app.state.store.list_sessions()
+            for session in await app.state.store.list_sessions(archived=archived)
             if session.site_id == settings.site_id
         ]
         if settings.display_mode:
             for session in sessions:
-                session.title = (
-                    await app.state.store.privacy.resolve(
-                        session.id,
-                        Tokenized(value=session.title),
-                    )
-                ).value
+                await displayed(session)
         return sessions
 
     @app.patch("/sessions/{session_id}", response_model=Session)
@@ -384,14 +405,56 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         await scoped_session(session_id)
         if not body.title.strip():
             raise HTTPException(422, "A title cannot be blank")
-        session = await app.state.store.rename_session(session_id, body.title)
-        session.title = (
-            await app.state.store.privacy.resolve(
-                session_id,
-                Tokenized(value=session.title),
-            )
-        ).value
-        return session
+        return await displayed(await app.state.store.rename_session(session_id, body.title))
+
+    async def stop_turn(session_id: UUID) -> None:
+        if not settings.runtime_url:
+            await app.state.runtime.stop(session_id, ARCHIVED_REASON)
+            return
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(
+                    f"{settings.runtime_url}/sessions/{session_id}/stop",
+                    json={"reason": ARCHIVED_REASON},
+                )
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            logger.warning("Could not stop the turn of archived session: %s", error)
+
+    @app.post("/sessions/{session_id}/archive", response_model=Session)
+    async def archive_session(session_id: UUID, body: ArchiveInput | None = None):
+        display_only()
+        session = await scoped_session(session_id)
+        if session.archived_at is None:
+            responding = await app.state.store.responding(session_id)
+            jobs = await JobStore(app.state.clinical).unfinished(session_id)
+            if (responding or jobs) and not (body and body.force):
+                return JSONResponse(
+                    status_code=409,
+                    content={
+                        "detail": "This session still has work in progress",
+                        "code": "work_in_progress",
+                        "responding": responding,
+                        "jobs": jobs,
+                    },
+                )
+            session = await app.state.store.set_archived(session_id, True)
+            if responding:
+                await stop_turn(session_id)
+        return await displayed(session)
+
+    @app.post("/sessions/{session_id}/unarchive", response_model=Session)
+    async def unarchive_session(session_id: UUID):
+        display_only()
+        await scoped_session(session_id)
+        return await displayed(await app.state.store.set_archived(session_id, False))
+
+    @app.post("/sessions/{session_id}/stop", status_code=204)
+    async def stop_session_turn(session_id: UUID, body: StopInput):
+        if settings.display_mode:
+            raise HTTPException(403, "Archive the session to stop its conversation turn")
+        await scoped_session(session_id)
+        await app.state.runtime.stop(session_id, body.reason)
 
     @app.get("/session-list/events")
     async def session_updates(request: Request):
@@ -422,7 +485,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         "/sessions/{session_id}/messages", status_code=202, response_model=AcceptedConversationTurn
     )
     async def message(session_id: UUID, body: MessageInput | TokenizedMessageInput):
-        session = await scoped_session(session_id)
+        session = await writable_session(session_id)
         if settings.display_mode:
             if not isinstance(body, MessageInput):
                 raise HTTPException(422, "The display edge expects a user message")

@@ -24,3 +24,4 @@ export const NeedsReview: Story = {
   },
 }
 export const Submitted: Story = { args: { draft: { ...draft, status: 'submitted', job_id: 'job-0001' } } }
+export const ReadOnly: Story = { args: { readOnly: true } }

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from uuid import UUID
 
 from opentelemetry import trace
 from opentelemetry.propagate import extract
@@ -71,6 +72,7 @@ class Runtime:
         self.agent = agent
         self.coalesce_seconds = coalesce_seconds
         self.tasks: dict = {}
+        self.stopping: dict[UUID, str] = {}
         self.titles = titles
         self.resumable = bool(getattr(agent, "resumable", False))
 
@@ -96,12 +98,27 @@ class Runtime:
 
     def _finished(self, session: AgentSession, task: asyncio.Task) -> None:
         self.tasks.pop(session.conversation_turn_id, None)
+        self.stopping.pop(session.conversation_turn_id, None)
         if not task.cancelled() and task.exception():
             logger.error(
                 "Could not persist conversation turn %s outcome",
                 session.conversation_turn_id,
                 exc_info=task.exception(),
             )
+
+    async def stop(self, session_id: UUID, reason: str) -> None:
+        rows = await self.store.pool.fetch(
+            "SELECT id FROM conversation_turns WHERE session_id=$1 AND status='running'",
+            session_id,
+        )
+        for row in rows:
+            task = self.tasks.get(row["id"])
+            if task is not None:
+                self.stopping[row["id"]] = reason
+                task.cancel()
+                await asyncio.wait({task}, timeout=5)
+            # Finishes turns with no local task, or whose task ended without recording the stop.
+            await self.store.finish_conversation_turn(session_id, row["id"], reason)
 
     async def _run_turn(self, session: AgentSession) -> None:
         from zagent.telemetry import carrier
@@ -146,11 +163,12 @@ class Runtime:
             finally:
                 await coalescer.close()
         except asyncio.CancelledError:
-            if not self.resumable:
+            reason = self.stopping.pop(session.conversation_turn_id, None)
+            if reason is not None or not self.resumable:
                 await self.store.finish_conversation_turn(
                     session.id,
                     session.conversation_turn_id,
-                    "Agent service stopped before the conversation turn completed.",
+                    reason or "Agent service stopped before the conversation turn completed.",
                 )
             raise
         except Exception as error:

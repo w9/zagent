@@ -418,6 +418,13 @@ the same gateway, is bounded by time/output limits, and claims eligibility atomi
 results apply only while the title remains a fallback, so a concurrent manual rename wins.
 Naming does not delay completion, block the next turn, or reorder sessions.
 
+Archiving sets `sessions.archived_at`; nothing is deleted, so the event log and audit records
+stay intact. Archived sessions leave `GET /sessions` (`?archived=true` lists them) and refuse
+messages and draft changes, while snapshots, events and X-ray stay readable. The display API
+answers `409 work_in_progress` while a turn runs or jobs are unfinished, unless the request
+forces it; a forced archive asks the runtime to stop the running turn, which then fails with
+"Stopped because the session was archived." Jobs are not cancelled.
+
 ---
 
 ## 10. Job execution

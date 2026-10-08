@@ -118,7 +118,8 @@ test('newest sessions stay first and manual topic titles persist across tabs', a
   const drawer = page.getByRole('button', { name: 'Open sessions' })
   if (await drawer.isVisible()) await drawer.click()
   const entry = page.locator(`li[data-session-id="${first}"]:visible`)
-  await entry.getByRole('button', { name: /^Rename / }).click()
+  await entry.getByRole('button', { name: /^Actions for / }).click()
+  await page.getByRole('menuitem', { name: 'Rename' }).click()
   await page.getByRole('textbox', { name: 'Session title' }).fill('My intake review')
   await page.getByRole('button', { name: 'Save session title' }).click()
   if (await page.getByRole('button', { name: 'Close sessions' }).isVisible()) {

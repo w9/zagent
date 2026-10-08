@@ -105,7 +105,9 @@ Spacing is a closed 4px scale: `0`, `0.5`, `1`, `1.5`, `2`, `3`, `4`, `5`, `6`, 
 
 Named dimensions: `h-bar` (top bar and panel headers), `h-control-sm|control|control-lg` and
 `size-control-*` (controls; larger on touch screens), `size-icon-sm|icon|icon-lg`, `w-sidebar`,
-`w-sidebar-wide`, `w-drawer`, `h-chart`, `max-w-prose`.
+`w-sidebar-wide`, `w-drawer`, `h-chart`, `max-w-prose`. Resizable panel limits
+(`--panel-sidebar-min`, `--panel-sidebar-max`, `--panel-min`) are not utilities; the app shell reads
+them at runtime.
 
 ### 2.4 Shape, elevation, motion
 
@@ -120,7 +122,8 @@ Named dimensions: `h-bar` (top bar and panel headers), `h-control-sm|control|con
 
 ### 2.5 Breakpoints
 
-Viewport variants (`tablet:`, `desktop:`, `wide:`, `ultra:`) are for the app shell. Components
+Viewport variants (`tablet:`, `desktop:`, `wide:`, `ultra:`) are for the app shell, which also reads
+the breakpoints at runtime with `useBreakpoint` to lay out resizable panels. Components
 adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 
 ---
@@ -181,8 +184,8 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 - **LAYOUT-04** Long unbroken strings (IDs, paths, variant names) wrap with `wrap-anywhere`, or
   truncate with the full value in a tooltip. Nothing is clipped without a way to read it.
   `[visual]`
-- **LAYOUT-05** Allowed stacking: `z-10` sticky headers, `z-30` overlays, `z-40` drawers,
-  `z-50` tooltips and popovers. `[lint]`
+- **LAYOUT-05** Allowed stacking: `z-10` sticky headers, `z-30` overlays, `z-40` drawers and
+  dialogs, `z-50` tooltips, menus, popovers and toasts. `[lint]`
 
 ### Shape, elevation, motion
 
@@ -210,7 +213,9 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 
 - **A11Y-01** Automated accessibility checks pass on every story in both themes. `[visual]`
 - **A11Y-02** Targets are at least 24×24px, and 36×36px on touch screens, where the control tokens
-  grow automatically. Links inside text and checkboxes inside their label are exempt. `[visual]`
+  grow automatically. Links inside text and checkboxes inside their label are exempt, and so are
+  panel resize handles: they are drawn as a line, are hit-tested in a wider band, and also resize
+  with arrow keys. `[visual]`
 - **A11Y-03** Icon-only buttons have an accessible name and a tooltip with the same text.
   `[lint]`
 - **A11Y-04** Color is never the only signal (see COLOR-04). `[review]`
@@ -268,13 +273,19 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 | Viewport | Width | Sidebar | Chat and working surface | X-ray |
 |---|---|---|---|---|
 | Phone | < 768 | Drawer from a menu button | One at a time, switched by tabs | Panes switched by tabs |
-| Tablet | 768–1279 | Persistent, `w-sidebar` | One at a time, switched by tabs | Panes switched by tabs |
-| Desktop | 1280–1919 | Persistent, `w-sidebar` | Side by side, chat narrower than surface | Side by side |
-| Wide | 1920–2559 | Persistent, `w-sidebar-wide` | Side by side | Side by side |
-| Ultra | ≥ 2560 | Persistent, `w-sidebar-wide` | Chat capped near `max-w-prose`; surface takes the rest | Side by side |
+| Tablet | 768–1279 | Persistent and resizable; starts at `w-sidebar` | One at a time, switched by tabs | Panes switched by tabs |
+| Desktop | 1280–1919 | Persistent and resizable; starts at `w-sidebar` | Side by side and resizable; chat starts at 5/12 | Side by side |
+| Wide | 1920–2559 | Persistent and resizable; starts at `w-sidebar-wide` | Side by side and resizable; chat starts at 5/12 | Side by side |
+| Ultra | ≥ 2560 | Persistent and resizable; starts at `w-sidebar-wide` | Side by side and resizable; chat starts at 1/3, near `max-w-prose` | Side by side |
 
 - The top bar and every panel header are `h-bar` tall.
 - The page never scrolls; panels do (LAYOUT-03).
+- Resizable panels are split by a `ResizableHandle`: a `border-subtle` line that turns
+  `border-accent` while hovered or dragged, and takes focus for arrow-key resizing. The sidebar
+  stays within `--panel-sidebar-min` and `--panel-sidebar-max`; chat and surface each keep at
+  least `--panel-min`. Sizes chosen by the user are remembered in `localStorage`: the sidebar's
+  width in pixels, the chat's share of the workspace as a percentage.
+- Crossing a breakpoint adds or removes panels in place; panel content never remounts.
 - The theme control (Light, Dark, System) sits in the top bar.
 
 ---
@@ -294,19 +305,23 @@ Each component has a story file next to it. Story data lives in `src/components/
 | `ui/` | Notice | danger, warning, info, success | title, action, long text in a narrow box |
 | `ui/` | Tabs | underline, with icon and count | many tabs overflowing |
 | `ui/` | Drawer | — | open with the session list |
+| `ui/` | Menu, MenuItem | — | closed, open, disabled item |
+| `ui/` | Dialog | — | warning with two actions, long title |
+| `ui/` | Toast | — | with an action, long text |
+| `ui/` | ResizablePanelGroup, ResizablePanel, ResizableHandle | horizontal, vertical | nested groups |
 | `ui/` | EmptyState | display (serif), quiet | action, narrow box |
 | `ui/` | PanelHeader, Eyebrow, Spinner | — | long subtitle (truncated with its full value) |
 | `shell/` | AppShell, TopBar, Wordmark, ThemeToggle | — | every viewport in section 4; X-ray on; drawer open; error |
 | `shell/` | SessionLayout | chat or surface tab | every viewport in section 4 |
-| `shell/` | SessionList | — | empty, many, creating, very long title; persona chooser with a long hint, no personas |
-| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting; persona badge, no persona |
+| `shell/` | SessionList | active, archived | empty, many, creating, very long title; persona chooser with a long hint, no personas; archived loading and empty |
+| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting, archived; persona badge, no persona |
 | `chat/` | TranscriptText, PrivacyText | user, assistant; md, sm | streaming, Markdown with code, tables and links |
 | `chat/` | StepMarker | running, complete, failed | expanded, with a view link |
 | `chat/` | RefusalChip, ViewReference, TurnStatus, Composer | — | in the chat panel stories |
 | `surface/` | WorkingSurface, ViewHeader | — | no views, unavailable view, chart, table |
 | `surface/views/` | TableView | inline, from a handle | loading, empty, error, nulls, booleans |
 | `surface/views/` | ChartView | each mark type | loading, error |
-| `surface/views/` | DraftEditor | — | editing, needs review, submitted |
+| `surface/views/` | DraftEditor | — | editing, needs review, submitted, read-only |
 | `surface/` | McpAppFrame, McpAppView | — | running job, no jobs, both themes |
 | `xray/` | XrayContent, XrayPanel | — | requests with privacy values, nothing recorded |
 

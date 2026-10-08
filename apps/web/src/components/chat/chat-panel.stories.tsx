@@ -27,3 +27,4 @@ export const Reconnecting: Story = { args: { connection: 'reconnecting', error: 
 export const NewConversation: Story = { args: { state: empty, name: 'New session' } }
 export const Opening: Story = { args: { state: null, connection: 'connecting' } }
 export const WithoutPersona: Story = { args: { persona: undefined } }
+export const Archived: Story = { args: { onUnarchive: () => {} } }

@@ -15,12 +15,14 @@ function Workspace({
   panel = 'chat',
   showXray = false,
   drawer = false,
+  archivedSession = false,
   error,
 }: {
   state?: Projection
   panel?: WorkspacePanel
   showXray?: boolean
   drawer?: boolean
+  archivedSession?: boolean
   error?: string
 }) {
   const [drawerOpen, setDrawerOpen] = useState(drawer)
@@ -45,6 +47,8 @@ function Workspace({
           onPersonaChange={setPersona}
           onCreate={() => {}}
           onRename={async () => {}}
+          onArchive={() => {}}
+          onUnarchive={() => {}}
         />
       )}
     >
@@ -66,10 +70,11 @@ function Workspace({
               bindings={bindings}
               connection="live"
               onSend={async () => {}}
+              onUnarchive={archivedSession ? () => {} : undefined}
             />
           }
           surface={
-            <WorkingSurface sessionId={session.id} views={state.views} selectedId={selected} onSelect={setSelected} resolveHandle={resolveHandle} />
+            <WorkingSurface sessionId={session.id} views={state.views} selectedId={selected} onSelect={setSelected} resolveHandle={resolveHandle} readOnly={archivedSession} />
           }
         />
       )}
@@ -92,3 +97,4 @@ export const NewSession: Story = { args: { state: empty } }
 export const Xray: Story = { args: { showXray: true } }
 export const SessionsDrawer: Story = { args: { drawer: true } }
 export const ServiceError: Story = { args: { error: 'Sessions unavailable: request failed (503).' } }
+export const ArchivedSession: Story = { args: { archivedSession: true } }

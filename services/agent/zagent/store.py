@@ -62,6 +62,7 @@ class Session(BaseModel):
     persona: PersonaId = DEFAULT_PERSONA
     title: str = "Session"
     title_source: Literal["fallback", "automatic", "manual"] = "fallback"
+    archived_at: datetime | None = None
 
 
 class AgentSession(BaseModel):
@@ -73,7 +74,9 @@ class AgentSession(BaseModel):
     kb_snapshot: str | None = None
 
 
-SESSION_COLUMNS = "id, last_seq AS seq, created_at, site_id, persona, title, title_source"
+SESSION_COLUMNS = (
+    "id, last_seq AS seq, created_at, site_id, persona, title, title_source, archived_at"
+)
 
 
 async def configure_connection(connection: asyncpg.Connection) -> None:
@@ -236,11 +239,34 @@ class Store:
             raise NotFound("Session not found")
         return Session.model_validate(dict(row))
 
-    async def list_sessions(self) -> list[Session]:
+    async def list_sessions(self, *, archived: bool = False) -> list[Session]:
+        order = "archived_at" if archived else "created_at"
         rows = await self.pool.fetch(
-            f"SELECT {SESSION_COLUMNS} FROM sessions ORDER BY created_at DESC, id DESC"
+            f"""SELECT {SESSION_COLUMNS} FROM sessions WHERE (archived_at IS NOT NULL) = $1
+               ORDER BY {order} DESC, id DESC""",
+            archived,
         )
         return [Session.model_validate(dict(row)) for row in rows]
+
+    async def set_archived(self, session_id: UUID, archived: bool) -> Session:
+        row = await self.pool.fetchrow(
+            f"""UPDATE sessions
+               SET archived_at = CASE WHEN $2 THEN COALESCE(archived_at, clock_timestamp()) END
+               WHERE id = $1 RETURNING {SESSION_COLUMNS}""",
+            session_id,
+            archived,
+        )
+        if row is None:
+            raise NotFound("Session not found")
+        await self.pool.execute("SELECT pg_notify($1, 'sessions')", NOTIFY_CHANNEL)
+        return Session.model_validate(dict(row))
+
+    async def responding(self, session_id: UUID) -> bool:
+        return await self.pool.fetchval(
+            """SELECT EXISTS (SELECT 1 FROM conversation_turns
+               WHERE session_id = $1 AND status = 'running')""",
+            session_id,
+        )
 
     async def claim_title(self, session_id: UUID) -> bool:
         return bool(

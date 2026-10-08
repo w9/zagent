@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% macro text(line) %}{% for part, strong in line.segments %}{% if strong %}<mark class="quote">{{ part }}</mark>{% else %}{{ part }}{% endif %}{% endfor %}{% endmacro %}
+{% macro number(line) %}<a class="ln" href="#L{{ line.number }}" aria-label="Line {{ line.number }}">{{ line.number }}</a>{% endmacro %}
+{% macro body(blocks) %}
+<div class="document-body">
+{% for block in blocks %}
+{% if block.kind == "items" %}
+<ul class="lines">
+{% for line in block.lines %}<li id="L{{ line.number }}" class="line{{ ' hl' if line.highlighted }}">{{ number(line) }}<span class="content">{{ text(line) }}</span></li>
+{% endfor %}
+</ul>
+{% elif block.kind == "quotes" %}
+<blockquote class="lines panel">
+{% for line in block.lines %}<p id="L{{ line.number }}" class="line{{ ' hl' if line.highlighted }}">{{ number(line) }}<span class="content">{{ text(line) }}</span></p>
+{% endfor %}
+</blockquote>
+{% elif block.kind == "rows" %}
+<div class="table-scroll"><table class="lines">
+{% set sourced = block.lines|selectattr("source")|list %}
+{% for line in block.lines %}
+<tr id="L{{ line.number }}" class="line{{ ' hl' if line.highlighted }}"><td class="ln-cell">{{ number(line) }}</td>{% for cell in line.cells %}{% if line.header %}<th scope="col">{{ cell }}</th>{% else %}<td>{{ cell }}</td>{% endif %}{% endfor %}{% if line.source %}<td class="source-cell"><a href="{{ line.source }}">Source</a></td>{% elif sourced %}<td></td>{% endif %}</tr>
+{% endfor %}
+</table></div>
+{% else %}
+{% set line = block.lines[0] %}
+{% if line.kind == "title" %}
+<h1 id="L{{ line.number }}" class="line doc-title{{ ' hl' if line.highlighted }}">{{ number(line) }}<span class="content">{{ text(line) }}</span></h1>
+{% elif line.kind == "heading" %}
+<h{{ [line.level, 4]|min }} id="L{{ line.number }}" class="line{{ ' hl' if line.highlighted }}">{{ number(line) }}<span class="content">{{ text(line) }}</span></h{{ [line.level, 4]|min }}>
+{% else %}
+<p id="L{{ line.number }}" class="line{{ ' hl' if line.highlighted }}">{{ number(line) }}<span class="content">{{ text(line) }}</span></p>
+{% endif %}
+{% endif %}
+{% endfor %}
+</div>
+{% endmacro %}
+{% block main %}
+<div class="layout">
+{% block sidebar %}{% endblock %}
+<article class="document" aria-labelledby="L1">
+{% block header %}{% endblock %}
+{% if highlight %}
+<p class="cited">Cited lines {{ highlight[0] }}{% if highlight[1] != highlight[0] %}–{{ highlight[1] }}{% endif %} are highlighted. <a href="#L{{ highlight[0] }}">Jump to them</a></p>
+{% endif %}
+{{ body(blocks) }}
+{% block after %}{% endblock %}
+<p class="snapshot muted">Snapshot <code>{{ snapshot[:12] }}</code>{% if pinned %}, as cited{% endif %}</p>
+</article>
+</div>
+{% endblock %}

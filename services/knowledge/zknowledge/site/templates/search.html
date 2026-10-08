@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="index">
+  <h1>Search</h1>
+  <form class="filters" action="/search" method="get" role="search">
+    <label for="search-page">Search the intranet</label>
+    <input id="search-page" name="q" type="search" value="{{ query }}">
+    <label class="check"><input type="checkbox" name="all" value="1"{% if everything %} checked{% endif %}> Include drafts, superseded and archived</label>
+    <button type="submit">Search</button>
+  </form>
+  {% if query %}
+  {% if expanded %}<p class="muted">Also searched: {{ expanded|join(", ") }}</p>{% endif %}
+  {% for source, label, matches in groups %}
+  <section aria-labelledby="group-{{ source }}">
+    <h2 id="group-{{ source }}">{{ label }} <span class="muted">{{ counts[source] }} matching</span></h2>
+    <ol class="results">
+      {% for match in matches %}
+      <li>
+        <a href="{{ match.href }}">{{ match.title }}</a>
+        <span class="muted">{{ match.document }} · lines {{ match.start_line }}–{{ match.end_line }}{% if match.status not in ["effective", "current", "resolved", "open", "reference"] %} · {{ match.status }}{% endif %}</span>
+        <p class="snippet">{{ match.snippet }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% else %}
+  <p>No results.</p>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

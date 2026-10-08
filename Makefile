@@ -3,6 +3,7 @@
 ZAGENT_WEB_PORT ?= 5173
 ZAGENT_AGENT_PORT ?= 8000
 ZAGENT_DB_PORT ?= 5432
+ZAGENT_INTRANET_PORT ?= 5180
 DATABASE_URL ?= postgresql://zagent:zagent@localhost:$(ZAGENT_DB_PORT)/zagent
 ZAGENT_TEST_DATABASE_URL ?= postgresql://zagent:zagent@localhost:$(ZAGENT_DB_PORT)/zagent_test
 ZAGENT_SCRIPT ?=
@@ -16,6 +17,7 @@ MUTATE ?=
 COMPOSE = docker compose --project-directory . -f deploy/compose/compose.yaml
 export UV_LINK_MODE = copy
 export DATABASE_URL ZAGENT_TEST_DATABASE_URL ZAGENT_WEB_PORT ZAGENT_AGENT_PORT ZAGENT_DB_PORT ZAGENT_SCRIPT
+export ZAGENT_INTRANET_PORT
 export ZAGENT_AGENT ZAGENT_LLM_MODE ZAGENT_MODEL
 
 .PHONY: up live down db install test evals chaos report lint browser transcript logs matrix zones

@@ -1,0 +1,44 @@
+{% extends "document.html" %}
+{% block header %}
+<nav class="breadcrumbs" aria-label="Breadcrumbs">
+  <a href="/qms">Document register</a> / <a href="/qms/documents/{{ row.series }}">{{ row.series }}</a> / Version {{ row.version }}
+</nav>
+<section class="control" aria-label="Document control">
+  <div class="control-title">
+    <span class="number">{{ row.series }}</span>
+    <span class="status status-{{ row.status }}">{{ row.status|capitalize }}</span>
+  </div>
+  <dl>
+    <div><dt>Version</dt><dd>{{ row.version }}</dd></div>
+    <div><dt>Type</dt><dd>{{ row.doc_type|kind }}</dd></div>
+    <div><dt>Effective</dt><dd>{{ row.effective_from or "Not effective" }}{% if row.effective_to %} to {{ row.effective_to }}{% endif %}</dd></div>
+    <div><dt>Owner</dt><dd>{{ provenance.owner_role }}</dd></div>
+    <div><dt>Approvers</dt><dd>{{ provenance.approver_roles|join(", ") }}</dd></div>
+    {% if info.applies_to %}<div><dt>Applies to</dt><dd>{{ info.applies_to|join(", ") }}</dd></div>{% endif %}
+  </dl>
+  {% if related.superseded_by %}
+  <p class="banner banner-superseded" role="note">Superseded by <a href="{{ related.superseded_by.href }}">version {{ related.superseded_by.version }}</a>. Do not use this version for routine work.</p>
+  {% endif %}
+  {% if row.status == "draft" %}
+  <p class="banner banner-draft" role="note">Draft for review. Not effective.</p>
+  {% endif %}
+</section>
+{% endblock %}
+{% block after %}
+{% if versions|length > 1 %}
+<section class="history" aria-labelledby="history-title">
+  <h2 id="history-title">Revision history</h2>
+  <table>
+    <tr><th scope="col">Version</th><th scope="col">Status</th><th scope="col">Effective from</th></tr>
+    {% for version in versions %}
+    <tr{% if version.document == document %} aria-current="true"{% endif %}><td><a href="{{ version.href }}">{{ version.version }}</a></td><td>{{ version.status|capitalize }}</td><td>{{ version.effective_from or "—" }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endblock %}
+{% block main %}
+<div class="watermark-host{% if row.status == 'draft' %} draft{% endif %}">
+{{ super() }}
+</div>
+{% endblock %}

@@ -168,6 +168,26 @@ services:
       timeout: 5s
       retries: 30
 
+  # The knowledge team's intranet: renders published snapshots, reachable only through its relay.
+  kb-site:
+    build:
+      context: .
+      dockerfile: services/knowledge/Dockerfile
+    command: ["uvicorn", "zknowledge.site.app:app", "--host", "0.0.0.0", "--port", "8009"]
+    environment:
+      ZKNOWLEDGE_SNAPSHOTS: /var/lib/zknowledge/snapshots
+    volumes:
+      - kb_snapshots:/var/lib/zknowledge/snapshots:ro
+    networks: [intranet]
+    depends_on:
+      kb-publish:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8009/health')"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
   # The agent zone's only route to knowledge: caller verification, contract pinning and tokenization.
   mcp-broker:
     build:
@@ -372,6 +392,26 @@ services:
       timeout: 5s
       retries: 30
 
+  # A separate relay, so the intranet shares no network with a relay that reaches clinical services.
+  intranet-ingress:
+    build:
+      context: .
+      dockerfile: services/agent/Dockerfile
+    command: ["python", "-m", "zagent.relay"]
+    environment:
+      ZAGENT_RELAY_ROUTES: 5180=kb-site:8009
+    ports:
+      - "127.0.0.1:${ZAGENT_INTRANET_PORT:-5180}:5180"
+    networks: [edge, intranet]
+    depends_on:
+      kb-site:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 5180), 2)"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
   bff:
     build:
       context: .
@@ -438,6 +478,8 @@ networks:
   agent:
     internal: true
   knowledge:
+    internal: true
+  intranet:
     internal: true
   telemetry:
     internal: true

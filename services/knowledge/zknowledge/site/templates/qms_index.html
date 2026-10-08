@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="index">
+  <h1>Document register</h1>
+  <form class="filters" action="/qms" method="get">
+    <label for="status">Status</label>
+    <select id="status" name="status">
+      <option value="">All statuses</option>
+      {% for value in ["effective", "draft", "superseded", "retired"] %}
+      <option value="{{ value }}"{% if status == value %} selected{% endif %}>{{ value|capitalize }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">Filter</button>
+  </form>
+  <table class="register">
+    <thead><tr><th scope="col">Number</th><th scope="col">Title</th><th scope="col">Type</th><th scope="col">Versions</th></tr></thead>
+    <tbody>
+    {% for entry in register %}
+    <tr>
+      <td><a href="/qms/documents/{{ entry.number }}">{{ entry.number }}</a></td>
+      <td>{{ entry.title }}</td>
+      <td>{{ entry.doc_type|kind }}</td>
+      <td>{% for version in entry.versions %}<a href="{{ version.href }}">v{{ version.version }}</a> <span class="status status-{{ version.status }}">{{ version.status }}</span>{% if not loop.last %} · {% endif %}{% endfor %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4">No documents match this filter.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

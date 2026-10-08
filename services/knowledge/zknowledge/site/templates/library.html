@@ -1,0 +1,10 @@
+{% extends "document.html" %}
+{% block header %}
+<nav class="breadcrumbs" aria-label="Breadcrumbs">
+  <a href="/library">Library</a> / {{ row.title }}
+</nav>
+<p class="byline">From Wikipedia, the free encyclopedia · revision {{ row.version }}, retrieved {{ provenance.retrieved }}</p>
+{% endblock %}
+{% block after %}
+<p class="attribution">Text from <a href="{{ provenance.url }}" rel="noopener noreferrer">Wikipedia revision {{ row.version }}</a> by {{ provenance.attribution }}, licensed {{ provenance.license }}. Treatment, management and prognosis sections were removed.</p>
+{% endblock %}

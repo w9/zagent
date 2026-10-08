@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="index">
+  <h1>Reference</h1>
+  <ul class="cards">
+    {% for document in documents %}
+    <li><a href="{{ document.href }}">{{ document.title|replace("Reference table: ", "") }}</a> <span class="muted">version {{ document.version }}</span></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="index">
+  <nav class="breadcrumbs" aria-label="Breadcrumbs"><a href="/qms">Document register</a> / {{ series.number }}</nav>
+  <h1>{{ series.number }}: {{ series.title }}</h1>
+  <table class="register">
+    <thead><tr><th scope="col">Version</th><th scope="col">Status</th><th scope="col">Effective from</th><th scope="col">Effective to</th></tr></thead>
+    <tbody>
+    {% for version in series.versions %}
+    <tr><td><a href="{{ version.href }}">Version {{ version.version }}</a></td><td><span class="status status-{{ version.status }}">{{ version.status|capitalize }}</span></td><td>{{ version.effective_from or "—" }}</td><td>{{ version.effective_to or "—" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

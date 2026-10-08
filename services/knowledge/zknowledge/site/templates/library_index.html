@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="index">
+  <h1>Library</h1>
+  <p class="muted">Background articles from Wikipedia, pinned to a revision and licensed CC BY-SA 4.0. They explain concepts and never set a threshold.</p>
+  <ul class="columns">
+    {% for article in articles %}<li><a href="{{ article.href }}">{{ article.title }}</a></li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}

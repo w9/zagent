@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% macro branch(nodes) %}
+<ul>
+{% for node in nodes %}
+<li><a href="{{ node.href }}">{{ node.title }}</a>{% if node.status == "archived" %} <span class="tag">Archived</span>{% endif %}
+{% if node.children %}{{ branch(node.children) }}{% endif %}
+</li>
+{% endfor %}
+</ul>
+{% endmacro %}
+{% block main %}
+<div class="index">
+  <h1>Meridian Clinical Genomics Core</h1>
+  <p class="muted">Space MCGC · page tree</p>
+  <nav class="page-tree" aria-label="Page tree">{{ branch(tree) }}</nav>
+</div>
+{% endblock %}

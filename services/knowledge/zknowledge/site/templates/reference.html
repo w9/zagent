@@ -1,0 +1,27 @@
+{% extends "document.html" %}
+{% block sidebar %}
+{% if terms %}
+<nav class="sidebar terms" aria-label="Terms">
+  <p class="space-name">Terms</p>
+  <ul>
+    {% for term in terms %}<li><a href="#L{{ term.line }}">{{ term.term }}</a></li>{% endfor %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}
+{% block header %}
+<nav class="breadcrumbs" aria-label="Breadcrumbs">
+  <a href="/reference">Reference</a> / {{ row.title }}
+</nav>
+<p class="byline">Version {{ row.version }} · maintained by the {{ provenance.owner_role }}</p>
+{% endblock %}
+{% block after %}
+{% if terms %}
+<section class="term-sources" aria-labelledby="sources-title">
+  <h2 id="sources-title">Where each term is defined</h2>
+  <ul>
+    {% for term in terms if term.source %}<li><a href="{{ term.source }}">{{ term.term }}</a></li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

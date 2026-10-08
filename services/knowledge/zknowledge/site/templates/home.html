@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="home">
+  <h1>Meridian Clinical Genomics Core</h1>
+  <p class="lede">Procedures, team knowledge, service history and reference material for the core and its five sites.</p>
+  <ul class="systems">
+    {% for key, label, href in areas %}
+    <li class="system system-{{ key }}">
+      <a href="{{ href }}">{{ label }}</a>
+      <span class="muted">{{ counts[key] }} {{ "page" if key == "wiki" else "article" if key == "wikipedia" else "issue" if key == "ticketing" else "document" }}{{ "" if counts[key] == 1 else "s" }}</span>
+      <p>{% if key == "wiki" %}How the core works, contacts, tutorials and known issues.{% elif key == "qms" %}Controlled SOPs, validation summaries and forms.{% elif key == "ticketing" %}Service requests, incidents, problems and change requests.{% elif key == "reference" %}Thresholds, panels, error codes and the glossary.{% else %}Background articles on the core's concepts.{% endif %}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  <section aria-labelledby="recent-title">
+    <h2 id="recent-title">Recently updated</h2>
+    <ul class="recent">
+      {% for item in recent %}
+      <li><a href="{{ item.href }}">{{ item.title }}</a> <span class="muted">{{ item.updated }} · {{ item.key }}</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

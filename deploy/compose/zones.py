@@ -14,8 +14,10 @@ INTERNET = ("1.1.1.1", 443)
 AGENT_ZONE = ("agent", "gateway")
 KNOWLEDGE_ZONE = ("kb",)
 KNOWLEDGE_BRIDGE = "mcp-broker"
+INTRANET_ZONE = ("kb-site", "intranet-ingress")
 CLINICAL_DATA = (("postgres", 5432), ("privacy", 8003), ("bff", 8000), ("web", 5173))
 KNOWLEDGE_DATA = (("kb", 8007),)
+INTRANET_DATA = (("kb-site", 8009),)
 AGENT_SERVICES = (
     ("agent", 8000),
     ("gateway", 8001),
@@ -39,6 +41,9 @@ FLOWS = {
     "gateway": [("tokenizer", 8006), COLLECTOR],
     KNOWLEDGE_BRIDGE: [("kb", 8007), ("tokenizer", 8006), COLLECTOR],
     "kb": [COLLECTOR],
+    # Its own port is the positive control: the site needs no outbound route at all.
+    "kb-site": [("kb-site", 8009)],
+    "intranet-ingress": [("kb-site", 8009)],
     "tokenizer": [("postgres", 5432), COLLECTOR],
     "event-db": [("postgres", 5432)],
     "tools": [("postgres", 5432), ("privacy", 8003), COLLECTOR],
@@ -94,11 +99,17 @@ def addresses(container: dict) -> list[str]:
 
 def denied_for(source: str) -> tuple[tuple[str, int], ...]:
     if source in AGENT_ZONE or source == "worker":
-        return CLINICAL_DATA + KNOWLEDGE_DATA
+        return CLINICAL_DATA + KNOWLEDGE_DATA + INTRANET_DATA
     if source in KNOWLEDGE_ZONE:
-        return CLINICAL_DATA + AGENT_SERVICES
+        return CLINICAL_DATA + AGENT_SERVICES + INTRANET_DATA
     if source == KNOWLEDGE_BRIDGE:
-        return CLINICAL_DATA
+        return CLINICAL_DATA + INTRANET_DATA
+    if source in INTRANET_ZONE:
+        return (
+            CLINICAL_DATA + AGENT_SERVICES + KNOWLEDGE_DATA + ((KNOWLEDGE_BRIDGE, 8008), COLLECTOR)
+        )
+    if source == "ingress":
+        return INTRANET_DATA
     return ()
 
 
@@ -182,10 +193,16 @@ def verify() -> None:
         if source in (*KNOWLEDGE_ZONE, KNOWLEDGE_BRIDGE)
         or (source in AGENT_ZONE and check["name"] in denial_names(KNOWLEDGE_DATA))
     ]
+    intranet = [
+        check
+        for source, check in checks
+        if source in INTRANET_ZONE or check["name"] in denial_names(INTRANET_DATA)
+    ]
     requirements = {
         "REQ-PHI-05": bool(denials) and all(check["passed"] for check in denials),
         "REQ-PHI-06": all(check["passed"] for _, check in checks if check["name"] == "internet"),
         "REQ-KB-01": bool(knowledge) and all(check["passed"] for check in knowledge),
+        "REQ-KB-06": bool(intranet) and all(check["passed"] for check in intranet),
         "REQ-ISO-02": all(
             check["passed"]
             for source, check in checks
@@ -225,6 +242,7 @@ def verify() -> None:
 ZONE_MUTATIONS = {
     "zones_off": ("clinical", CLINICAL_DATA, "REQ-PHI-05"),
     "kb_direct_route": ("knowledge", KNOWLEDGE_DATA, "REQ-KB-01"),
+    "site_direct_route": ("intranet", INTRANET_DATA, "REQ-KB-06"),
 }
 
 
@@ -264,4 +282,6 @@ if __name__ == "__main__":
     ):
         mutation(*sys.argv[2:3])
     else:
-        raise SystemExit("Usage: zones.py verify|mutation [zones_off|kb_direct_route]")
+        raise SystemExit(
+            "Usage: zones.py verify|mutation [zones_off|kb_direct_route|site_direct_route]"
+        )

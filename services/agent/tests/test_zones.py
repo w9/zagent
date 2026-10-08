@@ -51,7 +51,8 @@ def test_caller_keys_are_split_between_the_bff_and_the_broker():
 def test_only_gateway_has_internet_egress():
     networks = COMPOSE["networks"]
     assert all(
-        networks[name]["internal"] for name in ("clinical", "agent", "knowledge", "telemetry")
+        networks[name]["internal"]
+        for name in ("clinical", "agent", "knowledge", "intranet", "telemetry")
     )
     options = networks["edge"]["driver_opts"]
     assert options["com.docker.network.bridge.enable_ip_masquerade"] == "false"
@@ -59,8 +60,28 @@ def test_only_gateway_has_internet_egress():
         "gateway"
     ]
     published = [name for name, service in COMPOSE["services"].items() if "ports" in service]
-    assert published == ["ingress"]
-    assert all(port.startswith("127.0.0.1:") for port in COMPOSE["services"]["ingress"]["ports"])
+    assert published == ["ingress", "intranet-ingress"]
+    assert all(
+        port.startswith("127.0.0.1:")
+        for name in published
+        for port in COMPOSE["services"][name]["ports"]
+    )
+
+
+def test_intranet_reads_snapshots_and_is_reachable_only_through_its_own_relay():
+    from zagent.relay import parse_routes
+
+    assert service_networks("kb-site") == {"intranet"}
+    members = {name for name in COMPOSE["services"] if "intranet" in service_networks(name)}
+    assert members == {"kb-site", "intranet-ingress"}
+    assert service_networks("intranet-ingress") == {"edge", "intranet"}
+    assert "intranet" not in service_networks("ingress")
+    relay = COMPOSE["services"]["intranet-ingress"]["environment"]["ZAGENT_RELAY_ROUTES"]
+    assert parse_routes(relay) == {5180: ("kb-site", 8009)}
+    assert COMPOSE["services"]["kb-site"]["volumes"] == [
+        "kb_snapshots:/var/lib/zknowledge/snapshots:ro"
+    ]
+    assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in COMPOSE["services"]["kb-site"]["environment"]
 
 
 def test_agent_reaches_privacy_and_events_only_through_restricted_endpoints():
@@ -85,7 +106,9 @@ def test_zone_targets_deny_clinical_data_by_name_and_address():
     agent_services = ("agent", "gateway", "tools", "jobs", "tokenizer", "event-db")
     running = {
         name: {"NetworkSettings": {"Networks": {"zagent_any": {"IPAddress": f"10.0.0.{i}"}}}}
-        for i, name in enumerate((*clinical, "kb", *agent_services), start=1)
+        for i, name in enumerate(
+            (*clinical, "kb", "kb-site", "mcp-broker", "collector", *agent_services), start=1
+        )
     }
     address = {name: f"10.0.0.{i}" for i, name in enumerate(running, start=1)}
 
@@ -103,6 +126,14 @@ def test_zone_targets_deny_clinical_data_by_name_and_address():
         assert internet["allowed"] is (source == "gateway")
     for source in ("agent", "gateway", "worker"):
         assert {"kb", address["kb"]} <= denied(source)
+    for source in ("agent", "gateway", "kb", "mcp-broker", "worker", "ingress"):
+        assert {"kb-site", address["kb-site"]} <= denied(source)
+    for source in ("kb-site", "intranet-ingress"):
+        assert {*clinical, "kb", "mcp-broker", *agent_services} <= denied(source)
+        allowed = {
+            target["host"] for target in zones["targets_for"](source, running) if target["allowed"]
+        }
+        assert allowed == {"kb-site"}
     assert {*agent_services, *(address[name] for name in agent_services)} <= denied("kb")
     assert not any(
         target["host"] in {"postgres", "privacy", "kb"}

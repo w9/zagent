@@ -1,0 +1,17 @@
+{% extends "document.html" %}
+{% block header %}
+<nav class="breadcrumbs" aria-label="Breadcrumbs">
+  <a href="/servicedesk">Issues</a> / {{ row.source_id }}
+</nav>
+<section class="issue" aria-label="Issue details">
+  <p class="issue-key">{{ row.source_id }}</p>
+  <dl>
+    <div><dt>Type</dt><dd>{{ row.doc_type|kind }}</dd></div>
+    <div><dt>Status</dt><dd><span class="status status-{{ row.status }}">{{ row.status|capitalize }}</span></dd></div>
+    {% for name in ["Priority", "Components", "Site", "Created", "Resolved"] %}
+    {% if fields[name] %}<div><dt>{{ name }}</dt><dd>{{ fields[name] }}</dd></div>{% endif %}
+    {% endfor %}
+    <div><dt>Reporter</dt><dd>{{ provenance.reporter_role }}</dd></div>
+  </dl>
+</section>
+{% endblock %}

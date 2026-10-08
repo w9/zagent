@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · Meridian intranet</title>
+<link rel="stylesheet" href="/static/site.css">
+</head>
+<body data-area="{{ area or 'home' }}">
+<a class="skip" href="#main">Skip to content</a>
+<header class="global">
+  <a class="brand" href="/"><span class="mark" aria-hidden="true">M</span> Meridian intranet</a>
+  <nav aria-label="Systems">
+    {% for key, label, href in areas %}
+    <a href="{{ href }}"{% if key == area %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  <form class="search" action="/search" method="get" role="search">
+    <label class="visually-hidden" for="global-search">Search the intranet</label>
+    <input id="global-search" name="q" type="search" placeholder="Search" value="{{ query }}">
+  </form>
+  <div class="account">
+    {% if visitor %}
+    <span>{{ visitor.name }}</span> <span class="muted">{{ visitor.title }} · {{ visitor.site_name }}</span>
+    <a href="/signin">Switch</a>
+    {% else %}
+    <span class="muted">Signed out</span> <a href="/signin">Sign in</a>
+    {% endif %}
+  </div>
+</header>
+{% for notice in notices %}
+<div class="notice notice-{{ notice.kind }}" role="status">
+  {{ notice.text }}{% if notice.href %} <a href="{{ notice.href }}">{{ notice.link }}</a>{% endif %}
+</div>
+{% endfor %}
+<main id="main">
+{% block main %}{% endblock %}
+</main>
+<footer class="global">Synthetic demonstration content. The Meridian Clinical Genomics Core, its staff and documents are invented.</footer>
+</body>
+</html>

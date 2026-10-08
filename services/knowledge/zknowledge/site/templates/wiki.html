@@ -1,0 +1,19 @@
+{% extends "document.html" %}
+{% block sidebar %}
+<nav class="sidebar" aria-label="Space">
+  <p class="space-name"><a href="/wiki">Meridian Clinical Genomics Core</a></p>
+  <p class="muted">Space MCGC</p>
+  <a href="/wiki">Page tree</a>
+</nav>
+{% endblock %}
+{% block header %}
+<nav class="breadcrumbs" aria-label="Breadcrumbs">
+  <a href="/wiki">MCGC</a>
+  {% for crumb in breadcrumbs %} / <a href="{{ crumb.href }}">{{ crumb.title }}</a>{% endfor %}
+</nav>
+{% if row.status == "archived" %}
+<div class="banner banner-archived" role="note">This page is archived. It may be outdated; controlled procedures live in the QMS.</div>
+{% endif %}
+<p class="byline">Page {{ row.source_id }} · version {{ row.version }} · updated {{ provenance.updated }} by the {{ provenance.updated_by_role }}</p>
+{% if info.labels %}<ul class="labels" aria-label="Labels">{% for label in info.labels %}<li>{{ label }}</li>{% endfor %}</ul>{% endif %}
+{% endblock %}

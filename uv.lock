@@ -1793,6 +1793,7 @@ source = { editable = "services/knowledge" }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "jinja2" },
     { name = "mcp" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-fastapi" },
@@ -1806,6 +1807,7 @@ dependencies = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115,<1" },
     { name = "httpx", specifier = ">=0.28,<1" },
+    { name = "jinja2", specifier = ">=3.1,<4" },
     { name = "mcp", specifier = ">=1.20,<2" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.30,<2" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.51b0,<1" },

@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from jinja2 import Environment, FileSystemLoader
 
 from zknowledge.index import Caller, IndexStore, NotFound
-from zknowledge.site import pages
+from zknowledge.site import identity, pages
 from zknowledge.snapshot import SnapshotUnavailable, snapshot_directory
 
 HERE = Path(__file__).parent
@@ -52,8 +52,15 @@ KINDS = {
 }
 
 
-def create_site(store: IndexStore | None = None) -> FastAPI:
+def create_site(
+    store: IndexStore | None = None,
+    *,
+    verifier: identity.GrantVerifier | None = None,
+    sessions: identity.Sessions | None = None,
+) -> FastAPI:
     store = store or IndexStore(snapshot_directory())
+    verifier = verifier or identity.GrantVerifier.configured()
+    sessions = sessions or identity.Sessions()
     templates = Environment(
         loader=FileSystemLoader(HERE / "templates"),
         autoescape=True,
@@ -70,16 +77,30 @@ def create_site(store: IndexStore | None = None) -> FastAPI:
         response.headers.update(SECURITY_HEADERS)
         return response
 
+    def signed_in(request: Request) -> identity.Visitor | None:
+        return sessions.read(request.cookies.get(identity.SESSION_COOKIE))
+
     def visitor(request: Request) -> Caller:
-        return Caller(None, [])
+        return identity.caller(signed_in(request))
 
     def render(request: Request, template: str, code: int = 200, **context) -> HTMLResponse:
         context.setdefault("area", None)
         context.setdefault("notices", [])
+        person = signed_in(request)
+        if person and request.query_params.get("via") == "workbench":
+            context["notices"] = [
+                pages.Notice(
+                    "identity",
+                    f"Opened from your workbench session as {person.name} "
+                    f"({person.title.lower()}, {person.site_name}).",
+                ),
+                *context["notices"],
+            ]
         html = templates.get_template(template).render(
             areas=pages.AREAS,
             path=request.url.path,
             query=request.query_params.get("q", "") if request.url.path == "/search" else "",
+            visitor=person,
             **context,
         )
         return HTMLResponse(html, status_code=code)
@@ -150,7 +171,7 @@ def create_site(store: IndexStore | None = None) -> FastAPI:
             return unavailable(request)
         query = {
             name: params[name][: pages.QUOTE_LIMIT]
-            for name in ("snapshot", "lines", "q")
+            for name in ("snapshot", "lines", "q", "via")
             if params.get(name)
         }
         fragment = ""
@@ -286,6 +307,85 @@ def create_site(store: IndexStore | None = None) -> FastAPI:
         )
         return failure or render(
             request, "search.html", title="Search", everything=everything, **model
+        )
+
+    def signed_in_response(target: str, cookie: str) -> RedirectResponse:
+        response = RedirectResponse(target, status_code=303)
+        response.set_cookie(
+            identity.SESSION_COOKIE,
+            cookie,
+            max_age=identity.SESSION_SECONDS,
+            httponly=True,
+            samesite="lax",
+            path="/",
+        )
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    def local(target: str | None) -> str:
+        """Only same-site paths, so sign-in cannot redirect elsewhere."""
+        if target and target.startswith("/") and not target.startswith(("//", "/\\")):
+            return target
+        return "/"
+
+    @app.get("/signin", response_class=HTMLResponse)
+    def signin_page(request: Request):
+        return render(
+            request,
+            "signin.html",
+            title="Sign in",
+            staff=identity.STAFF,
+            sites=identity.SITES,
+            next=local(request.query_params.get("next")),
+        )
+
+    @app.post("/signin")
+    async def signin(request: Request):
+        form = parse_qs((await request.body()).decode(errors="replace")[:2000])
+        persona = (form.get("persona") or [""])[0]
+        site = (form.get("site") or [""])[0]
+        if persona not in identity.STAFF or site not in identity.SITES:
+            return render(
+                request,
+                "signin.html",
+                400,
+                title="Sign in",
+                staff=identity.STAFF,
+                sites=identity.SITES,
+                next="/",
+                error="Choose a staff member and a site.",
+            )
+        return signed_in_response(
+            local((form.get("next") or ["/"])[0]), sessions.issue(persona, site)
+        )
+
+    @app.post("/signout")
+    def signout():
+        response = RedirectResponse("/", status_code=303)
+        response.delete_cookie(identity.SESSION_COOKIE, path="/")
+        return response
+
+    @app.get("/signin/grant")
+    def redeem(request: Request):
+        """A citation opened from the workbench: sign in as the session's persona, then show it."""
+        try:
+            grant = verifier.redeem(request.query_params.get("token"))
+        except identity.GrantRejected:
+            response = render(request, "grant_rejected.html", 403, title="Link expired")
+            response.headers["Cache-Control"] = "no-store"
+            return response
+        query = {
+            name: value
+            for name, value in (
+                ("snapshot", grant.snapshot),
+                ("lines", grant.lines),
+                ("q", grant.q),
+            )
+            if value
+        }
+        target = f"/d/{grant.document}?{urlencode({**query, 'via': 'workbench'})}"
+        return signed_in_response(
+            target, sessions.issue(grant.persona, grant.site, via="workbench")
         )
 
     return app

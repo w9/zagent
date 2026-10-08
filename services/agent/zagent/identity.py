@@ -5,7 +5,7 @@ import time
 from functools import cache
 from pathlib import Path
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import jwt
 from cryptography.hazmat.primitives import serialization
@@ -20,6 +20,9 @@ AUDIENCE = "zagent-broker"
 CONTEXT_TTL_SECONDS = 900
 SIGNING_KEY_FILE = "ZAGENT_CALLER_SIGNING_KEY_FILE"
 VERIFY_KEY_FILE = "ZAGENT_CALLER_VERIFY_KEY_FILE"
+SITE_AUDIENCE = "zknowledge-site"
+GRANT_TTL_SECONDS = 60
+GRANT_SIGNING_KEY_FILE = "ZAGENT_SITE_SIGNING_KEY_FILE"
 
 PersonaId = Literal["lab-technologist", "analyst", "qa-officer", "lab-director"]
 
@@ -169,6 +172,61 @@ class CallerVerifier:
         if context.session != session_id or context.turn != turn_id:
             raise CallerRejected("caller context belongs to another conversation turn")
         return context
+
+
+@cache
+def development_grant_key() -> Ed25519PrivateKey:
+    return Ed25519PrivateKey.generate()
+
+
+class GrantSigner:
+    """Held only by the BFF: one-minute, single-use grants that open a citation on the intranet."""
+
+    def __init__(self, key: Ed25519PrivateKey, ttl: int = GRANT_TTL_SECONDS):
+        self.key = key
+        self.ttl = ttl
+
+    @classmethod
+    def configured(cls) -> "GrantSigner":
+        path = os.environ.get(GRANT_SIGNING_KEY_FILE)
+        if not path:
+            return cls(development_grant_key())
+        key = serialization.load_pem_private_key(Path(path).read_bytes(), password=None)
+        if not isinstance(key, Ed25519PrivateKey):
+            raise ValueError("The intranet grant signing key must be Ed25519")
+        return cls(key)
+
+    def mint(
+        self,
+        *,
+        site: str,
+        persona: str,
+        document: str,
+        snapshot: str | None = None,
+        lines: str | None = None,
+        quote: str | None = None,
+        now: float | None = None,
+    ) -> str:
+        issued = int(time.time() if now is None else now)
+        claims = {
+            "iss": ISSUER,
+            "aud": SITE_AUDIENCE,
+            "iat": issued,
+            "exp": issued + self.ttl,
+            "jti": uuid4().hex,
+            "persona": persona,
+            "site": site,
+            "roles": list(PERSONAS[persona].roles),
+            "document": document,
+            "snapshot": snapshot,
+            "lines": lines,
+            "q": quote,
+        }
+        return jwt.encode(
+            {name: value for name, value in claims.items() if value is not None},
+            self.key,
+            algorithm="EdDSA",
+        )
 
 
 def write_keypair(signing: Path, verify: Path) -> None:

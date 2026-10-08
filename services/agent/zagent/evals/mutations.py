@@ -33,8 +33,14 @@ EXPECTED = {
     "ignore_snapshot_pin": ["REQ-KB-03"],
     "skip_contract_pin": ["REQ-KB-04"],
     "kb_direct_route": ["REQ-KB-01"],
+    "site_acl_off": ["REQ-ACL-03"],
+    "site_trust_unsigned_grant": ["REQ-ACL-04"],
+    "site_unpinned": ["REQ-CITE-01"],
+    "site_direct_route": ["REQ-KB-06"],
 }
-ZONE_MUTATIONS = ("zones_off", "kb_direct_route")
+ZONE_MUTATIONS = ("zones_off", "kb_direct_route", "site_direct_route")
+# Enforced by the knowledge team's intranet, which reads its own mutation switch.
+SITE_MUTATIONS = ("site_acl_off", "site_trust_unsigned_grant", "site_unpinned")
 KNOWLEDGE_MUTATIONS = (
     "acl_off",
     "trust_unsigned_context",
@@ -346,6 +352,78 @@ async def probe(name: str, root: Path) -> dict:
                 refused = result.get("error", {}).get("code") == "unavailable"
                 outcomes["REQ-KB-04"] = refused
                 observed["changed_contract_served"] = not refused
+        elif name in SITE_MUTATIONS:
+            import httpx
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+            from zknowledge.index import IndexStore
+            from zknowledge.site.app import create_site
+            from zknowledge.site.identity import GrantVerifier
+
+            from zagent.evals.local_knowledge import published_snapshots
+            from zagent.identity import GrantSigner
+
+            key = Ed25519PrivateKey.generate()
+
+            def intranet(snapshots: Path):
+                return create_site(IndexStore(snapshots), verifier=GrantVerifier(key.public_key()))
+
+            async def opened(
+                site, persona: str, signer: GrantSigner, document="sop-qc-001-v4", **cited
+            ) -> tuple[int, str, str]:
+                """Follow a citation as a fresh visitor: status, page and the register it sees."""
+                async with httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=site), base_url="http://intranet"
+                ) as visitor:
+                    token = signer.mint(
+                        site="northgate", persona=persona, document=document, **cited
+                    )
+                    response = await visitor.get("/signin/grant", params={"token": token})
+                    if response.status_code != 303:
+                        return response.status_code, "", ""
+                    page = await visitor.get(response.headers["location"], follow_redirects=True)
+                    return page.status_code, page.text, (await visitor.get("/qms")).text
+
+            if name == "site_unpinned":
+                from zknowledge.index import build_index
+                from zknowledge.snapshot import corpus_root
+
+                with TemporaryDirectory(prefix="zagent-site-") as directory:
+                    snapshots, corpus = Path(directory) / "snapshots", Path(directory) / "corpus"
+                    pinned, _ = await asyncio.to_thread(build_index, corpus_root(), snapshots)
+                    shutil.copytree(corpus_root(), corpus)
+                    sop = corpus / "qms/files/SOP-QC-001_v3.md"
+                    sop.write_text(
+                        sop.read_text().replace(
+                            "Review the sample and library", "Always review the sample and library"
+                        )
+                    )
+                    newer, _ = await asyncio.to_thread(build_index, corpus, snapshots)
+                    site = intranet(snapshots)
+                    cite = {"document": "sop-qc-001-v3", "lines": "14"}
+                    _status, latest, _register = await opened(
+                        site, "analyst", GrantSigner(key), snapshot=newer, **cite
+                    )
+                    controls["newer_snapshot_shows_the_edit"] = "Always review" in latest
+                    _status, held, _register = await opened(
+                        site, "analyst", GrantSigner(key), snapshot=pinned, **cite
+                    )
+                    shifted = "Always review" in held
+                    outcomes["REQ-CITE-01"] = not shifted
+                    observed["pinned_citation_shows_later_text"] = shifted
+            else:
+                site = intranet(published_snapshots())
+                status, _page, _register = await opened(site, "qa-officer", GrantSigner(key))
+                controls["qa_officer_opens_draft"] = status == 200
+                if name == "site_acl_off":
+                    status, _page, register = await opened(site, "analyst", GrantSigner(key))
+                    hidden = status == 404 and "SOP-QC-001/v4" not in register
+                    outcomes["REQ-ACL-03"] = hidden
+                    observed.update(analyst_draft_status=status, draft_listed=not hidden)
+                else:
+                    forged = GrantSigner(Ed25519PrivateKey.generate())
+                    status, _page, _register = await opened(site, "qa-officer", forged)
+                    outcomes["REQ-ACL-04"] = status == 403
+                    observed["forged_grant_status"] = status
         else:
             raise ValueError("The zones mutation requires the running Compose stack probe")
         controls["http_health_after"] = (await client.get("/health")).status_code == 200
@@ -370,6 +448,8 @@ async def run_probe(name: str, database_url: str, root: Path, *, mutate: bool) -
                 {
                     "ZAGENT_MUTATION": name if mutate else "",
                     "ZAGENT_TEST_MODE": "mutation",
+                    "ZKNOWLEDGE_MUTATION": name if mutate and name in SITE_MUTATIONS else "",
+                    "ZKNOWLEDGE_TEST_MODE": "mutation",
                     "ZAGENT_LLM_MODE": "replay",
                     "ZAGENT_AGENT": "scripted",
                     "ZAGENT_DISPLAY_MODE": "1",

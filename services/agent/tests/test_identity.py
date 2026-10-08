@@ -17,6 +17,7 @@ from zagent.identity import (
     CallerRejected,
     CallerSigner,
     CallerVerifier,
+    GrantSigner,
     write_keypair,
 )
 from zagent.kb_tools import contract_hash
@@ -119,6 +120,39 @@ def test_personas_use_knowledge_roles_and_never_match_patient_rules():
             assert not detector.matches(text), text
 
 
+def test_the_intranet_directory_and_grants_agree_with_the_workbench(tmp_path, monkeypatch):
+    from zagent.cohort import SITES
+    from zknowledge.site import identity as intranet
+
+    assert {
+        persona.id: (persona.name, persona.title, persona.roles) for persona in PERSONAS.values()
+    } == intranet.STAFF
+    assert set(intranet.SITES) == set(SITES)
+    signing, verify = tmp_path / "signing/key.pem", tmp_path / "verify/key.pem"
+    write_keypair(signing, verify)
+    monkeypatch.setenv("ZAGENT_SITE_SIGNING_KEY_FILE", str(signing))
+    monkeypatch.setenv("ZKNOWLEDGE_GRANT_VERIFY_KEY_FILE", str(verify))
+    token = GrantSigner.configured().mint(
+        site="lakeside", persona="lab-director", document="wiki-40205", lines="3-4"
+    )
+    grant = intranet.GrantVerifier.configured().redeem(token)
+    assert (grant.persona, grant.site, grant.roles, grant.document, grant.lines) == (
+        "lab-director",
+        "lakeside",
+        ("lab-director",),
+        "wiki-40205",
+        "3-4",
+    )
+    with pytest.raises(intranet.GrantRejected):
+        intranet.GrantVerifier.configured().redeem(
+            GrantSigner(Ed25519PrivateKey.generate()).mint(
+                site="northgate", persona="analyst", document="wiki-40205"
+            )
+        )
+    with pytest.raises(intranet.GrantRejected):
+        intranet.GrantVerifier.configured().redeem(mint("qa-officer"))
+
+
 def recording_upstream(seen: list[dict]) -> FastMCP:
     server = FastMCP("recording-knowledge")
 
@@ -213,6 +247,53 @@ async def test_restricted_knowledge_follows_the_verified_persona():
     assert (await get_document("lab-director", "wiki-40205"))["source"] == "wiki"
 
 
+async def test_the_intranet_opens_exactly_the_citations_the_broker_would_serve():
+    """REQ-ACL-03 parity: the same persona and site see the same restricted documents."""
+    import httpx
+    from zagent.cohort import SITES
+    from zagent.evals.local_knowledge import local_broker, published_snapshots
+    from zknowledge.index import IndexStore
+    from zknowledge.site.app import create_site
+    from zknowledge.site.identity import GrantVerifier
+
+    broker = local_broker(PassThrough())
+    key = Ed25519PrivateKey.generate()
+    intranet = create_site(
+        IndexStore(published_snapshots()), verifier=GrantVerifier(key.public_key())
+    )
+    documents = (
+        "sop-qc-001-v3",
+        "sop-qc-001-v4",
+        "sop-acc-001a-v1",
+        "chg-0024",
+        "inc-0142",
+        "inc-0151",
+        "wiki-40100",
+        "wiki-40204",
+        "wiki-40205",
+        "wiki-40223",
+        "wiki-40232",
+    )
+    seen = set()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=intranet), base_url="http://intranet"
+    ) as web:
+        for site in SITES:
+            for persona in PERSONAS:
+                context = SIGNER.mint(session_id=SESSION, turn_id=TURN, site=site, persona=persona)
+                for document in documents:
+                    served = "error" not in await broker.dispatch(
+                        SESSION, TURN, "get_document", {"document": document}, context
+                    )
+                    token = GrantSigner(key).mint(site=site, persona=persona, document=document)
+                    page = await web.get(
+                        "/signin/grant", params={"token": token}, follow_redirects=True
+                    )
+                    assert page.status_code == (200 if served else 404), (site, persona, document)
+                    seen.add(served)
+    assert seen == {True, False}
+
+
 @pytest.mark.integration
 async def test_sessions_record_a_persona_and_turns_carry_a_signed_context(api):
     client, store = api.client, api.app.state.store
@@ -243,6 +324,49 @@ async def test_sessions_record_a_persona_and_turns_carry_a_signed_context(api):
     events = await store.snapshot_events(session_id)
     assert token not in json.dumps([event.model_dump(mode="json") for event in events])
     await finished(store, session_id)
+
+
+@pytest.mark.integration
+async def test_a_citation_opens_the_intranet_as_the_session_persona(api):
+    from urllib.parse import parse_qs, urlsplit
+
+    client = api.client
+    session_id = (await client.post("/sessions", json={"persona": "qa-officer"})).json()["id"]
+    path = f"/sessions/{session_id}/citations/open"
+    citation = {
+        "document": "sop-qc-001-v4",
+        "snapshot": "a" * 64,
+        "lines": "10-12",
+        "q": "Tumor libraries\n  would require",
+    }
+    response = await client.post(path, data=citation)
+    assert response.status_code == 303
+    assert response.headers["cache-control"] == "no-store"
+    location = urlsplit(response.headers["location"])
+    assert f"{location.scheme}://{location.netloc}{location.path}" == (
+        "http://localhost:5180/signin/grant"
+    )
+    claims = jwt.decode(parse_qs(location.query)["token"][0], options={"verify_signature": False})
+    assert claims["exp"] - claims["iat"] == 60 and claims["aud"] == "zknowledge-site"
+    assert (claims["persona"], claims["roles"], claims["site"]) == (
+        "qa-officer",
+        ["qa-officer"],
+        "northgate",
+    )
+    assert (claims["document"], claims["lines"], claims["q"]) == (
+        "sop-qc-001-v4",
+        "10-12",
+        "Tumor libraries would require",
+    )
+    for body in (
+        {**citation, "persona": "lab-director"},
+        {**citation, "document": "../etc"},
+        {**citation, "lines": "1;2"},
+        {"lines": "1-2"},
+    ):
+        assert (await client.post(path, data=body)).status_code == 422, body
+    missing = await client.post(f"/sessions/{uuid4()}/citations/open", data=citation)
+    assert missing.status_code == 404
 
 
 async def finished(store, session_id: UUID) -> None:

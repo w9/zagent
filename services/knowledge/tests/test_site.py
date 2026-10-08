@@ -1,20 +1,52 @@
 import re
+import time
+import uuid
 from html.parser import HTMLParser
 
+import jwt
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi.testclient import TestClient
 from knowledge_fixtures import *  # noqa: F403
 from zknowledge.index import Caller, IndexStore, build_index
+from zknowledge.site import identity
 from zknowledge.site.app import create_site
-from zknowledge.site.pages import classify, document_path
+from zknowledge.site.pages import AREAS, classify, document_path
 
 SIGNED_OUT = Caller(None, [])
+GRANT_KEY = Ed25519PrivateKey.generate()
 RESTRICTED = {
     "sop-qc-001-v4": "/qms/documents/SOP-QC-001/v4",
     "chg-0024": "/servicedesk/browse/CHG-0024",
     "inc-0142": "/servicedesk/browse/INC-0142",
     "wiki-40205": "/wiki/display/MCGC/40205",
 }
+INDEXES = {"wiki": "/wiki", "qms": "/qms", "ticketing": "/servicedesk", "wikipedia": "/library"}
+
+
+def grant(persona="qa-officer", *, key=GRANT_KEY, now=None, lifetime=60, **changes):
+    issued = int(time.time() if now is None else now)
+    claims = {
+        "iss": "zagent-bff",
+        "aud": "zknowledge-site",
+        "iat": issued,
+        "exp": issued + lifetime,
+        "jti": uuid.uuid4().hex,
+        "persona": persona,
+        "site": "northgate",
+        "roles": list(identity.STAFF[persona][2]),
+        "document": "sop-qc-001-v4",
+        "lines": "7-9",
+        **changes,
+    }
+    return jwt.encode(claims, key, algorithm="EdDSA")
+
+
+def signed_in_client(store, persona: str, site: str = "northgate") -> TestClient:
+    client = TestClient(create_site(store), follow_redirects=False)
+    response = client.post("/signin", data={"persona": persona, "site": site, "next": "/qms"})
+    assert response.status_code == 303 and response.headers["location"] == "/qms"
+    return client
 
 
 class LineText(HTMLParser):
@@ -117,11 +149,15 @@ def test_citation_links_resolve_to_the_source_system_with_the_lines_highlighted(
 
 
 def test_forbidden_documents_are_indistinguishable_from_missing_ones(site):
-    missing = site.get("/qms/documents/SOP-QC-001/v9")
-    assert missing.status_code == 404
+    def page(path):
+        response = site.get(path)
+        return response.status_code, response.text.replace(path, "PATH")
+
+    missing = page("/qms/documents/SOP-QC-001/v9")
+    assert missing[0] == 404
     for document, path in RESTRICTED.items():
-        assert site.get(path).text == missing.text, document
-        assert site.get(f"/d/{document}").text == missing.text, document
+        assert page(path) == missing, document
+        assert page(f"/d/{document}") == missing, document
     listings = {
         "/qms": "sop-qc-001-v4",
         "/qms?status=draft": "/v4",
@@ -179,3 +215,99 @@ def test_citations_open_the_snapshot_they_were_made_against(corpus_copy, tmp_pat
     expired = site.get(f"{path}?snapshot={'0' * 64}&lines=14")
     assert "no longer retained" in expired.text
     assert not parsed(expired.text).highlighted
+
+
+def test_each_signed_in_persona_sees_exactly_what_the_index_allows(published_index):
+    store, _identifier, _warnings = published_index
+    index = store.open()
+    try:
+        rows = list(index.connection.execute("SELECT * FROM documents ORDER BY id"))
+        visitors = [(persona, "northgate") for persona in identity.STAFF] + [
+            ("analyst", "lakeside")
+        ]
+        for persona, site in visitors:
+            client = signed_in_client(store, persona, site)
+            caller = Caller(site, list(identity.STAFF[persona][2]))
+            visible = {row["id"] for row in rows if index.is_visible(caller, row["id"])}
+            for row in rows:
+                status = client.get(document_path(row)).status_code
+                assert status == (200 if row["id"] in visible else 404), (persona, site, row["id"])
+            for source, path in INDEXES.items():
+                page = client.get(path).text
+                listed = {
+                    row["id"]
+                    for row in rows
+                    if row["source"] == source and f'href="{document_path(row)}"' in page
+                }
+                expected = {row["id"] for row in rows if row["source"] == source} & visible
+                assert listed == expected, (persona, site, source)
+            found = client.get("/search?q=proposed+45x+tumor+minimum+draft&all=1").text
+            assert ("sop-qc-001-v4" in found) is ("sop-qc-001-v4" in visible), persona
+    finally:
+        index.close()
+    assert {source for source, _label, _path in AREAS} >= set(INDEXES)
+
+
+def test_citation_grants_sign_the_workbench_persona_in_once(published_index):
+    store, _identifier, _warnings = published_index
+    verifier = identity.GrantVerifier(GRANT_KEY.public_key())
+    client = TestClient(create_site(store, verifier=verifier), follow_redirects=False)
+    token = grant()
+    response = client.get("/signin/grant", params={"token": token})
+    assert response.status_code == 303 and response.headers["cache-control"] == "no-store"
+    assert response.headers["location"] == "/d/sop-qc-001-v4?lines=7-9&via=workbench"
+    page = client.get(response.headers["location"], follow_redirects=True)
+    assert page.status_code == 200
+    assert "Opened from your workbench session as Odile Fenn" in page.text
+    assert parsed(page.text).highlighted == {7, 8, 9}
+    replayed = TestClient(create_site(store, verifier=verifier), follow_redirects=False)
+    assert replayed.get("/signin/grant", params={"token": token}).status_code == 403
+    rejected = {
+        "forged": grant(key=Ed25519PrivateKey.generate()),
+        "expired": grant(now=time.time() - 3600),
+        "audience": grant(aud="zagent-broker"),
+        "widened roles": grant("analyst", roles=["qa-officer"]),
+        "long lived": grant(lifetime=3600),
+        "unknown site": grant(site="atlantis"),
+        "malformed": "not-a-token",
+    }
+    for name, token in rejected.items():
+        response = replayed.get("/signin/grant", params={"token": token})
+        assert response.status_code == 403, name
+        assert identity.SESSION_COOKIE not in response.headers.get("set-cookie", ""), name
+    unconfigured = TestClient(create_site(store, verifier=identity.GrantVerifier(None)))
+    assert unconfigured.get("/signin/grant", params={"token": grant()}).status_code == 403
+
+
+def test_mock_sign_in_is_signed_and_stays_on_the_site(published_index):
+    store, _identifier, _warnings = published_index
+    draft = "/qms/documents/SOP-QC-001/v4"
+    client = TestClient(create_site(store), follow_redirects=False)
+    response = client.post(
+        "/signin", data={"persona": "qa-officer", "site": "northgate", "next": "//evil.example/"}
+    )
+    assert response.status_code == 303 and response.headers["location"] == "/"
+    cookie = response.cookies[identity.SESSION_COOKIE]
+    assert client.get(draft).status_code == 200
+    payload, signature = cookie.rsplit(".", 1)
+    other = TestClient(create_site(store), follow_redirects=False)
+    for value in (cookie, f"{payload}x.{signature}", f"{payload}.{'0' * len(signature)}"):
+        other.cookies.set(identity.SESSION_COOKIE, value)
+        assert other.get(draft).status_code == 404
+    assert client.post("/signin", data={"persona": "root", "site": "northgate"}).status_code == 400
+    assert client.post("/signout").status_code == 303
+    client.cookies.clear()
+    assert client.get(draft).status_code == 404
+
+
+def test_mutation_flags_require_an_explicit_test_mode(monkeypatch):
+    from zknowledge import faults
+
+    monkeypatch.setenv("ZKNOWLEDGE_MUTATION", "site_acl_off")
+    with pytest.raises(RuntimeError):
+        faults.enabled("site_acl_off")
+    monkeypatch.setenv("ZKNOWLEDGE_TEST_MODE", "mutation")
+    assert isinstance(identity.caller(None), identity.Everyone)
+    monkeypatch.setenv("ZKNOWLEDGE_MUTATION", "something_else")
+    with pytest.raises(RuntimeError):
+        identity.caller(None)

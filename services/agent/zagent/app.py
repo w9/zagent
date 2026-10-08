@@ -2,16 +2,18 @@ import asyncio
 import json
 import logging
 import os
+import re
 from contextlib import AsyncExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import parse_qs, urlencode
 from uuid import UUID, uuid4
 
 import asyncpg
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from zagent.agent import Agent, LlmAgent, ScriptedAgent
 from zagent.cohort import ClinicalStore, HandleError, configured_clock
@@ -19,7 +21,7 @@ from zagent.display import SessionDisplay
 from zagent.draft_store import DraftConflict, DraftStore, InvalidDraft
 from zagent.drafts import CATALOG
 from zagent.events import Projection
-from zagent.identity import DEFAULT_PERSONA, PERSONAS, CallerSigner, PersonaId
+from zagent.identity import DEFAULT_PERSONA, PERSONAS, CallerSigner, GrantSigner, PersonaId
 from zagent.jobs import JobStore
 from zagent.jobs_server import UI_RESOURCES, create_jobs_server
 from zagent.llm import GatewayClient
@@ -67,6 +69,9 @@ class Settings(BaseModel):
         default_factory=lambda: os.environ.get("ZAGENT_DISPLAY_MODE", "1") == "1"
     )
     runtime_url: str | None = Field(default_factory=lambda: os.environ.get("ZAGENT_RUNTIME_URL"))
+    intranet_url: str = Field(
+        default_factory=lambda: os.environ.get("ZAGENT_INTRANET_URL", "http://localhost:5180")
+    )
     migrate_database: bool = Field(
         default_factory=lambda: os.environ.get("ZAGENT_MIGRATE", "1") == "1"
     )
@@ -128,6 +133,14 @@ class StopInput(BaseModel):
     reason: str = Field(min_length=1, max_length=200)
 
 
+class CitationInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    document: str = Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=120)
+    snapshot: str | None = Field(default=None, pattern=r"^[a-f0-9]{64}$")
+    lines: str | None = Field(default=None, pattern=r"^[0-9]{1,5}(?:-[0-9]{1,5})?$")
+    q: str | None = Field(default=None, max_length=300)
+
+
 def create_app(settings: Settings | None = None, agent: Agent | None = None) -> FastAPI:
     settings = settings or Settings()
 
@@ -179,6 +192,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             app.state.store = store
             app.state.runtime = runtime
             app.state.signer = CallerSigner.configured() if settings.display_mode else None
+            app.state.grants = GrantSigner.configured() if settings.display_mode else None
             app.state.notifications = notifications
             app.state.clinical = ClinicalStore(store, configured_clock())
             app.state.drafts = DraftStore(app.state.clinical)
@@ -380,6 +394,32 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             "default": DEFAULT_PERSONA,
             "personas": [persona.model_dump() for persona in PERSONAS.values()],
         }
+
+    @app.post("/sessions/{session_id}/citations/open")
+    async def open_citation(request: Request, session_id: UUID):
+        """Sign the session's persona into the intranet; a form post keeps quotes out of logs."""
+        display_only()
+        session = await scoped_session(session_id)
+        form = parse_qs((await request.body()).decode(errors="replace")[:4096])
+        try:
+            citation = CitationInput.model_validate(
+                {name: values[0] for name, values in form.items() if values and values[0]}
+            )
+        except ValidationError as error:
+            raise HTTPException(422, "Invalid citation") from error
+        token = app.state.grants.mint(
+            site=session.site_id,
+            persona=session.persona,
+            document=citation.document,
+            snapshot=citation.snapshot,
+            lines=citation.lines,
+            quote=re.sub(r"\s+", " ", citation.q).strip() if citation.q else None,
+        )
+        return RedirectResponse(
+            f"{settings.intranet_url.rstrip('/')}/signin/grant?{urlencode({'token': token})}",
+            status_code=303,
+            headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+        )
 
     @app.post("/sessions", status_code=201, response_model=Session)
     async def create_session(body: SessionInput | None = None):

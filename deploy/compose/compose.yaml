@@ -173,14 +173,18 @@ services:
     build:
       context: .
       dockerfile: services/knowledge/Dockerfile
-    command: ["uvicorn", "zknowledge.site.app:app", "--host", "0.0.0.0", "--port", "8009"]
+    command: ["uvicorn", "zknowledge.site.app:app", "--host", "0.0.0.0", "--port", "8009", "--no-access-log"]
     environment:
       ZKNOWLEDGE_SNAPSHOTS: /var/lib/zknowledge/snapshots
+      ZKNOWLEDGE_GRANT_VERIFY_KEY_FILE: /run/site/site-verify.pem
     volumes:
       - kb_snapshots:/var/lib/zknowledge/snapshots:ro
+      - site_verify:/run/site:ro
     networks: [intranet]
     depends_on:
       kb-publish:
+        condition: service_completed_successfully
+      privacy-init:
         condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8009/health')"]
@@ -292,6 +296,8 @@ services:
       - privacy_gateway:/keys/gateway
       - caller_signing:/keys/caller-signing
       - caller_verify:/keys/caller-verify
+      - site_signing:/keys/site-signing
+      - site_verify:/keys/site-verify
 
   privacy:
     build:
@@ -428,10 +434,13 @@ services:
       ZAGENT_PRIVACY_URL: http://privacy:8003
       ZAGENT_PRIVACY_CAPABILITY_FILE: /run/privacy/display.key
       ZAGENT_CALLER_SIGNING_KEY_FILE: /run/caller/caller-signing.pem
+      ZAGENT_SITE_SIGNING_KEY_FILE: /run/site/site-signing.pem
+      ZAGENT_INTRANET_URL: "http://localhost:${ZAGENT_INTRANET_PORT:-5180}"
       ZAGENT_FROZEN_TIME: "${ZAGENT_FROZEN_TIME:-}"
     volumes:
       - privacy_display:/run/privacy:ro
       - caller_signing:/run/caller:ro
+      - site_signing:/run/site:ro
     networks: [clinical]
     depends_on:
       agent:
@@ -471,6 +480,8 @@ volumes:
   privacy_gateway:
   caller_signing:
   caller_verify:
+  site_signing:
+  site_verify:
 
 networks:
   clinical:

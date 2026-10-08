@@ -18,6 +18,10 @@ MUTATIONS = (
     "ignore_snapshot_pin",
     "skip_contract_pin",
     "kb_direct_route",
+    "site_acl_off",
+    "site_trust_unsigned_grant",
+    "site_unpinned",
+    "site_direct_route",
 )
 
 

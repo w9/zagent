@@ -5,6 +5,7 @@ import re
 import sqlite3
 from dataclasses import dataclass, field
 
+from zknowledge.faults import enabled
 from zknowledge.index import Caller, IndexStore, KnowledgeIndex, NotFound
 from zknowledge.snapshot import SnapshotUnavailable
 
@@ -157,7 +158,7 @@ def blocks(
 
 def open_snapshot(store: IndexStore, snapshot: str | None) -> tuple[KnowledgeIndex, bool]:
     """The pinned snapshot when it is still retained, otherwise the current one."""
-    if snapshot and SNAPSHOT_ID.fullmatch(snapshot):
+    if snapshot and SNAPSHOT_ID.fullmatch(snapshot) and not enabled("site_unpinned"):
         try:
             return store.open(snapshot), True
         except SnapshotUnavailable:

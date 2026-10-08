@@ -44,8 +44,12 @@ def test_caller_keys_are_split_between_the_bff_and_the_broker():
 
     assert mounts("caller_signing") == {"privacy-init", "bff"}
     assert mounts("caller_verify") == {"privacy-init", "mcp-broker"}
+    assert mounts("site_signing") == {"privacy-init", "bff"}
+    assert mounts("site_verify") == {"privacy-init", "kb-site"}
     assert "ZAGENT_CALLER_SIGNING_KEY_FILE" in COMPOSE["services"]["bff"]["environment"]
     assert "ZAGENT_CALLER_VERIFY_KEY_FILE" in COMPOSE["services"]["mcp-broker"]["environment"]
+    assert "ZAGENT_SITE_SIGNING_KEY_FILE" in COMPOSE["services"]["bff"]["environment"]
+    assert "ZKNOWLEDGE_GRANT_VERIFY_KEY_FILE" in COMPOSE["services"]["kb-site"]["environment"]
 
 
 def test_only_gateway_has_internet_egress():
@@ -78,9 +82,10 @@ def test_intranet_reads_snapshots_and_is_reachable_only_through_its_own_relay():
     assert "intranet" not in service_networks("ingress")
     relay = COMPOSE["services"]["intranet-ingress"]["environment"]["ZAGENT_RELAY_ROUTES"]
     assert parse_routes(relay) == {5180: ("kb-site", 8009)}
-    assert COMPOSE["services"]["kb-site"]["volumes"] == [
-        "kb_snapshots:/var/lib/zknowledge/snapshots:ro"
-    ]
+    site = COMPOSE["services"]["kb-site"]
+    assert all(str(volume).endswith(":ro") for volume in site["volumes"])
+    assert "kb_snapshots:/var/lib/zknowledge/snapshots:ro" in site["volumes"]
+    assert "--no-access-log" in site["command"]
     assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in COMPOSE["services"]["kb-site"]["environment"]
 
 

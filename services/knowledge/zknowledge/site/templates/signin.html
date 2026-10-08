@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block main %}
+<div class="index signin">
+  <h1>Sign in to the Meridian intranet</h1>
+  <p class="muted">This intranet simulates single sign-on for a demonstration. Choose who you are; nothing is verified.</p>
+  {% if error %}<p class="banner banner-draft" role="alert">{{ error }}</p>{% endif %}
+  <form action="/signin" method="post">
+    <input type="hidden" name="next" value="{{ next }}">
+    <fieldset>
+      <legend>Staff member</legend>
+      <ul class="people">
+        {% for key, person in staff.items() %}
+        <li><label><input type="radio" name="persona" value="{{ key }}"{% if (visitor and visitor.persona == key) or (not visitor and key == "analyst") %} checked{% endif %}> {{ person[0] }} <span class="muted">{{ person[1] }}</span></label></li>
+        {% endfor %}
+      </ul>
+    </fieldset>
+    <p class="filters">
+      <label for="site">Site</label>
+      <select id="site" name="site">
+        {% for key, name in sites.items() %}<option value="{{ key }}"{% if (visitor and visitor.site == key) or (not visitor and key == "northgate") %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+      <button type="submit">Sign in</button>
+    </p>
+  </form>
+</div>
+{% endblock %}

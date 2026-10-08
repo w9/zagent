@@ -27,6 +27,7 @@ def main() -> None:
     write_keypair(
         root / "caller-signing/caller-signing.pem", root / "caller-verify/caller-verify.pem"
     )
+    write_keypair(root / "site-signing/site-signing.pem", root / "site-verify/site-verify.pem")
     print("Privacy capabilities initialized; no credentials were printed.")
 
 

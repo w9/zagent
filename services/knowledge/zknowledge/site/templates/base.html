@@ -22,9 +22,10 @@
   <div class="account">
     {% if visitor %}
     <span>{{ visitor.name }}</span> <span class="muted">{{ visitor.title }} · {{ visitor.site_name }}</span>
-    <a href="/signin">Switch</a>
+    <a href="/signin?next={{ path|urlencode }}">Switch</a>
+    <form action="/signout" method="post"><button type="submit" class="link">Sign out</button></form>
     {% else %}
-    <span class="muted">Signed out</span> <a href="/signin">Sign in</a>
+    <span class="muted">Signed out</span> <a href="/signin?next={{ path|urlencode }}">Sign in</a>
     {% endif %}
   </div>
 </header>

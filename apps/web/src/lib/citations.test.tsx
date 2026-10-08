@@ -6,6 +6,10 @@ import { TranscriptText } from '../components/chat/transcript-text'
 import { bindings, cited, citedSteps } from '../components/fixtures'
 import { citationLabel, citedRead, lineLabel, readResults } from './citations'
 import type { Citation } from './citations'
+import type { StepState } from './events'
+
+const goldens = import.meta.glob('../../../../evals/goldens/*.json', { eager: true, import: 'default' }) as
+  Record<string, { messages?: { role: string; text: string }[]; steps?: StepState[] }>
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
@@ -28,6 +32,22 @@ describe('citations', () => {
       { document: 'sop-var-001-v2', version: '2', start: 6, end: 8, quote: undefined },
     ])
     expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('renders every recorded citation as a chip backed by a read from its own conversation', () => {
+    let total = 0
+    for (const [path, golden] of Object.entries(goldens)) {
+      const reads = readResults(golden.steps ?? [])
+      for (const message of (golden.messages ?? []).filter((item) => item.role === 'assistant')) {
+        const written = message.text.match(/\[[a-z0-9]+(?:-[a-z0-9]+)*@[A-Za-z0-9._-]+:L[0-9]+(?:-L[0-9]+)?\]/g) ?? []
+        const found = citations(message.text)
+        cleanup()
+        expect(found.length, path).toBe(written.length)
+        for (const citation of found) expect(citedRead(reads, citation), `${path} ${citation.document}`).toBeDefined()
+        total += found.length
+      }
+    }
+    expect(total).toBeGreaterThanOrEqual(14)
   })
 
   it('leaves code, plain links and malformed citations alone, and stays plain text without a renderer', () => {

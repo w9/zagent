@@ -43,12 +43,19 @@ knowledge base can answer and questions it must not answer only because a docume
 Five more paired mutations cover the broker, snapshot pinning, contract pinning and the knowledge
 zone route.
 
+PLAN13 adds the knowledge team's intranet and citation chips without changing any model input,
+so it adds no cases or cassettes. `test_citations.py` resolves every citation in the recorded
+cassettes on the intranet and checks that the highlighted lines are the lines the agent read
+(REQ-CITE-01). Site-versus-broker parity and grant tests cover REQ-ACL-03 and REQ-ACL-04, the zone
+probes cover REQ-KB-06, and four more paired mutations cover snapshot pinning on the site, the
+site's access rules, grant verification and the intranet zone route.
+
 ## Commands
 
 ```bash
 make evals                    # Full replay quality gate, including retained adversarial findings.
 make evals EVAL_ARGS='--accept-known-findings'  # Separate exact-known-findings regression gate.
-make evals MUTATE=all          # Fifteen paired enforcement probes; requires the running `make up` stack.
+make evals MUTATE=all          # Nineteen paired enforcement probes; requires the running `make up` stack.
 make matrix                   # Replay all three models and both prompt versions, with no key.
 make chaos                    # Chaos only; uninterrupted references are still checked.
 make report                   # Render saved results, evaluating first if none exist.
@@ -130,16 +137,18 @@ The original 100 literal detector cases pass; only 2/12 obfuscated cases pass (9
 homoglyphs, partial/contextual references, spelled digits, and split-turn identifiers are retained
 as findings, not patched away in evaluation setup.
 
-`make evals MUTATE=all` runs paired baseline/mutant checks for the fifteen mechanisms listed in
-[PLAN10](../docs/PLAN10.md) and [PLAN12](../docs/PLAN12.md). Both sides must remain healthy and
-the expected requirements must change from passing to failing. A crash, failed positive control,
-or surviving mutation fails the meta-requirement. The other thirteen probes run in process; those
+`make evals MUTATE=all` runs paired baseline/mutant checks for the nineteen mechanisms listed in
+[PLAN10](../docs/PLAN10.md), [PLAN12](../docs/PLAN12.md) and [PLAN13](../docs/PLAN13.md). Both
+sides must remain healthy and the expected requirements must change from passing to failing. A
+crash, failed positive control, or surviving mutation fails the meta-requirement. The other
+sixteen probes run in process; those
 that need a database create and finally drop only their own disposable databases on the server
 named by `ZAGENT_TEST_DATABASE_URL`, whose source database must end in `_test`. The knowledge
-probes build their own snapshots from a copy of the corpus. The `zones_off` and `kb_direct_route`
+probes build their own snapshots from a copy of the corpus, and the intranet probes serve the site
+in process with a throwaway grant key. The `zones_off`, `kb_direct_route` and `site_direct_route`
 probes start fresh containers at the runtime's network position against the running Compose
-stack, the mutant also attached to the clinical or knowledge network. They never alter the
-running services or their networks.
+stack, the mutant also attached to the clinical, knowledge or intranet network. They never alter
+the running services or their networks.
 Mutation startup requires explicit test mode, replay, and matching dedicated disposable database
 URLs; normal application startup rejects flags. Provider access is refused under mutation.
 

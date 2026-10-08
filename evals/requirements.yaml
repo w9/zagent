@@ -277,29 +277,3 @@
   enforced_by: [services/agent/zagent/broker.py, services/agent/zagent/privacy.py]
   mutations: [broker_tokenize_off]
   cases: [KB-INCIDENT]
-
-- id: REQ-CITE-01
-  tier: invariant
-  statement: Every citation opens on the intranet at the cited lines of the cited snapshot, and those lines are the text the agent read.
-  enforced_by:
-    - services/agent/zagent/app.py
-    - services/knowledge/zknowledge/site/pages.py
-  mutations: [site_unpinned]
-
-- id: REQ-ACL-03
-  tier: invariant
-  statement: The intranet shows a persona exactly the documents the broker would, everywhere a document can appear, and forbidden documents look missing.
-  enforced_by:
-    - services/knowledge/zknowledge/site/identity.py
-    - services/knowledge/zknowledge/site/pages.py
-    - services/knowledge/zknowledge/index.py
-  mutations: [site_acl_off]
-
-- id: REQ-ACL-04
-  tier: invariant
-  statement: Only a valid, unexpired, unused grant minted by the BFF for the session's own persona signs a visitor in from a citation.
-  enforced_by:
-    - services/agent/zagent/app.py
-    - services/agent/zagent/identity.py
-    - services/knowledge/zknowledge/site/identity.py
-  mutations: [site_trust_unsigned_grant]

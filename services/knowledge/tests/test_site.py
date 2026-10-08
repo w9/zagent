@@ -229,9 +229,28 @@ def test_each_signed_in_persona_sees_exactly_what_the_index_allows(published_ind
             client = signed_in_client(store, persona, site)
             caller = Caller(site, list(identity.STAFF[persona][2]))
             visible = {row["id"] for row in rows if index.is_visible(caller, row["id"])}
+            hidden = {document_path(row) for row in rows if row["id"] not in visible}
+            series = {f"/qms/documents/{row['series']}" for row in rows if row["source"] == "qms"}
+            hidden |= series - {
+                f"/qms/documents/{row['series']}"
+                for row in rows
+                if row["source"] == "qms" and row["id"] in visible
+            }
+            pages = ["/", "/reference", *INDEXES.values(), *sorted(series - hidden)]
             for row in rows:
-                status = client.get(document_path(row)).status_code
-                assert status == (200 if row["id"] in visible else 404), (persona, site, row["id"])
+                response = client.get(document_path(row))
+                assert response.status_code == (200 if row["id"] in visible else 404), (
+                    persona,
+                    site,
+                    row["id"],
+                )
+                if row["id"] in visible:
+                    pages.append(document_path(row))
+            # No page, version list, supersession link, glossary entry or table row links to
+            # a document this visitor cannot open.
+            for path in pages:
+                links = set(re.findall(r'href="([^"?#]+)', client.get(path).text))
+                assert not links & hidden, (persona, site, path, links & hidden)
             for source, path in INDEXES.items():
                 page = client.get(path).text
                 listed = {

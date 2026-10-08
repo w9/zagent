@@ -12,6 +12,8 @@ Guidance for coding agents in this repository. Product overview and full configu
 
 - `services/agent/zagent/`: Python 3.12 backend (runtime, BFF, gateway, MCP servers, privacy,
   dispatcher). Tests in `services/agent/tests/`.
+- `services/knowledge/zknowledge/`: the separately owned knowledge service and its intranet
+  (`site/`). It must not import `zagent`. Tests in `services/knowledge/tests/`.
 - `apps/web/`: React 19, Vite, Tailwind v4 client. Playwright specs in `apps/web/e2e/`.
 - `deploy/compose/`: the Compose stack and its network zones.
 - `evals/`: eval cases, goldens and fixtures.
@@ -28,7 +30,8 @@ Guidance for coding agents in this repository. Product overview and full configu
 
 - Follow [docs/DESIGN.md](docs/DESIGN.md) for all work in `apps/web` and
   `services/agent/zagent/job_ui`. Cite rule IDs (for example `COLOR-02`) when a rule shapes a
-  change.
+  change. The intranet (`services/knowledge/zknowledge/site`) imitates other products and does
+  not use the design system; it only has to stay accessible.
 - Raw design values live only in `apps/web/src/design/tokens.css`. The Tailwind theme is reset, so
   only token utilities exist; a class that compiles to nothing is a bug.
 - Tailwind only sees complete class strings; never build class names with `${}`.
@@ -68,6 +71,8 @@ ZAGENT_WEB_URL=http://127.0.0.1:5273
 - Check with `docker compose --project-directory . -f deploy/compose/compose.yaml config` before
   `make up`, and run Make with an explicit directory (`make -C <clone> up`).
 - The job image tag `zagent-job:plan8` is hardcoded, so clones share it; the last build wins.
+- Host-side tests and evals in every clone write `~/.local/state/zagent/gateway-audit.sqlite3`.
+  Running two at once can fail with `database is locked`; set `ZAGENT_GATEWAY_AUDIT` per clone.
 - The Vite dev server pins port 5173 with `strictPort`. When that port is taken, run
   `AGENT_URL=http://127.0.0.1:<agent port> npm --prefix apps/web run dev -- --port <free port>`.
 - To try backend changes without rebuilding the stack, run `make db`, then serve the app on the

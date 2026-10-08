@@ -156,6 +156,15 @@ session, then ask `Which versions of SOP-QC-001 can I see, and which one is effe
 exist. `Who invented PCR?` is refused as out of domain even though the knowledge base holds a
 PCR article.
 
+Citations in answers appear as chips such as **SOP-QC-001 v3 · L10–12**. Hover or focus one to
+preview the cited lines from what the assistant read; a citation that matches nothing it read is
+marked unverified. Click it to open the Meridian intranet at <http://localhost:5180> in a new
+tab, signed in as the session's persona, on the cited version of the source page with the lines
+highlighted. In the QA officer conversation above, the draft chip opens SOP-QC-001 v4; an analyst
+who goes to the same address gets "Page not found". The intranet is also browsable on its own:
+wikis, the QMS register with revision histories, service-desk tickets, the glossary and reference
+tables, and library articles, with a mock sign-in labeled as a simulation.
+
 For a recorded draft workflow, start a fresh session with
 `Prepare somatic calling on specimens received in the last day for NGC-0041875.`, then
 `min VAF 0.03`. The form updates in place, but missing-normal validation disables confirmation.
@@ -229,11 +238,12 @@ make up     # Clinical, agent, knowledge, and telemetry zones; Grafana at http:/
 make zones  # Probe every service's network position; writes docs/evals/zones/results.json.
 ```
 
-Compose separates four internal networks. The **clinical** zone holds Postgres, the privacy
+Compose separates five internal networks. The **clinical** zone holds Postgres, the privacy
 service, the BFF, web, and the dispatcher. The **agent** zone holds the runtime and the LLM
 gateway. Only the gateway also joins the internet-facing `egress` network. The **knowledge** zone
 holds the separately owned knowledge service, whose snapshots are published by an offline job.
-The **telemetry** zone holds Tempo and Grafana.
+The **intranet** zone holds the knowledge team's read-only intranet over the same snapshots,
+reachable only through its own loopback port. The **telemetry** zone holds Tempo and Grafana.
 
 Services on both clinical and agent networks serve only fixed agent-facing ports: the tools and
 jobs MCP servers, a tokenize-only privacy listener (`tokenizer`, no resolve routes), a PgBouncer
@@ -243,7 +253,10 @@ before they reach the runtime. Each session records a simulated persona (lab tec
 analyst, QA officer or lab director, chosen in the sidebar). For every conversation turn the BFF
 signs a short-lived caller context with a key only it holds; the runtime forwards it unopened, and
 the broker verifies it before passing the site and roles to the knowledge service. The runtime never
-connects to clinical Postgres, privacy resolution, the BFF, or the knowledge service. The BFF
+connects to clinical Postgres, privacy resolution, the BFF, or the knowledge service. When a reader
+clicks a citation, the BFF signs a 60-second, single-use grant for the session's persona; the
+browser carries it to the intranet, which verifies it with its own key and applies the same access
+rules as the knowledge service. The BFF
 reaches the runtime and
 gateway through `display-relay`, a one-way TCP forwarder with no route back. An `ingress`
 forwarder publishes loopback-only web, BFF API, database, and Grafana ports from an edge network
@@ -251,9 +264,9 @@ without outbound NAT.
 
 `make zones` starts a probe container attached to exactly each running service's networks. It
 checks allowed flows, denials of clinical data by name and IP address, gateway-only internet
-egress, knowledge-zone isolation, and the runtime role through the proxy (REQ-PHI-05,
-REQ-PHI-06, REQ-KB-01, REQ-ISO-02, REQ-META-01). Docker networks cannot filter ports, so
-dual-homed services are trusted not to
+egress, knowledge-zone and intranet isolation, and the runtime role through the proxy
+(REQ-PHI-05, REQ-PHI-06, REQ-KB-01, REQ-KB-06, REQ-ISO-02, REQ-META-01). Docker networks cannot
+filter ports, so dual-homed services are trusted not to
 forward. When upgrading an existing stack, run `make down` once to replace the network layout.
 
 The Compose dispatcher mounts the Docker socket, which grants host-level Docker control. It is
@@ -292,7 +305,8 @@ docker compose --project-directory . -f deploy/compose/compose.yaml exec agent \
 ```
 
 Configuration is listed in [.env.example](.env.example); copy it to `.env` for Make/Compose
-overrides. `ZAGENT_WEB_PORT`, `ZAGENT_AGENT_PORT`, and `ZAGENT_DB_PORT` change the published
+overrides. `ZAGENT_WEB_PORT`, `ZAGENT_AGENT_PORT`, `ZAGENT_DB_PORT` and `ZAGENT_INTRANET_PORT`
+change the published
 ports. Update `DATABASE_URL` and `ZAGENT_TEST_DATABASE_URL` too when changing the database
 port for host-side commands. Browser tests accept `ZAGENT_WEB_URL`. Keep using the same
 `COMPOSE_PROJECT_NAME` when restarting an existing stack; changing project names creates a
@@ -382,6 +396,7 @@ Each workflow exercises a specific row in the guarantee table.
 | `What came in yesterday for patient NGC-0041872?` | A sample table appears on the right. The identifier is tokenized before the model sees it. | Privacy boundary |
 | `What's 2+2?` | Refused as out of scope, as a structured event rather than improvised prose. | Scope control |
 | `What is VAF, and what minimum do we use for somatic calling?` | The concept and the threshold come from the knowledge base, cited by document version and line range. | Grounding |
+| *(hover, then click a citation chip)* | A preview of the cited lines, then the source page on the intranet with those lines highlighted, as the session's persona. | Grounding, access control |
 | `Prepare somatic calling on specimens received in the last day for NGC-0041875.` | A pre-filled form appears with missing-normal validation. | Slot filling, validation |
 | `min VAF 0.03` | The form updates live. Chat and form are editing one object. | Draft state |
 | *(press Confirm on a valid draft)* | A synthetic job runs and a live MCP-owned job card appears. | Confirmation invariant |
@@ -459,6 +474,12 @@ ticket injection, 40 knowledge-boundary scope cases and five more paired mutatio
 cases pass 23/23 and both injection cases pass. In-scope scope acceptance fell to 2043/2200
 [91.7%, 93.9%]: the guard refuses some concept questions such as `What is TPM?`. The gate still
 passes; [PLAN12](docs/PLAN12.md#recorded-findings) records the details.
+
+PLAN13 adds the intranet and citation chips without changing any model input: no cases,
+cassettes or goldens change. Every citation in the recorded answers resolves on the intranet to
+exactly the lines the agent read, the intranet shows each persona the same documents as the
+broker, and four more paired mutations (site pinning, site access rules, grant verification and
+the intranet route) are detected.
 
 The explanation judge agreed with 3/6 agent-authored references; the other three calls failed
 its closed protocol. This is not human agreement, and human calibration remains pending. The
@@ -603,7 +624,7 @@ quality weaknesses remain visible even when regression gates pass.
 | [PLAN10](docs/PLAN10.md) | Adversarial proof: fault injection, model matrix | Implemented; human calibration and remote publication pending |
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
 | [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Implemented (relocation, corpus, identity, cutover) |
-| [PLAN13](docs/PLAN13.md) | The intranet: clickable citations that open the source document | Planned |
+| [PLAN13](docs/PLAN13.md) | The intranet: clickable citations that open the source document | Implemented |
 
 ---
 

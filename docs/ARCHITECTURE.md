@@ -206,8 +206,9 @@ model routes, and the resulting drift is a reviewable diff.
 ## 6. Zones and the privacy boundary
 
 The application has clinical, agent, and neutral zones. Compose maps them to separate internal
-Docker networks (`clinical`, `agent`, `telemetry`). Two containers on different networks have no
-route to each other, so an allowed cross-zone flow requires a service deliberately attached to both.
+Docker networks (`clinical`, `agent`, `knowledge`, `intranet`, `telemetry`). Two containers on
+different networks have no route to each other, so an allowed cross-zone flow requires a service
+deliberately attached to both.
 
 ```mermaid
 graph TB
@@ -236,6 +237,9 @@ graph TB
     subgraph knowledge["Knowledge zone (separately owned)"]
         KB[Knowledge MCP server<br/>immutable snapshots]
     end
+    subgraph intranet["Intranet zone (separately owned)"]
+        SITE[Intranet site<br/>read-only snapshots]
+    end
     subgraph telemetry["Telemetry zone"]
         TEMPO[Tempo + Grafana]
     end
@@ -251,6 +255,8 @@ graph TB
     LOG <--> DB
     RT <--> BRK
     BRK <--> KB
+    KB -. same published snapshots .- SITE
+    WEB -. signed grant, carried by the browser .-> SITE
     BRK -->|tokenize only| TOK
     RT -->|tokenize only| TOK
     LLM -->|tripwire| TOK
@@ -311,6 +317,13 @@ serve only its fixed agent-facing port and never forward. Only the LLM gateway h
 egress among application workloads. Workers run with no network at all. Loopback host access
 goes through an ingress forwarder on an edge network with outbound NAT disabled. Probes pair
 denials with working allowed routes, so a denial cannot pass because a service is down.
+
+The `intranet` network holds only `kb-site`, the knowledge team's read-only intranet
+([section 12](#12-knowledge-base)), which mounts the published snapshot volume read-only. Its own
+`intranet-ingress` relay publishes one loopback port. It is separate from the main ingress because
+a relay listens on every network it joins: sharing one would give the site a route to the
+services behind the main ingress. The site reaches no other zone, and no zone reaches it
+(REQ-KB-06).
 
 ---
 
@@ -545,6 +558,29 @@ line ranges. The current deterministic check validates that every cited range wa
 version and that quotations are verbatim; it does not prove that every paraphrased claim is
 semantically entailed.
 
+**Citations open the source (PLAN13).** The knowledge team also runs an intranet
+(`zknowledge.site`). It renders every snapshot document on a page shaped like its source system:
+a wiki page, a controlled QMS document with its revision history, a service-desk ticket, the
+glossary and reference tables, and a library article. Each canonical line has its own anchor.
+`/d/<document>?snapshot=&lines=&q=` resolves a citation to that page, pinned to the cited
+snapshot, with the cited lines highlighted and the quotation emphasized. A later edit shows a
+banner; an expired snapshot falls back to the current one with a notice. Pages are built from
+what snapshots already hold, so the snapshot ID the model sees is unchanged.
+
+In chat, the client turns each citation into a chip. Its label and hover preview come from the
+conversation's own `read_document` result, in the display representation, so the preview needs
+no request. A citation that no read covers is marked unverified but still opens. Clicking posts
+the citation to the BFF, which mints a 60-second, single-use Ed25519 grant for the session's own
+site and persona (audience `zknowledge-site`) and redirects. The site verifies it with its own
+key, signs the visitor in, and redirects to a clean URL. The browser cannot choose the persona,
+cross-site posts are refused, and neither the quotation nor the grant appears in an access log.
+The site applies the index's visibility rules itself, so restricted and missing documents look
+the same on every page, listing and search result (REQ-ACL-03, REQ-ACL-04). A labeled mock
+sign-in exists for browsing. A test resolves every citation in the recorded cassettes on the site
+and compares the highlighted lines with the lines the agent read, matching each privacy token to
+the identifier it replaced (REQ-CITE-01). The model sees nothing new: no prompt, tool or cassette
+changed.
+
 ---
 
 ## 13. Evidence architecture
@@ -596,10 +632,12 @@ simulator.
 
 | Service | Zone | Responsibility |
 |---|---|---|
-| Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization, signing each turn's caller context |
+| Web BFF | Clinical | HTTP and SSE to the browser, display-path detokenization, signing each turn's caller context and citation sign-in grants |
 | Agent runtime | Agent | Conversation turn execution, the scope guard, conversation turn journaling |
 | LLM gateway | Agent | Provider routing, record and replay, egress tripwire. Sole internet egress |
 | Knowledge MCP server | Knowledge | Separately owned package serving immutable snapshots; no route to other zones |
+| Intranet site (`kb-site`) | Intranet | Separately owned, read-only pages over the published snapshots; verifies citation sign-in grants |
+| Intranet ingress | Edge and intranet | Loopback-only intranet port, separate from the main ingress |
 | MCP broker | Agent and knowledge | Only agent-zone route to knowledge: caller verification, contract pinning, snapshot forwarding, tokenization |
 | Tools and jobs MCP servers | Clinical and agent | MCP servers and policy enforcement points |
 | Privacy service | Clinical | Token vault, detector rule set, tokenize and resolve |
@@ -717,3 +755,4 @@ how the traceability matrix is generated rather than maintained.
 | 23 | Compose network zones | Kubernetes with NetworkPolicy | The zone boundary is enforceable and probeable with Docker networks; a cluster was built and abandoned as overkill |
 | 24 | Knowledge as a separately owned zone behind a broker | Index baked into the agent image | A real knowledge service has another owner, release cycle and content; guarantees belong at the boundary |
 | 25 | Asymmetrically signed per-turn caller context, verified at the broker | Roles passed by the runtime or as tool arguments | Neither the model nor the runtime can widen knowledge access; only the BFF can sign and only the broker can verify |
+| 26 | Citations open a separate intranet through BFF-signed, single-use grants | A document panel in the workbench, or links that name the persona | Checking a source means leaving the assistant for the system of record, and the client must not choose who it is there |

@@ -1,6 +1,7 @@
 # PLAN13: The Intranet and Clickable Citations
 
-**Status:** planned; not started
+**Status:** implemented (site and zone, identity, browsing, chips, evidence); see
+[Recorded findings](#recorded-findings)
 **Depends on:** [PLAN12](PLAN12.md) for the knowledge service, snapshots, personas and the
 citation format; [DESIGN.md](DESIGN.md) for the citation chip.
 **Shippable outcome:** every knowledge citation in a chat answer is a chip that previews the cited
@@ -130,9 +131,11 @@ There is no real authentication; identity is simulated as in PLAN12, but verific
 
 - **Mock sign-in:** the intranet sign-in page lists the four synthetic staff members and sets a
   session cookie for the chosen one. It is labeled as a simulation of single sign-on.
-- **Citation grants:** a chip links to `GET /api/sessions/<id>/citations/open` with the cited
-  document, snapshot, lines and quote. The BFF checks the session, takes the persona, site and
-  roles from the session (never from the request), signs a grant and redirects to the site.
+- **Citation grants:** a chip posts a form to `POST /api/sessions/<id>/citations/open` with the
+  cited document, snapshot, lines and quote. A form post rather than a link keeps the quotation out
+  of URLs and access logs, and cross-site posts are refused. The BFF checks the session, takes the
+  persona, site and roles from the session (never from the request), signs a grant and redirects
+  to the site.
 - **Grant format:** an EdDSA JWT with audience `zknowledge-site`, the session's site and roles,
   the document, snapshot and lines, a 60-second lifetime and a unique ID. A new key pair is created
   by the key-initialization job: the signing key is mounted only on the BFF and the verification
@@ -160,8 +163,8 @@ There is no real authentication; identity is simulated as in PLAN12, but verific
   same conversation that covers them, in its display representation. No extra request is made.
 - **Unverified:** a citation with no matching read result is styled as unverified and its preview
   says so. It still links to the site, so the user can check.
-- **Click:** a plain link with `target="_blank"` to the BFF redirect, so pop-up blockers do not
-  interfere.
+- **Click:** submits a form with `target="_blank"` to the BFF redirect from the click itself, so
+  pop-up blockers do not interfere.
 - **Where:** chat only. X-ray's model pane keeps the raw citation text, because that is what the
   model wrote.
 - **Design:** the chip lives in `components/chat/`, takes its data as props, and follows
@@ -232,30 +235,31 @@ the workbench, follows DESIGN.md.
 
 ## Definition of done
 
-- [ ] `kb-site` runs only on `intranet`, reads snapshots read-only, and is reachable only through
+- [x] `kb-site` runs only on `intranet`, reads snapshots read-only, and is reachable only through
   its ingress port. `make zones` proves it cannot reach the agent zone, clinical services, `kb` or
   the internet, and that the agent zone cannot reach it.
-- [ ] Every document in the current snapshot renders on its source-specific page, with one anchor
+- [x] Every document in the current snapshot renders on its source-specific page, with one anchor
   per canonical line and every line's text equal to the snapshot's line.
-- [ ] The resolver, highlighting, quote emphasis, pinned snapshots and the expired-snapshot banner
+- [x] The resolver, highlighting, quote emphasis, pinned snapshots and the expired-snapshot banner
   work as described.
-- [ ] Corpus text, including the injection payloads, is escaped on every page, and pages are
+- [x] Corpus text, including the injection payloads, is escaped on every page, and pages are
   served with a Content Security Policy that forbids inline scripts.
-- [ ] Mock sign-in and citation grants work end to end in the Compose stack. Forged, expired,
+- [x] Mock sign-in and citation grants work end to end in the Compose stack. Forged, expired,
   reused and wrong-audience grants are rejected, and the client cannot choose the persona.
-- [ ] For every persona, site visibility matches the broker's for documents, search, indexes,
+- [x] For every persona, site visibility matches the broker's for documents, search, indexes,
   version lists, supersession links, glossary entries and reference rows, and forbidden documents
   are indistinguishable from missing ones.
-- [ ] Home, indexes, search, version views, the glossary, reference tables and the library are
+- [x] Home, indexes, search, version views, the glossary, reference tables and the library are
   browsable.
-- [ ] Every citation in the recorded goldens and execution transcripts renders as a chip, previews
+- [x] Every citation in the recorded goldens and execution transcripts renders as a chip, previews
   the cited lines, and resolves on the site to exactly those lines.
-- [ ] The chip passes `npm --prefix apps/web run test:design`, and browser tests cover hover, click
+- [x] The chip passes `npm --prefix apps/web run test:design`, and browser tests cover hover, click
   and the analyst-versus-QA difference.
-- [ ] Every new mutation is detected.
-- [ ] No cassette changes, and the full replay matches the PLAN12 baseline.
-- [ ] README quick start, ARCHITECTURE (sections 6, 12 and 14), the requirement register, the evals
-  README and AGENTS.md (the new port for side-by-side clones) are updated.
+- [x] Every new mutation is detected.
+- [x] No cassette changes, and the full replay matches the PLAN12 baseline.
+- [x] README quick start, ARCHITECTURE (sections 6, 12 and 14), the evals README and AGENTS.md
+  (the new port for side-by-side clones) are updated. The requirement register is unchanged; see
+  the findings.
 
 ---
 
@@ -263,7 +267,7 @@ the workbench, follows DESIGN.md.
 
 | Requirement | Tier | Statement | Evidence |
 |---|---|---|---|
-| REQ-CITE-01 | Invariant | Every citation chip resolves on the intranet to the cited lines of the cited snapshot, and those lines equal the text the agent read | Every citation in recorded goldens and execution transcripts, checked against the site |
+| REQ-CITE-01 | Invariant | Every citation chip resolves on the intranet to the cited lines of the cited snapshot, and those lines equal the text the agent read | Every citation in the recorded cassettes, checked against the site; every golden citation renders as a verified chip; mutation `site_unpinned` |
 | REQ-ACL-03 | Invariant | The intranet shows a persona exactly the documents the broker would, everywhere a document can appear, and forbidden documents are indistinguishable from missing ones | Per-persona parity over all documents and listings; mutation `site_acl_off` |
 | REQ-ACL-04 | Invariant | Only a valid, unexpired, unused grant minted by the BFF for the session's own persona can sign a visitor in from a citation | Forged, expired, reused and wrong-audience grant tests; mutation `site_trust_unsigned_grant` |
 | REQ-KB-06 | Invariant | The intranet zone reaches only the snapshot volume, and only the ingress reaches it | Zone probes; mutation `site_direct_route` |
@@ -304,8 +308,8 @@ citation from a session with another. The grant wins, and the page states whose 
 **Lines that moved.** A citation's line numbers are only meaningful in its snapshot. Never
 highlight a range against a different snapshot.
 
-**Pop-up blockers.** Opening a tab after an asynchronous request is blocked by browsers. Use a
-plain link to a redirecting endpoint.
+**Pop-up blockers.** Opening a tab after an asynchronous request is blocked by browsers. Submit a
+form or follow a link to a redirecting endpoint from the click itself.
 
 **The team boundary again.** `zknowledge.site` cannot import the agent's JWT code or persona
 registry. Duplicate the verification and the staff directory, and test agreement from the agent
@@ -323,3 +327,63 @@ side.
   tickets.
 - Deep links from job cards and refusal messages to relevant intranet pages.
 - Other teams' MCP servers attached through the broker.
+
+---
+
+## Recorded findings
+
+**Evidence.**
+
+- All 208 documents in the published snapshot (23 QMS versions, 63 wiki pages, 20 tickets, 10
+  reference documents, 92 library articles; 13,216 canonical lines) render with one anchor per
+  line whose text equals the snapshot's line.
+- The recorded cassettes hold 27 citations. `test_citations.py` opens each one on the site through
+  a real grant: 24 against the published snapshot and 3 against the two poisoned snapshots the
+  wiki and ticket injection cases published, which the test rebuilds. The highlighted lines equal
+  the lines the agent read in every case. One cited line carries a tokenized MRN; the test matches
+  `[PT_1]` to the identifier on the page by the patient rule. The 14 citations in the goldens all
+  render as verified chips in a client test.
+- Parity: for four personas at Northgate and the analyst at Lakeside, every document opens exactly
+  when the index allows it, every index lists exactly those documents, and no page the visitor can
+  open (version histories, series pages, supersession links, glossary and table sources) links to
+  one they cannot. On the agent side, the broker and the site agree on the restricted documents
+  for all four personas at all five sites.
+- `make zones`: 21 services, 219 checks, all passing, including REQ-KB-06.
+- `make evals MUTATE=all`: all nineteen mutations detected with healthy controls.
+- Full replay: 3,606 trials, no unrecognized regressions, the same 12 known findings as PLAN12.
+  No cassette or golden changed, and the privacy scan of 1,394 cassettes found no violations.
+- Design checks: the nine chip and chat stories pass at every viewport in both themes. Browser
+  tests pass on desktop and mobile; opening a citation leaves the session's event sequence
+  unchanged (REQ-VIEW-03).
+- Full pytest: 755 passed, 1 skipped; 150 client unit tests pass.
+
+**Changes from the plan.**
+
+- The chip submits a form instead of following a link, so the quotation never appears in a URL
+  or an access log. The BFF also refuses posts marked `Sec-Fetch-Site: cross-site`.
+- REQ-CITE-01 needed a mutation that breaks it, so `site_unpinned` (the site ignores the pinned
+  snapshot) was added. Its probe republishes one SOP line and opens a citation pinned to the
+  earlier snapshot.
+- The new requirements are not in `evals/requirements.yaml`. That register links requirements to
+  eval cases, and a requirement without cases is reported as uncovered and fails the gate.
+  Like PLAN12's REQ-ACL-02 and REQ-KB-03, they are backed by tests and paired mutations; REQ-KB-06
+  is reported by `make zones` like REQ-KB-01.
+- Chip labels come from the document number (`SOP-QC-001 v3`, `INC-0142`, `Wiki 40152`), so even
+  an unverified chip is readable. Reference and library citations use the title from the read.
+
+**Problems found while building.**
+
+- The main ingress relay listens on every network it joins. Putting the site on the edge network
+  beside it would have given the site a route to Postgres through the relay, so the intranet got
+  its own relay.
+- A `<button>` cannot be fully inline, so a long title wraps as a block rather than flowing with
+  the sentence. Document-number labels keep real chips short; the long-title story shows the
+  worst case.
+- `max-w-96` overflowed a 360-pixel phone, so DESIGN.md gained a `max-w-preview` token bounded by
+  the viewport. Previews show at most eight lines.
+- On phones the intranet's sticky header covered the first cited line; the header is now static
+  on narrow screens and lines have a scroll margin.
+- Previews show the line text exactly as the assistant read it, including Markdown markers such as
+  `## `.
+- Two clones running evaluations at once share the host gateway audit database and can fail with
+  `database is locked`. Set `ZAGENT_GATEWAY_AUDIT` per clone.

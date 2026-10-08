@@ -237,6 +237,8 @@
   --size-icon-lg: 20px;
   --height-chart: 280px;
   --max-width-prose: 720px;
+  /* Popovers that hold content: never wider than the viewport minus the collision padding. */
+  --max-width-preview: min(384px, calc(100vw - 16px));
 
   /* Viewport breakpoints: app shell only (tablet:, desktop:, wide:, ultra:) */
   --breakpoint-tablet: 768px;

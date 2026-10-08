@@ -92,7 +92,7 @@ def create_site(
                 pages.Notice(
                     "identity",
                     f"Opened from your workbench session as {person.name} "
-                    f"({person.title.lower()}, {person.site_name}).",
+                    f"({person.title}, {person.site_name}).",
                 ),
                 *context["notices"],
             ]

@@ -1,8 +1,10 @@
 import { Link } from '@tanstack/react-router'
 import { ArchiveRestore, ArrowDown, Dna, FlaskConical, Hash, UserRound } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Persona, PrivacyBinding } from '../../lib/api'
+import { citedRead, readResults } from '../../lib/citations'
+import type { Citation, CitedRead } from '../../lib/citations'
 import { toolView } from '../../lib/events'
 import type { ChatMessage, Projection, RefusedState, StepState } from '../../lib/events'
 import type { PushedView } from '../../lib/views'
@@ -14,11 +16,12 @@ import { IconButton } from '../ui/icon-button'
 import { Notice } from '../ui/notice'
 import { PanelHeader } from '../ui/panel-header'
 import { Spinner } from '../ui/spinner'
+import { CitationChip } from './citation-chip'
 import { Composer } from './composer'
 import { RefusalChip } from './refusal-chip'
 import { StepMarker } from './step-marker'
 import { TranscriptText } from './transcript-text'
-import type { ViewLink } from './transcript-text'
+import type { CitationLink, ViewLink } from './transcript-text'
 import { TurnStatus } from './turn-status'
 import type { Connection, TurnStatusLabel } from './turn-status'
 import { ViewReference } from './view-reference'
@@ -67,6 +70,7 @@ export function ChatPanel({
   error,
   onSend,
   onUnarchive,
+  onOpenCitation,
   className,
 }: {
   sessionId: string
@@ -79,6 +83,7 @@ export function ChatPanel({
   onSend: (text: string) => Promise<void>
   /** Set for an archived session, which is read-only until unarchived. */
   onUnarchive?: () => void
+  onOpenCitation: (citation: Citation, read?: CitedRead) => void
   className?: string
 }) {
   const [draft, setDraft] = useState('')
@@ -106,6 +111,11 @@ export function ChatPanel({
     ) : (
       children
     )
+
+  const reads = useMemo(() => readResults(state?.steps ?? []), [state?.steps])
+  const citationLink: CitationLink = (citation) => (
+    <CitationChip citation={citation} read={citedRead(reads, citation)} bindings={bindings} onOpen={onOpenCitation} />
+  )
 
   useEffect(() => {
     if (atBottom && scrollArea.current) scrollArea.current.scrollTop = scrollArea.current.scrollHeight
@@ -206,6 +216,7 @@ export function ChatPanel({
                       role={message.role}
                       bindings={bindings}
                       viewLink={viewLink}
+                      citationLink={message.role === 'assistant' ? citationLink : undefined}
                       streaming={message.status === 'streaming'}
                     />
                     {message.status === 'failed' && <p className="mt-1 text-xs text-danger">Interrupted</p>}

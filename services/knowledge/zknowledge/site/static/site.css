@@ -44,7 +44,7 @@ header.global nav a[aria-current="page"], header.global nav a:hover { border-bot
 .mark { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 4px; background: #e3a008; color: #17212b; font-weight: 700; }
 form.search { margin-left: auto; }
 form.search input { width: 14rem; max-width: 50vw; padding: 0.3rem 0.6rem; border: 1px solid #4b5563; border-radius: 4px; background: #0f172a; color: #f1f5f9; }
-.account { display: flex; gap: 0.5rem; align-items: baseline; font-size: 0.9rem; }
+.account { display: flex; flex-wrap: wrap; gap: 0.25rem 0.5rem; align-items: baseline; font-size: 0.9rem; }
 .account .muted { color: #cbd5e1; }
 .account a { text-decoration: underline; }
 .account form { display: inline; }
@@ -80,7 +80,7 @@ footer.global { padding: 1rem 1.25rem 2rem; color: var(--muted); font-size: 0.85
 .snapshot { margin-top: 2rem; font-size: 0.8rem; }
 
 .document-body { margin-top: 1rem; }
-.line { position: relative; margin: 0; padding: 0.05rem 0.4rem 0.05rem 3.4rem; border-radius: 3px; }
+.line { position: relative; margin: 0; padding: 0.05rem 0.4rem 0.05rem 3.4rem; border-radius: 3px; scroll-margin-top: 5rem; }
 .line .ln { position: absolute; left: 0; width: 2.8rem; text-align: right; color: var(--muted); font: 0.75rem/2 ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; user-select: none; }
 .line .ln:hover { color: var(--accent); }
 .line.hl { background: var(--highlight); box-shadow: inset 4px 0 0 var(--highlight-edge); }
@@ -160,6 +160,8 @@ body[data-area="wikipedia"] h2.line { font-weight: 400; border-bottom: 1px solid
 .people { list-style: none; padding: 0; display: grid; gap: 0.75rem; }
 
 @media (max-width: 52rem) {
+  header.global { position: static; }
+  .line { scroll-margin-top: 1rem; }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .sidebar { position: static; max-height: none; }
   .document, .index { padding: 1rem; }

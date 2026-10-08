@@ -195,6 +195,47 @@ export const empty: Projection = {
   conversation_turn: null,
 }
 
+const snapshot = '30ce85e0e7f2b691da0dc9088fc1b28d3a2dc71c05d818cec912773a03bb620a'
+const citedAnswer = `Tumor libraries need more coverage than normal ones. The SOP says “Tumor libraries intended for somatic calling require a mean coverage of at least 40x.” [sop-qc-001-v3@3:L9-L10]
+
+- A run fails readqc when “a selected library's coverage is below the confirmed minimum coverage” [[sop-qc-001-v3@3:L8]](https://intranet.example/sop-qc-001).
+- The last swap incident started when “somatic-snv failed with genotype_concordance_failed for patient NGC-0041872.” [inc-0142@2025-12-04:L7-L8]
+- Variant review thresholds are listed separately [sop-var-001-v2@2:L6-L8].`
+
+export const citedSteps: StepState[] = [
+  {
+    id: 'step-k1',
+    seq: 2,
+    title: 'Agent step 1',
+    detail: '',
+    status: 'complete',
+    tools: [
+      { call_id: 'call-k1', name: 'read_document', arguments: '{"document":"sop-qc-001-v3","start_line":8,"end_line":10}', result: {
+        snapshot, document: 'sop-qc-001-v3', title: 'Read Quality and Low Purity Review', source: 'qms', doc_type: 'sop',
+        version: '3', status: 'effective', start_line: 8, end_line: 10, truncated: false,
+        text: "L8: Readqc fails when a selected library's coverage is below the confirmed minimum coverage.\nL9: Normal and germline libraries require a mean coverage of at least 30x.\nL10: Tumor libraries intended for somatic calling require a mean coverage of at least 40x.",
+      } },
+      { call_id: 'call-k2', name: 'read_document', arguments: '{"document":"inc-0142","start_line":5,"end_line":8}', result: {
+        snapshot, document: 'inc-0142', title: 'Genotype concordance failure from a tumor/normal swap', source: 'ticketing',
+        doc_type: 'incident', version: '2025-12-04', status: 'resolved', start_line: 5, end_line: 8, truncated: false,
+        text: 'L5: Links: SOP-IDENTITY-001, SOP-DEV-001, SOP-ACC-001\nL6: ## Description\nL7: somatic-snv failed with genotype_concordance_failed for patient NGC-0041872.\nL8: The manifest listed the tumor and normal tubes the other way round.',
+      } },
+    ],
+  },
+]
+
+export const cited: Projection = {
+  session_id: 'session-5',
+  seq: 6,
+  messages: [
+    { id: 'message-k1', seq: 1, role: 'user', text: 'What coverage do tumor libraries need, and what went wrong in the last sample swap?', status: 'complete' },
+    { id: 'message-k2', seq: 5, role: 'assistant', text: citedAnswer, status: 'complete' },
+  ],
+  steps: citedSteps,
+  views: [],
+  conversation_turn: { id: 'turn-k1', status: 'finished', error: null },
+}
+
 export const draft: DraftState = {
   draft_id: 'draft-0001',
   view_id: 'view-0004',

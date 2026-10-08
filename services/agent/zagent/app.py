@@ -399,6 +399,8 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     async def open_citation(request: Request, session_id: UUID):
         """Sign the session's persona into the intranet; a form post keeps quotes out of logs."""
         display_only()
+        if request.headers.get("sec-fetch-site") == "cross-site":
+            raise HTTPException(403, "Citations open only from the workbench")
         session = await scoped_session(session_id)
         form = parse_qs((await request.body()).decode(errors="replace")[:4096])
         try:

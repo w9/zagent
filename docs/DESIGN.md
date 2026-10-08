@@ -105,9 +105,9 @@ Spacing is a closed 4px scale: `0`, `0.5`, `1`, `1.5`, `2`, `3`, `4`, `5`, `6`, 
 
 Named dimensions: `h-bar` (top bar and panel headers), `h-control-sm|control|control-lg` and
 `size-control-*` (controls; larger on touch screens), `size-icon-sm|icon|icon-lg`, `w-sidebar`,
-`w-sidebar-wide`, `w-drawer`, `h-chart`, `max-w-prose`. Resizable panel limits
-(`--panel-sidebar-min`, `--panel-sidebar-max`, `--panel-min`) are not utilities; the app shell reads
-them at runtime.
+`w-sidebar-wide`, `w-drawer`, `h-chart`, `max-w-prose`, `max-w-preview` (popovers that hold
+content; never wider than the viewport). Resizable panel limits (`--panel-sidebar-min`,
+`--panel-sidebar-max`, `--panel-min`) are not utilities; the app shell reads them at runtime.
 
 ### 2.4 Shape, elevation, motion
 
@@ -298,7 +298,7 @@ Each component has a story file next to it. Story data lives in `src/components/
 |---|---|---|---|
 | `ui/` | Button | primary, secondary, ghost, danger × sm, md, lg | disabled, loading, long label in a narrow box |
 | `ui/` | IconButton | ghost, secondary, primary × sm, md; pressed | disabled; tooltip |
-| `ui/` | Tooltip | — | open, long text |
+| `ui/` | Tooltip | label, preview | open, long text |
 | `ui/` | Field, Input, Select, Textarea, Checkbox | — | hint, error, disabled, two columns from `@medium` |
 | `ui/` | Badge | neutral, accent, danger, warning, info, success | icon, long text in a narrow box |
 | `ui/` | StatusDot | same tones; live | reduced motion |
@@ -317,6 +317,7 @@ Each component has a story file next to it. Story data lives in `src/components/
 | `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting, archived; persona badge, no persona |
 | `chat/` | TranscriptText, PrivacyText | user, assistant; md, sm | streaming, Markdown with code, tables and links |
 | `chat/` | StepMarker | running, complete, failed | expanded, with a view link |
+| `chat/` | CitationChip | verified, unverified | preview open, single line, privacy values, long title, many lines, narrow box; in the chat panel |
 | `chat/` | RefusalChip, ViewReference, TurnStatus, Composer | — | in the chat panel stories |
 | `surface/` | WorkingSurface, ViewHeader | — | no views, unavailable view, chart, table |
 | `surface/views/` | TableView | inline, from a handle | loading, empty, error, nulls, booleans |

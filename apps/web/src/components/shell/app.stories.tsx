@@ -71,6 +71,7 @@ function Workspace({
               connection="live"
               onSend={async () => {}}
               onUnarchive={archivedSession ? () => {} : undefined}
+              onOpenCitation={() => {}}
             />
           }
           surface={

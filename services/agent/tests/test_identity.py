@@ -367,6 +367,8 @@ async def test_a_citation_opens_the_intranet_as_the_session_persona(api):
         assert (await client.post(path, data=body)).status_code == 422, body
     missing = await client.post(f"/sessions/{uuid4()}/citations/open", data=citation)
     assert missing.status_code == 404
+    forged = await client.post(path, data=citation, headers={"Sec-Fetch-Site": "cross-site"})
+    assert forged.status_code == 403
 
 
 async def finished(store, session_id: UUID) -> None:

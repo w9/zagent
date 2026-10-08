@@ -1,15 +1,28 @@
 import * as RadixTooltip from '@radix-ui/react-tooltip'
+import { cva } from 'class-variance-authority'
 import type { ReactNode } from 'react'
+
+const tooltipVariants = cva('z-50 shadow-md animate-fade', {
+  variants: {
+    variant: {
+      label: 'max-w-64 rounded-sm bg-inverse px-2 py-1 text-xs text-inverse',
+      preview: 'max-w-preview rounded-lg border border-default bg-surface p-3 text-sm text-default',
+    },
+  },
+  defaultVariants: { variant: 'label' },
+})
 
 export function Tooltip({
   content,
   side = 'top',
   open,
+  variant,
   children,
 }: {
   content: ReactNode
   side?: 'top' | 'right' | 'bottom' | 'left'
   open?: boolean
+  variant?: 'label' | 'preview'
   children: ReactNode
 }) {
   return (
@@ -21,7 +34,7 @@ export function Tooltip({
             side={side}
             sideOffset={4}
             collisionPadding={8}
-            className="z-50 max-w-64 rounded-sm bg-inverse px-2 py-1 text-xs text-inverse shadow-md animate-fade"
+            className={tooltipVariants({ variant })}
           >
             {content}
           </RadixTooltip.Content>

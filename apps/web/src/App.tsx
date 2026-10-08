@@ -13,7 +13,7 @@ import { EmptyState } from './components/ui/empty-state'
 import { Spinner } from './components/ui/spinner'
 import { Toast } from './components/ui/toast'
 import { XrayPanel } from './components/xray/xray-panel'
-import { ApiError, request } from './lib/api'
+import { ApiError, openCitation, request } from './lib/api'
 import type { Persona, PersonaRegistry, RuntimeHealth, Session } from './lib/api'
 import { plural } from './lib/format'
 import { useSession } from './lib/use-session'
@@ -72,6 +72,14 @@ function SessionWorkspace({
             await request(`/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ text }) })
           }}
           onUnarchive={onUnarchive}
+          onOpenCitation={(citation, read) =>
+            openCitation(sessionId, {
+              document: citation.document,
+              snapshot: read?.snapshot,
+              lines: `${citation.start}-${citation.end}`,
+              q: citation.quote,
+            })
+          }
         />
       }
       surface={

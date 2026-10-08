@@ -4,6 +4,8 @@ import Markdown from 'react-markdown'
 import type { Components, ExtraProps } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { PrivacyBinding } from '../../lib/api'
+import { isCitationHref, parseCitationHref, remarkCitations } from '../../lib/citations'
+import type { Citation } from '../../lib/citations'
 import { cn } from '../../lib/utils'
 
 const LinkText = createContext(false)
@@ -19,6 +21,10 @@ const PrivacyContext = createContext<PrivacyProps>({})
 export type ViewLink = (viewId: string, children: ReactNode) => ReactNode
 const ViewLinkContext = createContext<ViewLink | undefined>(undefined)
 const VIEW_HREF = /^view:(view-[0-9]{4,})$/
+
+/** Renders a citation the assistant wrote; without one, citations stay plain text. */
+export type CitationLink = (citation: Citation) => ReactNode
+const CitationLinkContext = createContext<CitationLink | undefined>(undefined)
 
 const tokenClassName =
   'inline rounded-sm border-b border-privacy bg-privacy px-0.5 text-privacy wrap-anywhere aria-pressed:bg-privacy-selected aria-pressed:text-strong data-[selected=true]:bg-privacy-selected data-[selected=true]:text-strong'
@@ -44,8 +50,11 @@ const proseClassNames: Record<string, string> = {
   code: 'rounded-sm bg-muted px-1 py-0.5 font-mono text-sm',
 }
 
-function MarkdownLink({ children, href }: { children?: ReactNode; href?: string }) {
+function MarkdownLink({ children, href, title }: { children?: ReactNode; href?: string; title?: string }) {
   const viewLink = useContext(ViewLinkContext)
+  const citationLink = useContext(CitationLinkContext)
+  const citation = citationLink && href ? parseCitationHref(href, title) : undefined
+  if (citationLink && citation) return citationLink(citation)
   const content = <LinkText value={true}><VisibleText>{children}</VisibleText></LinkText>
   const view = href?.match(VIEW_HREF)?.[1]
   if (view) return viewLink ? viewLink(view, content) : <span><VisibleText>{children}</VisibleText></span>
@@ -192,12 +201,14 @@ export function TranscriptText({
   selected,
   onSelect,
   viewLink,
+  citationLink,
 }: PrivacyProps & {
   text: string
   role: 'assistant' | 'user'
   size?: 'sm' | 'md'
   streaming?: boolean
   viewLink?: ViewLink
+  citationLink?: CitationLink
 }) {
   const sizeClassName = size === 'sm' ? 'text-sm' : 'text-md'
   if (role === 'user') {
@@ -210,27 +221,33 @@ export function TranscriptText({
   return (
     <PrivacyContext value={{ bindings, selected, onSelect }}>
       <ViewLinkContext value={viewLink}>
-        <div
-          data-testid="message-text"
-          className={cn('min-w-0 wrap-anywhere', sizeClassName, streaming && '[&>p:nth-last-child(2)]:inline')}
-        >
-          <Markdown
-            remarkPlugins={[remarkGfm]}
-            components={components}
-            urlTransform={(value, key) =>
-              key !== 'href' ? undefined : VIEW_HREF.test(value) ? value : safeLink(value, bindings)
-            }
+        <CitationLinkContext value={citationLink}>
+          <div
+            data-testid="message-text"
+            className={cn('min-w-0 wrap-anywhere', sizeClassName, streaming && '[&>p:nth-last-child(2)]:inline')}
           >
-            {text}
-          </Markdown>
-          {streaming && (
-            <span
-              data-testid="stream-cursor"
-              aria-hidden
-              className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-accent"
-            />
-          )}
-        </div>
+            <Markdown
+              remarkPlugins={citationLink ? [remarkGfm, remarkCitations] : [remarkGfm]}
+              components={components}
+              urlTransform={(value, key) =>
+                key !== 'href'
+                  ? undefined
+                  : VIEW_HREF.test(value) || (citationLink && isCitationHref(value))
+                    ? value
+                    : safeLink(value, bindings)
+              }
+            >
+              {text}
+            </Markdown>
+            {streaming && (
+              <span
+                data-testid="stream-cursor"
+                aria-hidden
+                className="ml-0.5 inline-block h-4 w-0.5 translate-y-0.5 animate-pulse bg-accent"
+              />
+            )}
+          </div>
+        </CitationLinkContext>
       </ViewLinkContext>
     </PrivacyContext>
   )

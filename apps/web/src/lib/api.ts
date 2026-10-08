@@ -58,3 +58,26 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return response.json() as Promise<T>
 }
+
+/**
+ * Opens a citation on the intranet in a new tab, signed in as the session's persona. The BFF
+ * mints the sign-in; a form post keeps the quotation out of URLs and access logs.
+ */
+export function openCitation(sessionId: string, fields: Record<string, string | undefined>) {
+  const form = document.createElement('form')
+  form.method = 'post'
+  form.action = `/api/sessions/${encodeURIComponent(sessionId)}/citations/open`
+  form.target = '_blank'
+  form.rel = 'noopener noreferrer'
+  for (const [name, value] of Object.entries(fields)) {
+    if (!value) continue
+    const input = document.createElement('input')
+    input.type = 'hidden'
+    input.name = name
+    input.value = value
+    form.append(input)
+  }
+  document.body.append(form)
+  form.submit()
+  form.remove()
+}

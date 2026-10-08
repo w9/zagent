@@ -14,6 +14,7 @@ export type ViewRendererProps = {
   drafts?: Record<string, DraftState>
   jobs?: Record<string, JobState>
   onConfirmed?: () => void
+  readOnly?: boolean
 }
 type ViewComponent = ComponentType<ViewRendererProps> & { kind: string; version: number }
 const modules = import.meta.glob<{ default: ViewComponent }>('./views/*.view.tsx', { eager: true })

@@ -20,8 +20,8 @@ export type CatalogApp = {
 
 type Change = { field: string; before: unknown; after: unknown }
 
-export function DraftEditor({ draft, catalog, sessionId, onConfirmed }: {
-  draft: DraftState; catalog: CatalogApp[]; sessionId: string; onConfirmed?: () => void
+export function DraftEditor({ draft, catalog, sessionId, onConfirmed, readOnly = false }: {
+  draft: DraftState; catalog: CatalogApp[]; sessionId: string; onConfirmed?: () => void; readOnly?: boolean
 }) {
   const [saved, setSaved] = useState<DraftState | null>(null)
   const current = saved && (saved.version >= draft.version || saved.status === 'submitted') ? saved : draft
@@ -103,7 +103,7 @@ export function DraftEditor({ draft, catalog, sessionId, onConfirmed }: {
       )}
       {error && !conflict && <Notice tone="danger" role="alert" className="mb-6">{error}</Notice>}
       <form onSubmit={(event) => { event.preventDefault(); void save() }} className="flex flex-col gap-6">
-        <fieldset disabled={busy || submitted || Boolean(conflict)} className="grid min-w-0 grid-cols-1 gap-4 @medium:grid-cols-2">
+        <fieldset disabled={busy || submitted || readOnly || Boolean(conflict)} className="grid min-w-0 grid-cols-1 gap-4 @medium:grid-cols-2">
           <Field label="Application">
             <Select value={selectedApp} onChange={(event) => {
               touch(); setAppChoice(event.target.value)
@@ -152,6 +152,8 @@ export function DraftEditor({ draft, catalog, sessionId, onConfirmed }: {
           <p role="status" className="inline-flex items-center gap-2 text-sm text-success">
             <CircleCheck aria-hidden className="size-icon" />Submitted / {current.job_id}
           </p>
+        ) : readOnly ? (
+          <p className="text-sm text-muted">Read-only in an archived session.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             <Button type="submit" icon={Save} disabled={!dirty || busy || Boolean(conflict)}>Save changes</Button>
@@ -166,7 +168,7 @@ export function DraftEditor({ draft, catalog, sessionId, onConfirmed }: {
   )
 }
 
-function DraftFormView({ spec, sessionId, drafts, onConfirmed }: ViewRendererProps) {
+function DraftFormView({ spec, sessionId, drafts, onConfirmed, readOnly }: ViewRendererProps) {
   const [catalog, setCatalog] = useState<CatalogApp[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const draft = drafts?.[String(spec.props.draft_id)]
@@ -180,7 +182,7 @@ function DraftFormView({ spec, sessionId, drafts, onConfirmed }: ViewRendererPro
   if (!sessionId || !draft) return <Notice tone="danger" role="alert">Draft unavailable in this session.</Notice>
   if (error) return <Notice tone="danger" role="alert">{error}</Notice>
   if (!catalog) return <p role="status" className="inline-flex items-center gap-2 text-sm text-muted"><Spinner />Loading application catalog…</p>
-  return <DraftEditor draft={draft} catalog={catalog} sessionId={sessionId} onConfirmed={onConfirmed} />
+  return <DraftEditor draft={draft} catalog={catalog} sessionId={sessionId} onConfirmed={onConfirmed} readOnly={readOnly} />
 }
 
 DraftFormView.kind = 'draft_form'

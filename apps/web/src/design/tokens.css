@@ -99,6 +99,10 @@
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
   --icon-stroke-width: 1.75;
+  /* Resizable panel limits, read by the app shell at runtime */
+  --panel-sidebar-min: 200px;
+  --panel-sidebar-max: 400px;
+  --panel-min: 360px;
 
   /* Theme-dependent values that are not utilities */
   --shadow-ink: oklch(0.255 0.02 165 / 0.08);

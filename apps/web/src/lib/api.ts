@@ -4,6 +4,7 @@ export type Session = {
   id: string; seq: number; created_at: string; title: string
   title_source: 'fallback' | 'automatic' | 'manual'
   persona?: string
+  archived_at?: string | null
 }
 
 /** A simulated identity; its roles decide which knowledge documents the agent can read. */

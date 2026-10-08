@@ -41,6 +41,7 @@ export function WorkingSurface({
   drafts,
   jobs,
   resolveHandle,
+  readOnly,
   className,
 }: {
   sessionId?: string
@@ -50,6 +51,7 @@ export function WorkingSurface({
   drafts?: Record<string, DraftState>
   jobs?: Record<string, JobState>
   resolveHandle?: HandleResolver
+  readOnly?: boolean
   className?: string
 }) {
   const position = viewPosition(views, selectedId)
@@ -108,6 +110,7 @@ export function WorkingSurface({
                 jobs={jobs}
                 onConfirmed={() => onSelect(undefined)}
                 resolveHandle={resolveHandle}
+                readOnly={readOnly}
               />
             </ViewBoundary>
           </div>

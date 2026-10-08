@@ -3,6 +3,11 @@
 Guidance for coding agents in this repository. Product overview and full configuration:
 [README.md](README.md). System design: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Shorthand
+
+- **AQ**: ask the user questions (for clarification or confirmation, in rounds if needed) using
+  the ask-questions tool before acting.
+
 ## Layout
 
 - `services/agent/zagent/`: Python 3.12 backend (runtime, BFF, gateway, MCP servers, privacy,
@@ -64,3 +69,6 @@ ZAGENT_WEB_URL=http://127.0.0.1:5273
 - The job image tag `zagent-job:plan8` is hardcoded, so clones share it; the last build wins.
 - The Vite dev server pins port 5173 with `strictPort`. When that port is taken, run
   `AGENT_URL=http://127.0.0.1:<agent port> npm --prefix apps/web run dev -- --port <free port>`.
+- To try backend changes without rebuilding the stack, run `make db`, then serve the app on the
+  host: `DATABASE_URL=postgresql://zagent:zagent@localhost:<db port>/zagent ZAGENT_AGENT=scripted
+  uv run --frozen uvicorn zagent.app:app --port <free port>`, and point `AGENT_URL` at it.

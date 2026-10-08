@@ -182,8 +182,11 @@ Previous/next controls and the history menu let you revisit earlier views. Navig
 that view while new ones arrive; selecting the latest resumes following. Refresh keeps the
 chosen view through the session URL. On smaller screens, tabs switch between chat and the surface.
 Titled chat references pin their exact target even when it was the latest view when clicked.
-Opening a reference never reruns a query, edits a draft, or confirms a job. Use the pencil beside
-a session to rename it; naming and new activity do not change its creation-time ordering.
+Opening a reference never reruns a query, edits a draft, or confirms a job. Use a session's … menu
+to rename it; naming and new activity do not change its creation-time ordering. The same menu
+archives a session: it leaves the list (Undo brings it back) and stays readable, read-only, under
+Archived in the sidebar footer. If the agent is still responding or jobs are unfinished, a warning
+asks first; archiving then stops the response, and the jobs keep running. Sessions are never deleted.
 
 Step markers start collapsed and expand to show tool names, arguments, results, and validation
 errors. Reopening `/` restores the last session in that browser. The old `/fail` and

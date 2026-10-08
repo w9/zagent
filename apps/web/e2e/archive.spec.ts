@@ -34,11 +34,13 @@ test('archiving the open session opens the newest remaining one, and Undo brings
   await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeEnabled()
   await archiveFromMenu(page, newer)
   await expect(page).toHaveURL(new RegExp(`/sessions/${older}`))
+  await expect(page.getByRole('region', { name: 'Conversation' })).toHaveCount(1)
   expect(await activeIds(request)).not.toContain(newer)
   const toast = page.getByRole('status').filter({ hasText: 'Archived' })
   await toast.getByRole('button', { name: 'Undo' }).click()
   await expect(toast).toHaveCount(0)
   await expect(page).toHaveURL(new RegExp(`/sessions/${newer}`))
+  await expect(page.getByRole('region', { name: 'Conversation' })).toHaveCount(1)
   expect((await activeIds(request))[0]).toBe(newer)
 })
 

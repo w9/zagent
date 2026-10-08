@@ -18,7 +18,8 @@ export function Dialog({
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-30 bg-overlay animate-fade" />
+        {/* Same level as drawers so a dialog opened from the session drawer dims it too. */}
+        <RadixDialog.Overlay className="fixed inset-0 z-40 bg-overlay animate-fade" />
         <RadixDialog.Content
           role="alertdialog"
           className="fixed inset-4 z-40 m-auto flex h-fit max-w-96 flex-col gap-4 rounded-lg bg-surface p-6 shadow-lg animate-fade"

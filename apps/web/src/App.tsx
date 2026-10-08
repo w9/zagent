@@ -306,7 +306,7 @@ export default function App() {
       )}
       {undo && (
         <Toast
-          key={undo.session.id}
+          key={`undo-${undo.session.id}`}
           onDismiss={() => setUndo(null)}
           action={
             <Button

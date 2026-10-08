@@ -8,16 +8,18 @@ export function Menu({
   open,
   onOpenChange,
   onCloseAutoFocus,
+  modal = true,
   children,
 }: {
   trigger: ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
   onCloseAutoFocus?: (event: Event) => void
+  modal?: boolean
   children: ReactNode
 }) {
   return (
-    <RadixMenu.Root open={open} onOpenChange={onOpenChange} modal={false}>
+    <RadixMenu.Root open={open} onOpenChange={onOpenChange} modal={modal}>
       <RadixMenu.Trigger asChild>{trigger}</RadixMenu.Trigger>
       <RadixMenu.Portal>
         <RadixMenu.Content

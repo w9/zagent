@@ -23,7 +23,8 @@ export const Open: Story = {
   args: { trigger, children: null },
   render: () => (
     <div className="flex justify-end p-4 pb-32">
-      <Menu trigger={trigger} open>
+      {/* A modal menu marks the page aria-hidden, which axe flags around the focusable trigger. */}
+      <Menu trigger={trigger} open modal={false}>
         <MenuItem icon={Pencil} onSelect={() => {}}>Rename</MenuItem>
         <MenuItem icon={Archive} onSelect={() => {}}>Archive</MenuItem>
         <MenuItem icon={Archive} disabled onSelect={() => {}}>Archive (unavailable)</MenuItem>

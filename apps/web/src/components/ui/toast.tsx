@@ -21,7 +21,7 @@ export function Toast({ action, onDismiss, children }: { action?: ReactNode; onD
       onPointerLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
-      className="fixed inset-x-4 bottom-4 z-50 mx-auto flex w-fit max-w-96 items-center gap-2 rounded-lg border border-subtle bg-surface py-1.5 pr-1.5 pl-4 text-sm text-default shadow-md animate-enter"
+      className="fixed inset-x-4 bottom-4 z-50 mr-auto flex w-fit max-w-96 items-center gap-2 rounded-lg border border-subtle bg-surface py-1.5 pr-1.5 pl-4 text-sm text-default shadow-md animate-enter"
     >
       <span className="min-w-0 flex-1 wrap-anywhere">{children}</span>
       {action}

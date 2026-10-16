@@ -37,6 +37,10 @@ class MessageText(MessageRef):
     text: str
 
 
+class UserMessage(MessageText):
+    retry_of: UUID | None = None
+
+
 class Failure(BaseModel):
     error: str
 
@@ -83,7 +87,9 @@ class EventDraft(BaseModel):
 
     @model_validator(mode="after")
     def validate_payload(self) -> "EventDraft":
-        if self.type in {"user_message", "text_delta"}:
+        if self.type == "user_message":
+            UserMessage.model_validate(self.payload)
+        elif self.type == "text_delta":
             MessageText.model_validate(self.payload)
         elif self.type in {"message_done", "message_dropped"}:
             MessageRef.model_validate(self.payload)
@@ -203,9 +209,22 @@ def reduce_event(state: Projection, event: Event) -> Projection:
     result.seq = event.seq
     payload = event.payload
     if event.type == "user_message":
-        result.messages.append(
-            ChatMessage(id=payload["message_id"], seq=event.seq, role="user", text=payload["text"])
-        )
+        question = next((item for item in reversed(result.messages) if item.role == "user"), None)
+        if (
+            question is not None
+            and result.conversation_turn is not None
+            and payload.get("retry_of") == str(result.conversation_turn.id)
+        ):
+            # A retry keeps the question and hides the attempt it replaces.
+            result.messages = [item for item in result.messages if item.seq <= question.seq]
+            result.steps = [item for item in result.steps if item.seq < question.seq]
+            result.refusals = [item for item in result.refusals if item.seq < question.seq]
+        else:
+            result.messages.append(
+                ChatMessage(
+                    id=payload["message_id"], seq=event.seq, role="user", text=payload["text"]
+                )
+            )
         result.conversation_turn = ConversationTurnState(
             id=event.conversation_turn_id, status="running"
         )
@@ -300,6 +319,22 @@ def project(session_id: UUID, events: list[Event]) -> Projection:
     for event in events:
         state = reduce_event(state, event)
     return state
+
+
+def without_retried(events: list[Event]) -> list[Event]:
+    """The conversation the model continues: a retried turn's exchange is left out, but the
+    views, drafts and jobs it created remain."""
+    retried = {
+        event.payload["retry_of"]
+        for event in events
+        if event.type == "user_message" and event.payload.get("retry_of")
+    }
+    return [
+        event
+        for event in events
+        if str(event.conversation_turn_id) not in retried
+        or event.type in {"view_pushed", "draft_updated", "job_submitted", "session_updated"}
+    ]
 
 
 def normalize_transcript(events: list[Event]) -> list[dict[str, Any]]:

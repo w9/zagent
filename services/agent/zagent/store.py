@@ -323,6 +323,27 @@ class Store:
                 path="user_message",
             )
         ).value
+        return await self._begin(session_id, text, None, conversation_turn_id, caller_context)
+
+    async def retry_conversation_turn(
+        self,
+        session_id: UUID,
+        retry_of: UUID,
+        *,
+        conversation_turn_id: UUID | None = None,
+        caller_context: str | None = None,
+    ) -> AgentSession:
+        """Asks the latest turn's question again; the log keeps the attempt it replaces."""
+        return await self._begin(session_id, None, retry_of, conversation_turn_id, caller_context)
+
+    async def _begin(
+        self,
+        session_id: UUID,
+        text: str | None,
+        retry_of: UUID | None,
+        conversation_turn_id: UUID | None,
+        caller_context: str | None,
+    ) -> AgentSession:
         conversation_turn_id = conversation_turn_id or uuid4()
         async with self.pool.acquire() as connection, connection.transaction():
             session = await connection.fetchrow(
@@ -338,6 +359,20 @@ class Store:
                 raise ConversationTurnConflict(
                     "This session already has an active conversation turn"
                 )
+            payload = {"message_id": str(uuid4()), "text": text}
+            if retry_of is not None:
+                latest = await connection.fetchrow(
+                    """SELECT conversation_turn_id, payload->>'text' AS text FROM events
+                       WHERE session_id = $1 AND type = 'user_message'
+                       ORDER BY seq DESC LIMIT 1""",
+                    session_id,
+                )
+                if latest is None or latest["conversation_turn_id"] != retry_of:
+                    raise ConversationTurnConflict(
+                        "Only the latest conversation turn can be retried"
+                    )
+                text = latest["text"]
+                payload.update(text=text, retry_of=str(retry_of))
             await connection.execute(
                 """INSERT INTO conversation_turns (id, session_id, status, caller_context)
                    VALUES ($1, $2, 'running', $3)""",
@@ -349,7 +384,7 @@ class Store:
                 connection,
                 session_id,
                 conversation_turn_id,
-                EventDraft(type="user_message", payload={"message_id": str(uuid4()), "text": text}),
+                EventDraft(type="user_message", payload=payload),
             )
         return AgentSession(
             id=session_id,

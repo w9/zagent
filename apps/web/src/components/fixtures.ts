@@ -186,6 +186,26 @@ export const failed: Projection = {
   conversation_turn: { id: 'turn-4', status: 'failed', error: 'The model request timed out. Send the message again to retry.' },
 }
 
+/** The latest turn ended in a refusal, so Retry stands alone under it. */
+export const refused: Projection = {
+  ...conversation,
+  seq: 10,
+  messages: conversation.messages.slice(0, 3),
+  views: [tableView],
+  conversation_turn: { id: 'turn-2', status: 'finished', error: null },
+}
+
+/** The latest turn failed before any output, so Retry sits under the question. */
+export const unanswered: Projection = {
+  ...conversation,
+  seq: 45,
+  messages: [
+    ...conversation.messages,
+    { id: 'message-6', seq: 44, role: 'user', text: 'Which libraries does SPC-northgate-001-1 have?', status: 'complete' },
+  ],
+  conversation_turn: { id: 'turn-4', status: 'failed', error: 'The model gateway is unavailable.' },
+}
+
 export const empty: Projection = {
   session_id: 'session-4',
   seq: 0,

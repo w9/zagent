@@ -3,7 +3,16 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-from zagent.events import Event, EventDraft, Projection, normalize_transcript, project, reduce_event
+from zagent.events import (
+    Event,
+    EventDraft,
+    Projection,
+    normalize_transcript,
+    project,
+    reduce_event,
+    without_retried,
+)
+from zagent.scope import REFUSAL_MESSAGES
 
 SESSION_ID = uuid4()
 CONVERSATION_TURN_ID = uuid4()
@@ -54,6 +63,55 @@ def test_failure_ends_partial_messages():
     assert state.conversation_turn.status == "failed"
     assert state.conversation_turn.error == "Scripted failure"
     assert state.messages[0].status == "failed"
+
+
+def test_retry_hides_the_replaced_attempt_from_the_transcript_and_the_model():
+    first, second, retry = uuid4(), uuid4(), uuid4()
+
+    def turn(turn_id, seq, kind, **payload):
+        return event(seq, kind, **payload).model_copy(update={"conversation_turn_id": turn_id})
+
+    spec = {
+        "kind": "table",
+        "version": 1,
+        "props": {
+            "title": "Rows",
+            "columns": [{"key": "id", "label": "Id", "type": "string"}],
+            "rows": [],
+            "row_count": 0,
+        },
+    }
+    log = [
+        turn(first, 1, "user_message", message_id="q1", text="Hello"),
+        turn(first, 2, "text_delta", message_id="a1", text="Hi."),
+        turn(first, 3, "conversation_turn_finished"),
+        turn(second, 4, "user_message", message_id="q2", text="Chart it"),
+        turn(second, 5, "step_started", step_id="s2", title="Agent step 1"),
+        turn(second, 6, "view_pushed", view_id="view-0001", spec=spec),
+        turn(second, 7, "refused", code="out_of_domain", message=REFUSAL_MESSAGES["out_of_domain"]),
+        turn(second, 8, "conversation_turn_finished"),
+        turn(retry, 9, "user_message", message_id="q3", text="Chart it", retry_of=str(second)),
+        turn(retry, 10, "text_delta", message_id="a3", text="Done."),
+        turn(retry, 11, "conversation_turn_finished"),
+    ]
+    state = project(SESSION_ID, log)
+    assert [(message.id, message.text) for message in state.messages] == [
+        ("q1", "Hello"),
+        ("a1", "Hi."),
+        ("q2", "Chart it"),
+        ("a3", "Done."),
+    ]
+    assert state.steps == []
+    assert state.refusals == []
+    assert [view.id for view in state.views] == ["view-0001"]
+    assert state.conversation_turn.id == retry
+    assert [item.seq for item in without_retried(log)] == [1, 2, 3, 6, 9, 10, 11]
+
+
+def test_retry_of_an_older_turn_is_an_ordinary_message():
+    stale = event(2, "user_message", message_id="q2", text="Again", retry_of=str(uuid4()))
+    state = project(SESSION_ID, [event(1, "user_message", message_id="q1", text="Hello"), stale])
+    assert [message.id for message in state.messages] == ["q1", "q2"]
 
 
 def test_normalizer_redacts_metadata_and_ignores_coalescing_boundaries():

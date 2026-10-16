@@ -8,7 +8,7 @@ from typing import Any, Protocol
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
-from zagent.events import Event, EventDraft, EventType
+from zagent.events import Event, EventDraft, EventType, without_retried
 from zagent.llm import AssistantMessage, Completer, CompletionRequest, canonical_json
 from zagent.scope import (
     REFUSE_TOOL,
@@ -181,7 +181,7 @@ class LlmAgent:
         self.guard = guard if guard is not None else ScopeGuard(gateway, route=route)
 
     async def run_turn(self, session: AgentSession, emit: Emit) -> None:
-        events = await self.store.snapshot_events(session.id)
+        events = without_retried(await self.store.snapshot_events(session.id))
         journal = await self.store.checkpoints(session.id, session.conversation_turn_id)
         metadata = {
             "session_id": str(session.id),

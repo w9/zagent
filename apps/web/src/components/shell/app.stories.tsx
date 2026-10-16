@@ -70,6 +70,7 @@ function Workspace({
               bindings={bindings}
               connection="live"
               onSend={async () => {}}
+              onRetry={async () => {}}
               onUnarchive={archivedSession ? () => {} : undefined}
               onOpenCitation={() => {}}
             />

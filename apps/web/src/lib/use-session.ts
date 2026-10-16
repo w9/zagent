@@ -4,7 +4,7 @@ import type { PrivacyBinding } from './api'
 import { reduceEvent } from './events'
 import type { LogEvent, Projection } from './events'
 
-function resolveDisplayText(text: string, bindings: PrivacyBinding[]) {
+export function resolveDisplayText(text: string, bindings: PrivacyBinding[]) {
   return text.replace(/\[[A-Z][A-Z0-9]*_\d+\]/g, (token) =>
     bindings.find((binding) => binding.token === token)?.value ?? token,
   )

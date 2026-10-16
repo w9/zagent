@@ -19,7 +19,7 @@ export type JobState = {
 }
 
 export type Payloads = {
-  user_message: MessageText
+  user_message: MessageText & { retry_of?: string }
   conversation_turn_started: Record<string, never>
   conversation_turn_finished: Record<string, never>
   conversation_turn_failed: { error: string }
@@ -117,23 +117,32 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
 
   const next: Projection = { ...state, seq: event.seq }
   switch (event.type) {
-    case 'user_message':
-      next.messages = [
-        ...state.messages,
-        {
-          id: event.payload.message_id,
-          seq: event.seq,
-          role: 'user',
-          text: event.payload.text,
-          status: 'complete',
-        },
-      ]
+    case 'user_message': {
+      const question = state.messages.findLast((message) => message.role === 'user')
+      if (question && event.payload.retry_of && event.payload.retry_of === state.conversation_turn?.id) {
+        // A retry keeps the question and hides the attempt it replaces.
+        next.messages = state.messages.filter((message) => message.seq <= question.seq)
+        next.steps = state.steps.filter((step) => step.seq < question.seq)
+        next.refusals = state.refusals?.filter((refusal) => refusal.seq < question.seq)
+      } else {
+        next.messages = [
+          ...state.messages,
+          {
+            id: event.payload.message_id,
+            seq: event.seq,
+            role: 'user',
+            text: event.payload.text,
+            status: 'complete',
+          },
+        ]
+      }
       next.conversation_turn = {
         id: event.conversation_turn_id,
         status: 'running',
         error: null,
       }
       break
+    }
     case 'conversation_turn_started':
       next.conversation_turn = {
         id: event.conversation_turn_id,

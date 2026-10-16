@@ -99,6 +99,14 @@ class TokenizedMessageInput(BaseModel):
     caller_context: str | None = Field(default=None, max_length=4096)
 
 
+class RetryInput(BaseModel):
+    model_config = {"extra": "forbid"}
+    retry_of: UUID
+    # Set only by the display edge when it forwards to the runtime.
+    conversation_turn_id: UUID | None = None
+    caller_context: str | None = Field(default=None, max_length=4096)
+
+
 class SessionInput(BaseModel):
     model_config = {"extra": "forbid"}
     persona: PersonaId = DEFAULT_PERSONA
@@ -559,20 +567,15 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             if checked.value != text:
                 raise HTTPException(422, "Untokenized identifier at the runtime boundary")
         if settings.runtime_url:
-            async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.post(
-                    f"{settings.runtime_url}/sessions/{session_id}/messages",
-                    json={
-                        "text": Tokenized(value=text).model_dump(),
-                        "conversation_turn_id": str(turn_id),
-                        "caller_context": caller_context,
-                    },
-                )
-            if response.is_error:
-                raise HTTPException(
-                    response.status_code, response.json().get("detail", "Runtime unavailable")
-                )
-            return AcceptedConversationTurn.model_validate(response.json())
+            return await forward_turn(
+                session_id,
+                "messages",
+                {
+                    "text": Tokenized(value=text).model_dump(),
+                    "conversation_turn_id": str(turn_id),
+                    "caller_context": caller_context,
+                },
+            )
         turn = await app.state.store.begin_conversation_turn(
             session_id, text, conversation_turn_id=turn_id, caller_context=caller_context
         )
@@ -580,6 +583,51 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
         return AcceptedConversationTurn(
             session_id=turn.id, conversation_turn_id=turn.conversation_turn_id
         )
+
+    @app.post(
+        "/sessions/{session_id}/retry", status_code=202, response_model=AcceptedConversationTurn
+    )
+    async def retry(session_id: UUID, body: RetryInput):
+        session = await writable_session(session_id)
+        turn_id, caller_context = body.conversation_turn_id, body.caller_context
+        if settings.display_mode:
+            if turn_id or caller_context:
+                raise HTTPException(422, "The display edge expects only the turn to retry")
+            turn_id = uuid4()
+            caller_context = app.state.signer.mint(
+                session_id=session_id,
+                turn_id=turn_id,
+                site=session.site_id,
+                persona=session.persona,
+            )
+        if settings.runtime_url:
+            return await forward_turn(
+                session_id,
+                "retry",
+                {
+                    "retry_of": str(body.retry_of),
+                    "conversation_turn_id": str(turn_id),
+                    "caller_context": caller_context,
+                },
+            )
+        turn = await app.state.store.retry_conversation_turn(
+            session_id, body.retry_of, conversation_turn_id=turn_id, caller_context=caller_context
+        )
+        app.state.runtime.start(turn)
+        return AcceptedConversationTurn(
+            session_id=turn.id, conversation_turn_id=turn.conversation_turn_id
+        )
+
+    async def forward_turn(session_id: UUID, path: str, body: dict) -> AcceptedConversationTurn:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                f"{settings.runtime_url}/sessions/{session_id}/{path}", json=body
+            )
+        if response.is_error:
+            raise HTTPException(
+                response.status_code, response.json().get("detail", "Runtime unavailable")
+            )
+        return AcceptedConversationTurn.model_validate(response.json())
 
     @app.get("/sessions/{session_id}/snapshot", response_model=Projection)
     async def snapshot(session_id: UUID, representation: Literal["display", "model"] = "display"):

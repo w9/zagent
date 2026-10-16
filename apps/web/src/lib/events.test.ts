@@ -197,6 +197,40 @@ describe('event projection', () => {
     expect(nextTurn.conversation_turn?.id).toBe('next-turn')
   })
 
+  it('replaces the latest attempt on retry and keeps its views', () => {
+    const asked: Projection = {
+      ...empty,
+      seq: 7,
+      messages: [
+        { id: 'q1', seq: 1, role: 'user', text: 'Hello', status: 'complete' },
+        { id: 'a1', seq: 2, role: 'assistant', text: 'Hi.', status: 'complete' },
+        { id: 'q2', seq: 4, role: 'user', text: 'Chart it', status: 'complete' },
+        { id: 'a2', seq: 7, role: 'assistant', text: 'Declined.', status: 'complete' },
+      ],
+      steps: [
+        { id: 's1', seq: 3, title: 'Agent step 1', detail: '', status: 'complete' },
+        { id: 's2', seq: 5, title: 'Agent step 1', detail: '', status: 'complete' },
+      ],
+      refusals: [{ id: 'turn', seq: 6, code: 'out_of_domain', message: 'Declined.' }],
+      views: [{ id: 'view-0001', seq: 5, spec: { kind: 'table', version: 1, props: { title: 'Rows', columns: [], rows: [], row_count: 0 } } }],
+      conversation_turn: { id: 'turn', status: 'finished', error: null },
+    }
+    const retried = reduceEvent(asked, {
+      ...event(8, 'user_message', { message_id: 'q3', text: 'Chart it', retry_of: 'turn' }),
+      conversation_turn_id: 'retry',
+    })
+    expect(retried.messages.map((message) => message.id)).toEqual(['q1', 'a1', 'q2'])
+    expect(retried.steps.map((step) => step.id)).toEqual(['s1'])
+    expect(retried.refusals).toEqual([])
+    expect(retried.views).toBe(asked.views)
+    expect(retried.conversation_turn).toEqual({ id: 'retry', status: 'running', error: null })
+    const stale = reduceEvent(retried, {
+      ...event(9, 'user_message', { message_id: 'q4', text: 'Again', retry_of: 'turn' }),
+      conversation_turn_id: 'other',
+    })
+    expect(stale.messages.at(-1)?.id).toBe('q4')
+  })
+
   it.each(['tool_call', 'tool_result', 'draft_updated'] as const)(
     'advances the cursor for the reserved %s vocabulary',
     (type) => {

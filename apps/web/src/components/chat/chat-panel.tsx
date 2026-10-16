@@ -7,6 +7,7 @@ import { citedRead, readResults } from '../../lib/citations'
 import type { Citation, CitedRead } from '../../lib/citations'
 import { toolView } from '../../lib/events'
 import type { ChatMessage, Projection, RefusedState, StepState } from '../../lib/events'
+import { resolveDisplayText } from '../../lib/use-session'
 import type { PushedView } from '../../lib/views'
 import { cn } from '../../lib/utils'
 import { Badge } from '../ui/badge'
@@ -18,6 +19,7 @@ import { PanelHeader } from '../ui/panel-header'
 import { Spinner } from '../ui/spinner'
 import { CitationChip } from './citation-chip'
 import { Composer } from './composer'
+import { MessageActions } from './message-actions'
 import { RefusalChip } from './refusal-chip'
 import { StepMarker } from './step-marker'
 import { TranscriptText } from './transcript-text'
@@ -69,6 +71,7 @@ export function ChatPanel({
   connection,
   error,
   onSend,
+  onRetry,
   onUnarchive,
   onOpenCitation,
   className,
@@ -81,6 +84,8 @@ export function ChatPanel({
   connection: Connection
   error?: string | null
   onSend: (text: string) => Promise<void>
+  /** Asks the question of the given conversation turn again, replacing its answer. */
+  onRetry: (turnId: string) => Promise<void>
   /** Set for an archived session, which is read-only until unarchived. */
   onUnarchive?: () => void
   onOpenCitation: (citation: Citation, read?: CitedRead) => void
@@ -88,11 +93,17 @@ export function ChatPanel({
 }) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  // The turn being retried, until the stream delivers its replacement.
+  const [retrying, setRetrying] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
   const [atBottom, setAtBottom] = useState(true)
   const scrollArea = useRef<HTMLDivElement>(null)
   const status = turnStatus(state, connection)
-  const canSend = Boolean(state && connection === 'live' && status !== 'Responding' && !sending && draft.trim())
+  const lastTurn = state?.conversation_turn
+  const retryPending = Boolean(lastTurn && retrying === lastTurn.id)
+  const canSend = Boolean(state && connection === 'live' && status !== 'Responding' && !sending && !retryPending && draft.trim())
+  const showRetry = Boolean(lastTurn && lastTurn.status !== 'running' && !onUnarchive)
+  const canRetry = connection === 'live' && !sending && !retryPending
   const views = state?.views ?? []
   const problem = error || sendError || state?.conversation_turn?.error
 
@@ -137,6 +148,23 @@ export function ChatPanel({
     }
   }
 
+  async function retry() {
+    if (!lastTurn || !canRetry) return
+    setRetrying(lastTurn.id)
+    setSendError(null)
+    setAtBottom(true)
+    try {
+      await onRetry(lastTurn.id)
+    } catch (reason) {
+      setRetrying(null)
+      setSendError(reason instanceof Error ? reason.message : 'The answer could not be retried')
+    }
+  }
+
+  const entries = state ? timeline(state) : []
+  const lastEntry = entries.at(-1)
+  const lastIsAnswer = lastEntry?.kind === 'message' && lastEntry.value.role === 'assistant'
+
   return (
     <section id="conversation-panel" aria-label="Conversation" className={cn('@container flex min-h-0 min-w-0 flex-1 flex-col bg-surface', className)}>
       <PanelHeader
@@ -178,7 +206,7 @@ export function ChatPanel({
             />
           ) : (
             <ol aria-label="Conversation" className="mx-auto flex max-w-prose flex-col gap-6 px-4 py-6 @medium:px-6 @medium:py-8">
-              {timeline(state).map((entry) => {
+              {entries.map((entry) => {
                 if (entry.kind === 'view') {
                   return (
                     <li key={`view:${entry.value.id}`} className="min-w-0 animate-enter">
@@ -220,9 +248,22 @@ export function ChatPanel({
                       streaming={message.status === 'streaming'}
                     />
                     {message.status === 'failed' && <p className="mt-1 text-xs text-danger">Interrupted</p>}
+                    {message.role === 'assistant' && message.status !== 'streaming' && (
+                      <MessageActions
+                        text={resolveDisplayText(message.text, bindings)}
+                        onRetry={showRetry && entry === lastEntry ? () => void retry() : undefined}
+                        retryDisabled={!canRetry}
+                        className="mt-2 -ml-1.5"
+                      />
+                    )}
                   </li>
                 )
               })}
+              {showRetry && !lastIsAnswer && (
+                <li data-testid="turn-actions" className={lastEntry?.kind === 'message' ? '-mt-4 self-end' : '-mt-4 -ml-1.5'}>
+                  <MessageActions onRetry={() => void retry()} retryDisabled={!canRetry} />
+                </li>
+              )}
             </ol>
           )}
         </div>

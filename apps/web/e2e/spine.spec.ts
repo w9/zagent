@@ -240,6 +240,38 @@ test('failed conversation turns are visible and accept a new message', async ({
   await page.screenshot({ path: testInfo.outputPath('desktop-failed.png') })
 })
 
+test('an answer can be copied and the latest turn retried in place', async ({
+  page,
+  context,
+  request,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop')
+  test.setTimeout(90_000)
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const sessionId = await createSession(request)
+  await openSession(page, sessionId)
+  await send(page, 'Hello')
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete', { timeout: 30_000 })
+  const reply = page.getByTestId('assistant-message').last()
+  await reply.getByRole('button', { name: 'Copy', exact: true }).click()
+  await expect(reply.getByRole('button', { name: 'Copied', exact: true })).toBeVisible()
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(expected)
+  const before = await (await request.get(`/api/sessions/${sessionId}/snapshot`)).json()
+  // The scripted turn ends with views, so Retry sits under the turn rather than the answer.
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText('Responding')
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
+  await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete', { timeout: 30_000 })
+  await expect(page.getByTestId('user-message')).toHaveCount(1)
+  await expect(page.getByTestId('assistant-message')).toHaveCount(1)
+  await assertAnswer(page, request)
+  const after = await (await request.get(`/api/sessions/${sessionId}/snapshot`)).json()
+  expect(after.conversation_turn.id).not.toBe(before.conversation_turn.id)
+  expect(after.messages[1].id).not.toBe(before.messages[1].id)
+  await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeEnabled()
+  await page.screenshot({ path: testInfo.outputPath('desktop-retried.png') })
+})
+
 test('mobile sessions, streaming, refresh, and compact viewports', async ({
   page,
   request,

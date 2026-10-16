@@ -314,11 +314,11 @@ Each component has a story file next to it. Story data lives in `src/components/
 | `shell/` | AppShell, TopBar, Wordmark, ThemeToggle | — | every viewport in section 4; X-ray on; drawer open; error |
 | `shell/` | SessionLayout | chat or surface tab | every viewport in section 4 |
 | `shell/` | SessionList | active, archived | empty, many, creating, very long title; persona chooser with a long hint, no personas; archived loading and empty |
-| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, reconnecting, archived; persona badge, no persona |
+| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, failed before an answer, refused last, reconnecting, archived; persona badge, no persona |
 | `chat/` | TranscriptText, PrivacyText | user, assistant; md, sm | streaming, Markdown with code, tables and links |
 | `chat/` | StepMarker | running, complete, failed | expanded, with a view link |
 | `chat/` | CitationChip | verified, unverified | preview open, single line, privacy values, long title, many lines, narrow box; in the chat panel |
-| `chat/` | RefusalChip, ViewReference, TurnStatus, Composer | — | in the chat panel stories |
+| `chat/` | RefusalChip, ViewReference, TurnStatus, Composer, MessageActions | — | in the chat panel stories |
 | `surface/` | WorkingSurface, ViewHeader | — | no views, unavailable view, chart, table |
 | `surface/views/` | TableView | inline, from a handle | loading, empty, error, nulls, booleans |
 | `surface/views/` | ChartView | each mark type | loading, error |

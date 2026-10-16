@@ -71,6 +71,9 @@ function SessionWorkspace({
           onSend={async (text) => {
             await request(`/sessions/${sessionId}/messages`, { method: 'POST', body: JSON.stringify({ text }) })
           }}
+          onRetry={async (turnId) => {
+            await request(`/sessions/${sessionId}/retry`, { method: 'POST', body: JSON.stringify({ retry_of: turnId }) })
+          }}
           onUnarchive={onUnarchive}
           onOpenCitation={(citation, read) =>
             openCitation(sessionId, {

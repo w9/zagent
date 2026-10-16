@@ -533,6 +533,43 @@ async def test_agent_corrects_arguments_and_reconstructs_context_without_rows(st
 
 
 @pytest.mark.integration
+async def test_retry_asks_the_model_without_the_replaced_answer(store):
+    clinical = ClinicalStore(store, lambda: FROZEN_NOW)
+    tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
+    allow = tool_completion("scope_decision", {"decision": "allow"})
+    completer = SequenceCompleter(
+        [
+            allow,
+            Completion(message=AssistantMessage(content="First answer.")),
+            allow,
+            Completion(message=AssistantMessage(content="Second answer.")),
+        ]
+    )
+    runtime = Runtime(store, LlmAgent(store, completer, tools))
+    session = await store.create_session()
+    first = await store.begin_conversation_turn(session.id, "Summarize intake QC")
+    await runtime._run_turn(first)
+    retry = await store.retry_conversation_turn(session.id, first.conversation_turn_id)
+    assert retry.message == first.message
+    await runtime._run_turn(retry)
+    guard, answer, retried_guard, retried_answer = completer.requests
+    assert retried_guard.messages == guard.messages
+    assert retried_answer.messages == answer.messages
+    snapshot = await store.snapshot(session.id)
+    assert [message.text for message in snapshot.messages] == [
+        "Summarize intake QC",
+        "Second answer.",
+    ]
+    events = await store.snapshot_events(session.id)
+    replaced = [
+        event.payload["text"]
+        for event in events
+        if event.type == "text_delta" and event.conversation_turn_id == first.conversation_turn_id
+    ]
+    assert "".join(replaced) == "First answer."
+
+
+@pytest.mark.integration
 async def test_iteration_cap_produces_clean_terminal_failure(store):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))

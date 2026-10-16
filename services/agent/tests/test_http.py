@@ -132,6 +132,39 @@ async def test_validation_and_conflict(api):
     await read_events(api.client, session_id)
 
 
+async def test_retry_replaces_the_latest_answer_and_keeps_the_log(api):
+    session_id = await session_with_turn(api)
+    first = await read_events(api.client, session_id)
+    first_turn = str(first[0].conversation_turn_id)
+    before = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    minted = await api.client.post(
+        f"/sessions/{session_id}/retry",
+        json={"retry_of": first_turn, "caller_context": "forged"},
+    )
+    assert minted.status_code == 422
+    response = await api.client.post(f"/sessions/{session_id}/retry", json={"retry_of": first_turn})
+    assert response.status_code == 202
+    retry_turn = response.json()["conversation_turn_id"]
+    busy = await api.client.post(f"/sessions/{session_id}/retry", json={"retry_of": retry_turn})
+    assert busy.status_code == 409
+    events = await read_events(api.client, session_id)
+    retried = next(event for event in events if str(event.conversation_turn_id) == retry_turn)
+    assert retried.type == "user_message"
+    assert retried.payload["retry_of"] == first_turn
+    assert retried.payload["text"] == first[0].payload["text"]
+    assert events[: len(first)] == first
+    after = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
+    assert after == project(UUID(session_id), events).model_dump(mode="json")
+    assert after["messages"][0] == before["messages"][0]
+    assert [message["role"] for message in after["messages"]] == ["user", "assistant"]
+    assert after["messages"][1]["id"].startswith(retry_turn)
+    assert all(step["id"].startswith(retry_turn) for step in after["steps"])
+    assert len(after["views"]) == 2 * len(before["views"])
+    stale = await api.client.post(f"/sessions/{session_id}/retry", json={"retry_of": first_turn})
+    assert stale.status_code == 409
+    assert "latest conversation turn" in stale.json()["detail"]
+
+
 async def test_scripted_turn_pushes_two_valid_views_and_complete_steps(api):
     from zagent.views import ViewSpec
 

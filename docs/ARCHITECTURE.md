@@ -133,6 +133,14 @@ message, and an append-only reducer is a rewrite at that point.
 Token deltas are coalesced on a short timer before being appended, so streaming does not mean
 one row per token.
 
+**Retry replaces an answer without deleting it.** `POST /sessions/:id/retry` with the latest
+turn's id starts a new turn whose `user_message` repeats the stored question and carries
+`retry_of`. Both reducers keep the question and hide the replaced turn's messages, steps and
+refusal; the agent and scope guard build their context without that turn's exchange
+(`without_retried`). Views, drafts and jobs the replaced turn created stay, and its events stay in
+the log for audit and X-ray. Only the latest turn can be retried, so the hidden range is always
+the tail of the transcript.
+
 ---
 
 ## 4. Conversation turns are decoupled from connections

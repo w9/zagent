@@ -1,10 +1,10 @@
 import { ChevronRight, CircleCheck, CircleX } from 'lucide-react'
 import { useId, useState } from 'react'
-import { toolView } from '../../lib/events'
+import { toolArtifact } from '../../lib/events'
 import type { StepState } from '../../lib/events'
 import { IconButton } from '../ui/icon-button'
 import { Spinner } from '../ui/spinner'
-import type { ViewLink } from './transcript-text'
+import type { ArtifactLink } from './transcript-text'
 
 function formatArguments(argumentsJson: string) {
   try {
@@ -35,13 +35,13 @@ const TOOL_LABELS: Record<string, { pending: string; failed: string; done: (resu
     failed: 'Library search failed',
     done: (r) => `Found ${plural(r.count, 'library', 'libraries')}`,
   },
-  push_view: { pending: 'Publishing view', failed: 'View rejected', done: () => 'Published' },
+  push_view: { pending: 'Publishing artifact', failed: 'Artifact rejected', done: () => 'Published' },
   update_draft: {
     pending: 'Updating draft',
     failed: 'Draft update failed',
     done: (r) => (r.draft?.version === 1 ? 'Created draft' : 'Updated draft'),
   },
-  show_jobs: { pending: 'Loading jobs', failed: 'Job view failed', done: () => 'Showed' },
+  show_jobs: { pending: 'Loading jobs', failed: 'Showing jobs failed', done: () => 'Showed' },
   get_job: {
     pending: 'Checking job',
     failed: 'Job lookup failed',
@@ -82,17 +82,17 @@ function toolLabel({ name, result }: Tool) {
   return result.error ? label.failed : label.done(result)
 }
 
-function StepSummary({ step, viewLink }: { step: StepState; viewLink?: ViewLink }) {
+function StepSummary({ step, artifactLink }: { step: StepState; artifactLink?: ArtifactLink }) {
   if (!/^Agent step \d+$/.test(step.title)) return step.title
   const tools = step.tools ?? []
   if (tools.length)
     return tools.map((tool, index) => {
       const label = toolLabel(tool)
-      const view = toolView(tool)
+      const artifact = toolArtifact(tool)
       return (
         <span key={tool.call_id}>
           {index ? `, ${label[0].toLowerCase()}${label.slice(1)}` : label}
-          {view && <> “{viewLink ? viewLink(view.id, view.title) : view.title}”</>}
+          {artifact && <> “{artifactLink ? artifactLink(artifact.id, artifact.title) : artifact.title}”</>}
         </span>
       )
     })
@@ -105,9 +105,9 @@ const preClassName = 'max-h-64 overflow-auto font-mono text-xs leading-normal wh
 
 /**
  * One agent step: a summary line that expands to its tool calls. A disclosure button rather than
- * <summary>, because the summary can contain view links (no nested controls, A11Y-01).
+ * <summary>, because the summary can contain artifact links (no nested controls, A11Y-01).
  */
-export function StepMarker({ step, viewLink, defaultOpen = false }: { step: StepState; viewLink?: ViewLink; defaultOpen?: boolean }) {
+export function StepMarker({ step, artifactLink, defaultOpen = false }: { step: StepState; artifactLink?: ArtifactLink; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen)
   const detailsId = useId()
   return (
@@ -136,9 +136,9 @@ export function StepMarker({ step, viewLink, defaultOpen = false }: { step: Step
         )}
         <span data-testid="step-title" className="min-w-0 flex-1 wrap-anywhere">
           {step.status === 'running' ? (
-            <span className="shimmer"><StepSummary step={step} viewLink={viewLink} /></span>
+            <span className="shimmer"><StepSummary step={step} artifactLink={artifactLink} /></span>
           ) : (
-            <StepSummary step={step} viewLink={viewLink} />
+            <StepSummary step={step} artifactLink={artifactLink} />
           )}
         </span>
         <span className={step.status === 'failed' ? 'shrink-0 text-xs text-danger' : 'shrink-0 text-xs'}>

@@ -159,41 +159,43 @@ async def test_retry_replaces_the_latest_answer_and_keeps_the_log(api):
     assert [message["role"] for message in after["messages"]] == ["user", "assistant"]
     assert after["messages"][1]["id"].startswith(retry_turn)
     assert all(step["id"].startswith(retry_turn) for step in after["steps"])
-    assert len(after["views"]) == 2 * len(before["views"])
+    assert len(after["artifacts"]) == 2 * len(before["artifacts"])
     stale = await api.client.post(f"/sessions/{session_id}/retry", json={"retry_of": first_turn})
     assert stale.status_code == 409
     assert "latest conversation turn" in stale.json()["detail"]
 
 
-async def test_scripted_turn_pushes_two_valid_views_and_complete_steps(api):
-    from zagent.views import ViewSpec
+async def test_scripted_turn_publishes_two_valid_artifacts_and_complete_steps(api):
+    from zagent.artifacts import ArtifactSpec
 
     session_id = await session_with_turn(api)
     events = await read_events(api.client, session_id)
     snapshot = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
-    assert len(snapshot["views"]) == 2
-    assert len({view["id"] for view in snapshot["views"]}) == 2
-    for view in snapshot["views"]:
-        assert ViewSpec.model_validate(view["spec"]).kind == "table"
+    assert "views" not in snapshot
+    assert len(snapshot["artifacts"]) == 2
+    assert len({artifact["id"] for artifact in snapshot["artifacts"]}) == 2
+    for artifact in snapshot["artifacts"]:
+        assert ArtifactSpec.model_validate(artifact["spec"]).kind == "table"
+    assert all(event.schema_version == 3 for event in events)
     assert [step["status"] for step in snapshot["steps"]] == ["complete", "complete"]
     assert snapshot == project(UUID(session_id), events).model_dump(mode="json")
 
 
-async def test_invalid_view_fails_without_changing_existing_surface(api):
+async def test_invalid_artifact_fails_without_changing_existing_artifacts(api):
     session_id = await session_with_turn(api)
     await read_events(api.client, session_id)
     before = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
     response = await api.client.post(
-        f"/sessions/{session_id}/messages", json={"text": "/invalid-view"}
+        f"/sessions/{session_id}/messages", json={"text": "/invalid-artifact"}
     )
     assert response.status_code == 202
     events = await read_events(api.client, session_id, after=before["seq"])
-    assert "view_pushed" not in [event.type for event in events]
+    assert "artifact_published" not in [event.type for event in events]
     assert events[-1].type == "conversation_turn_failed"
     assert "View schema error" in events[-1].payload["error"]
     assert response.json()["conversation_turn_id"] not in events[-1].payload["error"]
     after = (await api.client.get(f"/sessions/{session_id}/snapshot")).json()
-    assert after["views"] == before["views"]
+    assert after["artifacts"] == before["artifacts"]
     assert after["steps"][-1]["status"] == "failed"
 
 

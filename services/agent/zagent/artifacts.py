@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 def load_schemas() -> dict[tuple[str, int], Draft202012Validator]:
     schemas = {}
-    for path in files("zagent").joinpath("view_schemas").iterdir():
+    for path in files("zagent").joinpath("artifact_schemas").iterdir():
         if path.name.endswith(".json"):
             schema = json.loads(path.read_text())
             Draft202012Validator.check_schema(schema)
@@ -17,15 +17,17 @@ def load_schemas() -> dict[tuple[str, int], Draft202012Validator]:
                 schema["properties"]["version"]["const"],
             )
             if identity in schemas:
-                raise ValueError(f"Duplicate view schema: {identity}")
+                raise ValueError(f"Duplicate artifact schema: {identity}")
             schemas[identity] = Draft202012Validator(schema)
     return schemas
 
 
-VIEW_SCHEMAS = load_schemas()
+ARTIFACT_SCHEMAS = load_schemas()
 
 
-class ViewSpec(BaseModel):
+# Validation messages still say "View schema error": push_view failures return them to the
+# model, so changing them would change recorded model requests.
+class ArtifactSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: str
@@ -33,8 +35,8 @@ class ViewSpec(BaseModel):
     props: dict[str, Any]
 
     @model_validator(mode="after")
-    def validate_schema(self) -> "ViewSpec":
-        validator = VIEW_SCHEMAS.get((self.kind, self.version))
+    def validate_schema(self) -> "ArtifactSpec":
+        validator = ARTIFACT_SCHEMAS.get((self.kind, self.version))
         if validator is None:
             raise ValueError(f"View schema error: unsupported {self.kind} v{self.version}")
         error = next(validator.iter_errors(self.model_dump()), None)
@@ -69,8 +71,8 @@ def validate_table(props: dict[str, Any]) -> None:
                 raise ValueError(f"View schema error: cell does not match column {column['key']}")
 
 
-class ViewPushed(BaseModel):
+class ArtifactPublished(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    view_id: str = Field(min_length=1)
-    spec: ViewSpec
+    artifact_id: str = Field(min_length=1)
+    spec: ArtifactSpec

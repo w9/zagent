@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -51,6 +52,5 @@
       "text": "Only the replacement response remains in this conversation."
     }
   ],
-  "steps": [],
-  "views": []
+  "steps": []
 }

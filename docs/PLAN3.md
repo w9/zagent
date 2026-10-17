@@ -123,7 +123,7 @@ one component avoids a rewrite of the table and of every case that asserts on it
 
 ## Implementation Notes
 
-- The canonical [table v1 JSON Schema](../services/agent/zagent/view_schemas/table.v1.json) is
+- The canonical [table v1 JSON Schema](../services/agent/zagent/artifact_schemas/table.v1.json) is
   loaded by Python's JSON Schema validator and imported by the browser's Ajv registry. It
   limits columns and rows, validates scalar cell types, and permits exactly one of `rows` or
   `handle`. Both boundaries additionally check unique column keys, row width, cell/column
@@ -151,7 +151,7 @@ one component avoids a rewrite of the table and of every case that asserts on it
   when their conversation turn fails. Native disclosure controls start collapsed.
 - [views.test.tsx](../apps/web/src/components/views.test.tsx) covers complete, empty, and truncated
   component snapshots, text escaping, handle-source states, and step disclosure behavior.
-  Python and TypeScript replay the same [prefix fixture](../evals/fixtures/view-replay.json),
+  Python and TypeScript replay the same [prefix fixture](../evals/fixtures/artifact-replay.json),
   including a duplicate view identity and snapshot continuation after every event.
 - The harness validates every view across the entire corpus and independently compares the
   view stack at each prefix. `views` asserts an ordered subsequence with exact or `~regex`

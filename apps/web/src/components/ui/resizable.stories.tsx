@@ -41,7 +41,7 @@ export const Nested: Story = {
         <ResizablePanelGroup>
           <ResizablePanel minSize="30%" className={paneClassName}>Conversation</ResizablePanel>
           <ResizableHandle aria-label="Resize conversation" />
-          <ResizablePanel minSize="30%" className={cn(paneClassName, 'bg-subtle')}>Working surface</ResizablePanel>
+          <ResizablePanel minSize="30%" className={cn(paneClassName, 'bg-subtle')}>Maximized artifact</ResizablePanel>
         </ResizablePanelGroup>
       </ResizablePanel>
     </ResizablePanelGroup>

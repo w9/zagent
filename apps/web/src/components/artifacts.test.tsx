@@ -1,23 +1,32 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { ViewRenderer } from './surface/view-renderer'
+import { ArtifactRenderer } from './artifact/artifact-renderer'
+import type { ArtifactRendererProps } from './artifact/artifact-renderer'
+import { ArtifactCard } from './artifact/artifact-card'
+import { ArtifactList } from './artifact/artifact-list'
 import { StepMarker } from './chat/step-marker'
 import { RefusalChip } from './chat/refusal-chip'
 import { XrayContent } from './xray/xray-panel'
 import { TranscriptText } from './chat/transcript-text'
 import type { XrayData } from '../lib/api'
-import { DraftEditor } from './surface/views/draft_form.view'
-import type { CatalogApp } from './surface/views/draft_form.view'
+import { DraftEditor, DraftPreview } from './artifact/kinds/draft_form.artifact'
+import type { CatalogApp } from './artifact/kinds/draft_form.artifact'
 import type { DraftState } from '../lib/events'
 import catalog from '../../../../services/agent/zagent/catalog.json'
-import { validateViewSpec } from '../lib/views'
-import type { ChartSpec, TableData, TableSpec } from '../lib/views'
-import type { HandleResolver } from './surface/views/table.view'
+import { validateArtifactSpec } from '../lib/artifacts'
+import type { ChartSpec, PublishedArtifact, TableData, TableSpec } from '../lib/artifacts'
+import type { HandleResolver } from './artifact/kinds/table.artifact'
+import { timeline } from './chat/timeline'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+
+/** An artifact as the maximized panel renders it. */
+function Maximized(props: Omit<ArtifactRendererProps, 'display'>) {
+  return <ArtifactRenderer display="maximized" {...props} />
+}
 
 describe('assistant Markdown', () => {
   it('renders Markdown and GFM without interpreting user messages', () => {
@@ -56,7 +65,7 @@ describe('assistant Markdown', () => {
   })
 
   it('escapes HTML, removes image requests, and blocks unsafe or host-owned navigation', () => {
-    const text = '<script>alert(1)</script>\n\n<img src="https://tracker.example/pixel">\n\n![Visible alt](https://tracker.example/image)\n\n[safe](https://docs.example.org/guide) [http](http://docs.example.org) [script](javascript:alert%281%29) [data](data:text/html,hello) [file](file:///etc/passwd) [relative](/api/sessions/test/confirm) [view](?view=view-0001&panel=surface) [internal](http://localhost:8000/sessions/test) [protocol relative](//docs.example.org)'
+    const text = '<script>alert(1)</script>\n\n<img src="https://tracker.example/pixel">\n\n![Visible alt](https://tracker.example/image)\n\n[safe](https://docs.example.org/guide) [http](http://docs.example.org) [script](javascript:alert%281%29) [data](data:text/html,hello) [file](file:///etc/passwd) [relative](/api/sessions/test/confirm) [artifact](?artifact=view-0001) [internal](http://localhost:8000/sessions/test) [protocol relative](//docs.example.org)'
     const { container } = render(<TranscriptText role="assistant" text={text} />)
     expect(container.querySelector('script,img,iframe,form')).toBeNull()
     expect(container.textContent).toContain('<script>alert(1)</script>')
@@ -88,7 +97,7 @@ describe('assistant Markdown', () => {
   })
 
   it('keeps resolved X-ray fallback text inert when the source message is unavailable', () => {
-    const empty = { session_id: 'session', seq: 1, messages: [], views: [], steps: [], conversation_turn: null }
+    const empty = { session_id: 'session', seq: 1, messages: [], artifacts: [], steps: [], conversation_turn: null }
     const text = '[private note](https://untrusted.example/visit) **literal text**'
     const { container } = render(<XrayContent data={{
       display: { ...empty, messages: [{ id: 'answer', seq: 1, role: 'assistant', text, status: 'complete' }] },
@@ -117,7 +126,7 @@ describe('assistant Markdown', () => {
 })
 
 const analysisDraft: DraftState = {
-  draft_id: 'draft-0001', view_id: 'view-0001', app_id: 'somatic-snv',
+  draft_id: 'draft-0001', artifact_id: 'view-0001', app_id: 'somatic-snv',
   specimen_handle: 'query-0001', parameters: { min_vaf: 0.05, min_depth: 20 },
   version: 1, content_hash: 'a'.repeat(64), status: 'editing', validation: [], job_id: null,
 }
@@ -159,7 +168,7 @@ it('draft validation disables confirmation but permits editing and a save', asyn
 })
 
 it('links real identifiers to model tokens without exposing raw values in the model pane', async () => {
-  const empty = { session_id: 'session', seq: 1, messages: [], views: [], steps: [], conversation_turn: null }
+  const empty = { session_id: 'session', seq: 1, messages: [], artifacts: [], steps: [], conversation_turn: null }
   const data: XrayData = {
     display: { ...empty, messages: [{ id: 'user', seq: 1, role: 'user', text: 'Find NGC-0041872', status: 'complete' }] },
     model: empty,
@@ -229,7 +238,7 @@ describe('registered table snapshots', () => {
     ['truncated', { ...spec, props: { ...spec.props, row_count: 14 } }],
   ] as const)('renders the %s state', (_, fixture) => {
     expect(
-      renderToStaticMarkup(<ViewRenderer spec={fixture} />),
+      renderToStaticMarkup(<Maximized spec={fixture} />),
     ).toMatchSnapshot()
   })
 
@@ -243,15 +252,15 @@ describe('registered table snapshots', () => {
         rows: [['<img src=x onerror=alert(1)>', 1, true]],
       },
     }
-    const { container } = render(<ViewRenderer spec={dangerous} />)
+    const { container } = render(<Maximized spec={dangerous} />)
     expect(container.querySelector('script, img')).toBeNull()
-    expect(screen.getByRole('heading').textContent).toBe(
+    expect(container.querySelector('caption')!.textContent).toBe(
       '<script>alert(1)</script>',
     )
   })
 
   it('does not pretend a handle is loaded without a resolver', () => {
-    render(<ViewRenderer spec={handleSpec} />)
+    render(<Maximized spec={handleSpec} />)
     expect(screen.getByRole('alert').textContent).toBe(
       'Data source unavailable.',
     )
@@ -264,7 +273,7 @@ describe('additive table handle source', () => {
       columns: [spec.props.columns[1], spec.props.columns[0], spec.props.columns[2]],
       rows: [[95, 'SPC-REORDERED', true]], row_count: 1,
     })
-    render(<ViewRenderer spec={handleSpec} resolveHandle={resolver} />)
+    render(<Maximized spec={handleSpec} resolveHandle={resolver} />)
     await screen.findByText('SPC-REORDERED')
     expect(screen.getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
       'SPC-REORDERED', '95', 'Yes',
@@ -276,7 +285,7 @@ describe('additive table handle source', () => {
       .fn<HandleResolver>()
       .mockRejectedValueOnce(new Error('Query unavailable'))
       .mockResolvedValueOnce({ rows: [['SPC-0003', 90, true]], row_count: 3 })
-    render(<ViewRenderer spec={handleSpec} resolveHandle={resolver} />)
+    render(<Maximized spec={handleSpec} resolveHandle={resolver} />)
     expect(screen.getByRole('status').textContent).toBe('Loading data…')
     await screen.findByText('Query unavailable')
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
@@ -289,15 +298,15 @@ describe('additive table handle source', () => {
     const resolver = vi
       .fn<HandleResolver>()
       .mockResolvedValue({ rows: [[5]], row_count: 1 })
-    render(<ViewRenderer spec={handleSpec} resolveHandle={resolver} />)
+    render(<Maximized spec={handleSpec} resolveHandle={resolver} />)
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toContain(
-        'View schema error',
+        'Artifact schema error',
       ),
     )
   })
 
-  it('aborts a pending source when the selected view changes', async () => {
+  it('aborts a pending source when the maximized artifact changes', async () => {
     let complete!: (data: TableData) => void
     const resolver = vi.fn<HandleResolver>(
       () =>
@@ -306,10 +315,10 @@ describe('additive table handle source', () => {
         }),
     )
     const { rerender } = render(
-      <ViewRenderer spec={handleSpec} resolveHandle={resolver} />,
+      <Maximized spec={handleSpec} resolveHandle={resolver} />,
     )
     const signal = resolver.mock.calls[0][1]
-    rerender(<ViewRenderer spec={spec} resolveHandle={resolver} />)
+    rerender(<Maximized spec={spec} resolveHandle={resolver} />)
     expect(signal.aborted).toBe(true)
     complete({ rows: [['STALE', 1, false]], row_count: 1 })
     await waitFor(() => expect(screen.queryByText('STALE')).toBeNull())
@@ -355,11 +364,11 @@ it('shows tool names, arguments, and correction errors inside a collapsed step',
   expect(screen.getByText(/Use a relative window/)).toBeTruthy()
 })
 
-const viewLink = (viewId: string, children: ReactNode) =>
-  <a data-view-id={viewId} href={`#${viewId}`}>{children}</a>
+const artifactLink = (artifactId: string, children: ReactNode) =>
+  <a data-artifact-id={artifactId} href={`#${artifactId}`}>{children}</a>
 
-it('links a published view title from its step summary', () => {
-  const { container } = render(<StepMarker viewLink={viewLink} step={{
+it('links a published artifact title from its step summary', () => {
+  const { container } = render(<StepMarker artifactLink={artifactLink} step={{
     id: 'step-1', seq: 2, title: 'Agent step 1', detail: '', status: 'complete',
     tools: [{
       call_id: 'call-1', name: 'push_view', arguments: '{}',
@@ -367,15 +376,15 @@ it('links a published view title from its step summary', () => {
     }],
   }} />)
   expect(container.querySelector('[data-testid="step-title"]')!.textContent).toBe('Published “Recent specimens”')
-  expect(container.querySelector('[data-testid="step-title"] a[data-view-id="view-0001"]')!.textContent).toBe('Recent specimens')
+  expect(container.querySelector('[data-testid="step-title"] a[data-artifact-id="view-0001"]')!.textContent).toBe('Recent specimens')
 })
 
-it('renders only well-formed agent view links as in-app links', () => {
+it('renders only well-formed agent artifact links as in-app links', () => {
   const text = 'See [Recent specimens](view:view-0001). Plain Recent specimens. [Bad](view:../x) [Spoof](view:view-0001/x)'
-  const { container, rerender } = render(<TranscriptText role="assistant" text={text} viewLink={viewLink} />)
+  const { container, rerender } = render(<TranscriptText role="assistant" text={text} artifactLink={artifactLink} />)
   const links = container.querySelectorAll('a')
   expect(links).toHaveLength(1)
-  expect(links[0].getAttribute('data-view-id')).toBe('view-0001')
+  expect(links[0].getAttribute('data-artifact-id')).toBe('view-0001')
   expect(links[0].textContent).toBe('Recent specimens')
   rerender(<TranscriptText role="assistant" text={text} />)
   expect(container.querySelectorAll('a')).toHaveLength(0)
@@ -397,7 +406,7 @@ it('renders charts from resolved rows and disables external loading', async () =
   const resolver = vi.fn<HandleResolver>().mockResolvedValue({
     columns: spec.props.columns, rows: spec.props.rows!, row_count: 2,
   })
-  render(<ViewRenderer spec={chartSpec} resolveHandle={resolver} />)
+  render(<Maximized spec={chartSpec} resolveHandle={resolver} />)
   await screen.findByText('2 rows')
   const call = embed.mock.calls.at(-1) as unknown as [Element, {
     data: { values: Record<string, unknown>[] }
@@ -408,15 +417,124 @@ it('renders charts from resolved rows and disables external loading', async () =
 
 it('shows chart handle expiry instead of rendering an empty result', async () => {
   const resolver = vi.fn<HandleResolver>().mockRejectedValue(new Error('Handle expired'))
-  render(<ViewRenderer spec={chartSpec} resolveHandle={resolver} />)
+  render(<Maximized spec={chartSpec} resolveHandle={resolver} />)
   await screen.findByText('Handle expired')
   expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
 })
 
 it('rejects chart URLs, expressions, and arbitrary Vega transforms', () => {
   for (const extra of [{ data: { url: 'https://example.com' } }, { transform: [] }, { href: 'x' }]) {
-    expect(() => validateViewSpec({
+    expect(() => validateArtifactSpec({
       ...chartSpec, props: { ...chartSpec.props, ...extra },
-    })).toThrow('View schema error')
+    })).toThrow('Artifact schema error')
   }
+})
+
+describe('artifacts in the conversation', () => {
+  const table = (id: string, seq: number): PublishedArtifact => ({ id, seq, spec })
+  const step = (id: string, seq: number) => ({ id, seq, title: 'Agent step', detail: '', status: 'complete' as const })
+
+  it('gives every artifact a card in log order and keeps a run of steps together', () => {
+    const entries = timeline({
+      session_id: 'session', seq: 12, conversation_turn: null,
+      messages: [
+        { id: 'q', seq: 1, role: 'user', text: 'Show intake', status: 'complete' },
+        { id: 'a', seq: 7, role: 'assistant', text: 'Done.', status: 'complete' },
+      ],
+      steps: [step('s1', 2), step('s2', 4), step('s3', 6), step('s4', 9)],
+      artifacts: [table('view-0001', 3), table('view-0002', 5), table('view-0003', 8), table('view-0004', 12)],
+    })
+    expect(entries.map((entry) => entry.kind === 'steps' ? `steps:${entry.value.map((item) => item.id)}` : `${entry.kind}:${entry.value.id}`)).toEqual([
+      'message:q', 'steps:s1,s2,s3', 'artifact:view-0001', 'artifact:view-0002', 'message:a',
+      'artifact:view-0003', 'steps:s4', 'artifact:view-0004',
+    ])
+  })
+
+  it('previews five rows inline and offers the rest by maximizing', async () => {
+    const rows = Array.from({ length: 7 }, (_, index) => [`SPC-${index}`, index, true] as [string, number, boolean])
+    const onMaximize = vi.fn()
+    const long: TableSpec = { ...spec, props: { title: spec.props.title, columns: spec.props.columns, rows, row_count: 7 } }
+    render(<ArtifactRenderer spec={long} display="inline" onMaximize={onMaximize} />)
+    expect(screen.getAllByRole('row')).toHaveLength(6)
+    expect(screen.getByText('5 of 7 rows shown')).toBeTruthy()
+    expect(screen.queryByText('7 rows')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Show all rows' }))
+    expect(onMaximize).toHaveBeenCalledOnce()
+    cleanup()
+    render(<Maximized spec={long} />)
+    expect(screen.getAllByRole('row')).toHaveLength(8)
+    expect(screen.getByText('7 rows')).toBeTruthy()
+  })
+
+  it('previews a draft with its status, fields and issues, and opens it by maximizing', async () => {
+    const onMaximize = vi.fn()
+    const draft = { ...analysisDraft, validation: [{ code: 'missing_matched_normal', field: 'specimen_handle', message: 'A matched normal specimen is missing.' }] }
+    const { rerender } = render(<DraftPreview draft={draft} catalog={catalog as unknown as CatalogApp[]} onMaximize={onMaximize} />)
+    expect(screen.getByText('query-0001')).toBeTruthy()
+    expect(screen.getByText('Minimum VAF')).toBeTruthy()
+    expect(screen.getByText('1 issue to resolve before confirming')).toBeTruthy()
+    expect(screen.queryByRole('spinbutton')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Review and confirm' }))
+    expect(onMaximize).toHaveBeenCalledOnce()
+    rerender(<DraftPreview draft={{ ...draft, status: 'submitted', job_id: 'job-0007' }} catalog={catalog as unknown as CatalogApp[]} onMaximize={onMaximize} />)
+    expect(screen.getByRole('status').textContent).toBe('Submitted / job-0007')
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('shows a card inline, and only a placeholder while it is maximized', async () => {
+    const onMaximize = vi.fn()
+    const onMinimize = vi.fn()
+    const artifact = table('view-0001', 3)
+    const { container, rerender } = render(
+      <ArtifactCard artifact={artifact} onMaximize={onMaximize} onMinimize={onMinimize}>
+        <p>Inline content</p>
+      </ArtifactCard>,
+    )
+    const card = container.querySelector('[data-testid="artifact-card"]')!
+    expect(card.getAttribute('data-state')).toBe('inline')
+    expect(screen.getByRole('heading', { name: 'Intake review' })).toBeTruthy()
+    expect(screen.getByText('Inline content')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Maximize' }))
+    expect(onMaximize).toHaveBeenCalledOnce()
+    rerender(
+      <ArtifactCard artifact={artifact} maximized onMaximize={onMaximize} onMinimize={onMinimize}>
+        <p>Inline content</p>
+      </ArtifactCard>,
+    )
+    expect(card.getAttribute('data-state')).toBe('maximized')
+    expect(screen.queryByText('Inline content')).toBeNull()
+    expect(screen.getByText('Shown in panel')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Minimize' }))
+    expect(onMinimize).toHaveBeenCalledOnce()
+  })
+
+  it('keeps a failing artifact inside its card', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(
+      <ArtifactCard artifact={table('view-0009', 1)} onMaximize={() => {}} onMinimize={() => {}}>
+        <ArtifactRenderer spec={{ kind: 'table', version: 9, props: {} }} display="inline" />
+      </ArtifactCard>,
+    )
+    expect(screen.getByRole('alert').textContent).toContain('Unsupported artifact: table v9')
+    expect(screen.getByRole('button', { name: 'Maximize' })).toBeTruthy()
+  })
+
+  it('lists artifacts for maximizing and remembers when the list is collapsed', async () => {
+    localStorage.clear()
+    const onSelect = vi.fn()
+    const artifacts = [table('view-0001', 1), { ...table('view-0002', 2), spec: { ...spec, props: { ...spec.props, title: 'Libraries' } } }]
+    const { unmount } = render(<ArtifactList artifacts={artifacts} onSelect={onSelect} />)
+    const list = screen.getByRole('navigation', { name: 'Artifacts' })
+    await userEvent.click(within(list).getByRole('button', { name: 'Libraries' }))
+    expect(onSelect).toHaveBeenCalledWith('view-0002')
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse artifact list' }))
+    expect(screen.queryByRole('navigation', { name: 'Artifacts' })).toBeNull()
+    unmount()
+    render(<ArtifactList artifacts={artifacts} onSelect={onSelect} />)
+    expect(screen.queryByRole('navigation', { name: 'Artifacts' })).toBeNull()
+    // In a wide conversation a collapsed list is a button that expands it; narrower, a menu.
+    await userEvent.click(screen.getAllByRole('button', { name: '2 artifacts' }).find((button) => !button.hasAttribute('aria-haspopup'))!)
+    expect(screen.getByRole('navigation', { name: 'Artifacts' })).toBeTruthy()
+    expect(localStorage.getItem('zagent.artifact-list')).toBeNull()
+  })
 })

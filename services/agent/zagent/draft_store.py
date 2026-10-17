@@ -4,6 +4,7 @@ from uuid import UUID
 from zagent.cohort import ClinicalStore, HandleError
 from zagent.drafts import (
     CATALOG,
+    ConfirmedJob,
     DraftContent,
     DraftIssue,
     DraftState,
@@ -81,7 +82,7 @@ class DraftStore:
         return DraftState(
             **row["content"],
             draft_id=row["id"],
-            view_id=row["view_id"],
+            artifact_id=row["artifact_id"],
             version=row["version"],
             content_hash=row["content_hash"],
             validation=row["validation"],
@@ -193,18 +194,14 @@ class DraftStore:
                     "SELECT count(*) + 1 FROM drafts WHERE session_id = $1", session_id
                 )
                 draft_id = f"draft-{number:04d}"
-                view_number = await connection.fetchval(
-                    "SELECT count(*) + 1 FROM events "
-                    "WHERE session_id = $1 AND type = 'view_pushed'",
-                    session_id,
-                )
-                view_id, version = f"view-{view_number:04d}", 1
+                artifact_id = await self.store.next_artifact_id(connection, session_id)
+                version = 1
             else:
-                view_id, version = row["view_id"], row["version"] + 1
+                artifact_id, version = row["artifact_id"], row["version"] + 1
             state = DraftState(
                 **content.model_dump(),
                 draft_id=draft_id,
-                view_id=view_id,
+                artifact_id=artifact_id,
                 version=version,
                 content_hash=digest,
                 validation=validation,
@@ -216,7 +213,7 @@ class DraftStore:
                 session_id,
                 draft_id,
                 origin,
-                view_id,
+                artifact_id,
                 version,
                 digest,
                 content.model_dump(),
@@ -243,9 +240,9 @@ class DraftStore:
                     session_id,
                     origin,
                     EventDraft(
-                        type="view_pushed",
+                        type="artifact_published",
                         payload={
-                            "view_id": view_id,
+                            "artifact_id": artifact_id,
                             "spec": {
                                 "kind": "draft_form",
                                 "version": 1,
@@ -284,7 +281,7 @@ class DraftStore:
             else [{"field": "version", "before": "unrecognized", "after": current.version}]
         )
 
-    async def confirm(self, session_id: UUID, draft_id: str, expected_hash: str) -> JobState:
+    async def confirm(self, session_id: UUID, draft_id: str, expected_hash: str) -> ConfirmedJob:
         async with self.store.pool.acquire() as connection, connection.transaction():
             await connection.fetchval(
                 "SELECT id FROM sessions WHERE id=$1 FOR NO KEY UPDATE", session_id
@@ -305,12 +302,13 @@ class DraftStore:
                 "SELECT * FROM jobs WHERE session_id=$1 AND draft_id=$2", session_id, draft_id
             )
             if existing:
-                return JobState(
+                return ConfirmedJob(
                     **existing["content"],
                     job_id=existing["id"],
                     draft_id=draft_id,
                     confirmed_version=existing["confirmed_version"],
                     content_hash=expected_hash,
+                    artifact_id=await self.job_card(connection, session_id, existing["id"]),
                 )
             content = DraftContent.model_validate(row["content"])
             current.validation = await self.validate(session_id, content)
@@ -377,10 +375,7 @@ class DraftStore:
                 EventDraft(type="job_submitted", payload={"job": job.model_dump()}),
                 allow_finished=True,
             )
-            view_number = await connection.fetchval(
-                "SELECT count(*) + 1 FROM events WHERE session_id=$1 AND type='view_pushed'",
-                session_id,
-            )
+            artifact_id = await self.store.next_artifact_id(connection, session_id)
             handle = await JobStore(self.clinical).create_handle(
                 connection, session_id, job_id=job_id
             )
@@ -389,9 +384,9 @@ class DraftStore:
                 session_id,
                 origin,
                 EventDraft(
-                    type="view_pushed",
+                    type="artifact_published",
                     payload={
-                        "view_id": f"view-{view_number:04d}",
+                        "artifact_id": artifact_id,
                         "spec": {
                             "kind": "job_card",
                             "version": 2,
@@ -406,4 +401,20 @@ class DraftStore:
                 ),
                 allow_finished=True,
             )
-            return job
+            return ConfirmedJob(**job.model_dump(), artifact_id=artifact_id)
+
+    @staticmethod
+    async def job_card(connection, session_id: UUID, job_id: str) -> str | None:
+        """The job card the job's confirmation published: the first card bound to the job."""
+        return await connection.fetchval(
+            """SELECT COALESCE(events.payload->>'artifact_id', events.payload->>'view_id')
+                 FROM events JOIN job_handles
+                   ON job_handles.session_id = events.session_id
+                  AND job_handles.handle = events.payload->'spec'->'props'->>'handle'
+                WHERE events.session_id = $1 AND job_handles.job_id = $2
+                  AND events.type IN ('view_pushed', 'artifact_published')
+                  AND events.payload->'spec'->>'kind' = 'job_card'
+                ORDER BY events.seq LIMIT 1""",
+            session_id,
+            job_id,
+        )

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from zagent.agent import MAIN_TOOLS, SYSTEM_PROMPT, LlmAgent
 from zagent.cohort import FROZEN_NOW, ClinicalStore
+from zagent.drafts import model_facing_draft
 from zagent.evals.assertions import check_case, render_transcript
 from zagent.evals.environment import local_api
 from zagent.evals.local_knowledge import local_tools
@@ -110,7 +111,7 @@ async def evaluate_simulated_users(
                                                     for item in state.messages
                                                 ],
                                                 "drafts": [
-                                                    item.model_dump()
+                                                    model_facing_draft(item.model_dump())
                                                     for item in state.drafts.values()
                                                 ],
                                             }

@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -39,6 +40,5 @@
       "message": "I cannot help bypass access controls, expose credentials, or tamper with records. I can help review the data available to this session through the supported tools."
     }
   ],
-  "steps": [],
-  "views": []
+  "steps": []
 }

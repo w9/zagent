@@ -117,6 +117,7 @@ class JobStore:
             session_id,
             handle,
         )
+        # show_jobs returns these messages to the model, so they keep their recorded wording.
         if query is None:
             raise NotFound("Job view not found in this session")
         if query["expires_at"] <= self.clinical.clock():

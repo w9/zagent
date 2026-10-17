@@ -1,6 +1,7 @@
 import * as RadixMenu from '@radix-ui/react-dropdown-menu'
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { cn } from '../../lib/utils'
 
 /** A list of actions that opens from a trigger button. */
 export function Menu({
@@ -9,6 +10,7 @@ export function Menu({
   onOpenChange,
   onCloseAutoFocus,
   modal = true,
+  className,
   children,
 }: {
   trigger: ReactNode
@@ -16,6 +18,8 @@ export function Menu({
   onOpenChange?: (open: boolean) => void
   onCloseAutoFocus?: (event: Event) => void
   modal?: boolean
+  /** Layout classes for the list, such as a maximum width. */
+  className?: string
   children: ReactNode
 }) {
   return (
@@ -27,7 +31,7 @@ export function Menu({
           sideOffset={4}
           collisionPadding={8}
           onCloseAutoFocus={onCloseAutoFocus}
-          className="z-50 flex min-w-48 flex-col rounded-lg border border-subtle bg-surface p-1 shadow-md animate-fade"
+          className={cn('z-50 flex min-w-48 flex-col rounded-lg border border-subtle bg-surface p-1 shadow-md animate-fade', className)}
         >
           {children}
         </RadixMenu.Content>

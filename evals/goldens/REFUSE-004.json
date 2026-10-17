@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -39,6 +40,5 @@
       "message": "This workbench cannot perform that operation. I can query specimen and library records, display their results, or explain which capabilities are available."
     }
   ],
-  "steps": [],
-  "views": []
+  "steps": []
 }

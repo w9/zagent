@@ -1,5 +1,5 @@
-import { validateViewSpec } from './views'
-import type { PushedView, ViewSpec } from './views'
+import { validateArtifactSpec } from './artifacts'
+import type { ArtifactSpec, PublishedArtifact } from './artifacts'
 
 type MessageRef = { message_id: string }
 type MessageText = MessageRef & { text: string }
@@ -7,7 +7,7 @@ export type RefusalCode = 'out_of_domain' | 'unsupported_capability'
   | 'requires_human_authority' | 'unsafe_request'
 export type RefusedState = { id: string; seq: number; code: RefusalCode; message: string }
 export type DraftState = {
-  draft_id: string; view_id: string; app_id: string; specimen_handle: string | null
+  draft_id: string; artifact_id: string; app_id: string; specimen_handle: string | null
   parameters: Record<string, string | number | boolean>; version: number; content_hash: string
   status: 'editing' | 'submitted'; job_id: string | null
   validation: { code: string; field: string; message: string }[]
@@ -44,7 +44,7 @@ export type Payloads = {
     name: string
     result: Record<string, unknown>
   }
-  view_pushed: { view_id: string; spec: ViewSpec }
+  artifact_published: { artifact_id: string; spec: ArtifactSpec }
   refused: { code: RefusalCode; message: string }
   draft_updated: { draft?: DraftState }
   job_submitted: { job: JobState }
@@ -55,7 +55,7 @@ export type Payloads = {
 export type EventType = keyof Payloads
 export type LogEvent = {
   [Kind in EventType]: {
-    schema_version: 2
+    schema_version: 3
     session_id: string
     seq: number
     conversation_turn_id: string
@@ -87,16 +87,17 @@ export type StepState = {
   }[]
 }
 
-export function toolView({ result }: NonNullable<StepState['tools']>[number]) {
-  const view = result?.view_id, title = result?.title
-  return typeof view === 'string' && typeof title === 'string' ? { id: view, title } : undefined
+/** The artifact a tool published, from its receipt. Receipts keep the model-facing `view_id` key. */
+export function toolArtifact({ result }: NonNullable<StepState['tools']>[number]) {
+  const id = result?.view_id, title = result?.title
+  return typeof id === 'string' && typeof title === 'string' ? { id, title } : undefined
 }
 
 export type Projection = {
   session_id: string
   seq: number
   messages: ChatMessage[]
-  views: PushedView[]
+  artifacts: PublishedArtifact[]
   steps: StepState[]
   refusals?: RefusedState[]
   drafts?: Record<string, DraftState>
@@ -109,7 +110,7 @@ export type Projection = {
 }
 
 export function reduceEvent(state: Projection, event: LogEvent): Projection {
-  if (event.schema_version !== 2) throw new Error('Unsupported event schema')
+  if (event.schema_version !== 3) throw new Error('Unsupported event schema')
   if (event.session_id !== state.session_id)
     throw new Error('Event belongs to a different session')
   if (event.seq <= state.seq) return state
@@ -203,12 +204,12 @@ export function reduceEvent(state: Projection, event: LogEvent): Projection {
     case 'job_submitted':
       next.jobs = { ...state.jobs, [event.payload.job.job_id]: event.payload.job }
       break
-    case 'view_pushed': {
-      const spec = validateViewSpec(event.payload.spec)
-      if (!state.views.some((view) => view.id === event.payload.view_id)) {
-        next.views = [
-          ...state.views,
-          { id: event.payload.view_id, seq: event.seq, spec },
+    case 'artifact_published': {
+      const spec = validateArtifactSpec(event.payload.spec)
+      if (!state.artifacts.some((artifact) => artifact.id === event.payload.artifact_id)) {
+        next.artifacts = [
+          ...state.artifacts,
+          { id: event.payload.artifact_id, seq: event.seq, spec },
         ]
       }
       break

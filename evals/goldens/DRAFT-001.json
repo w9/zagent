@@ -1,4 +1,14 @@
 {
+  "artifacts": [
+    {
+      "kind": "draft_form",
+      "props": {
+        "draft_id": "draft-0001",
+        "title": "Somatic variant calling"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -6,6 +16,7 @@
   "drafts": {
     "draft-0001": {
       "app_id": "somatic-snv",
+      "artifact_id": "view-0001",
       "content_hash": "84aa3b80a66e5af16d49b5d082ca8ccefd14b3acba7d78672da615f9633fc275",
       "draft_id": "draft-0001",
       "job_id": null,
@@ -22,8 +33,7 @@
           "message": "A matched normal specimen is missing."
         }
       ],
-      "version": 2,
-      "view_id": "view-0001"
+      "version": 2
     }
   },
   "events": [
@@ -179,7 +189,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -524,16 +534,6 @@
       "detail": "Response complete",
       "status": "complete",
       "title": "Agent step 2"
-    }
-  ],
-  "views": [
-    {
-      "kind": "draft_form",
-      "props": {
-        "draft_id": "draft-0001",
-        "title": "Somatic variant calling"
-      },
-      "version": 1
     }
   ]
 }

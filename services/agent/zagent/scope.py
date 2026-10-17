@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
+from zagent.drafts import model_facing_draft
 from zagent.llm import Completer, CompletionRequest, GatewayError, canonical_json
 
 if TYPE_CHECKING:
@@ -174,7 +175,7 @@ def scope_context(events: list["Event"], *, recent_turns: int = 6) -> dict[str, 
                 }
             )
         elif event.type == "draft_updated":
-            draft = payload.get("draft", payload)
+            draft = model_facing_draft(payload.get("draft", payload))
     if not turns:
         raise ValueError("Scope classification requires a user message")
     if draft is not None and len(canonical_json(draft)) > 8000:

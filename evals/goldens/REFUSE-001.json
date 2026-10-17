@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -39,6 +40,5 @@
       "message": "That request is outside this genomics workbench. I can help find patients, specimens, and libraries, show tables or charts, answer questions about lab procedures and genomics concepts, and explain platform capabilities."
     }
   ],
-  "steps": [],
-  "views": []
+  "steps": []
 }

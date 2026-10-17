@@ -1,14 +1,15 @@
-import { Check, CircleCheck, RefreshCw, Save } from 'lucide-react'
+import { Check, CircleCheck, Maximize2, RefreshCw, Save, TriangleAlert } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { ApiError, request } from '../../../lib/api'
+import { plural } from '../../../lib/format'
 import type { DraftState, JobState } from '../../../lib/events'
 import { Badge } from '../../ui/badge'
 import { Button } from '../../ui/button'
 import { Checkbox, Field, Input, Select } from '../../ui/field'
 import { Notice } from '../../ui/notice'
 import { Spinner } from '../../ui/spinner'
-import type { ViewRendererProps } from '../view-renderer'
-import { ViewHeader } from '../view-header'
+import { ArtifactMeta } from '../artifact-meta'
+import type { ArtifactRendererProps } from '../artifact-renderer'
 
 export type CatalogApp = {
   id: string; title: string; layout: string[]
@@ -18,10 +19,76 @@ export type CatalogApp = {
   }> }
 }
 
+/** The confirm response: the submitted job and the job card its confirmation published. */
+export type ConfirmedJob = JobState & { artifact_id: string | null }
+
 type Change = { field: string; before: unknown; after: unknown }
 
+/** Parameters a draft card lists before "Open draft"; the editor shows them all. */
+const PREVIEW_FIELDS = 4
+
+function DraftStatus({ draft }: { draft: DraftState }) {
+  const submitted = draft.status === 'submitted'
+  return (
+    <>
+      <span>Version {draft.version}</span>
+      <Badge tone={submitted ? 'success' : 'neutral'}>{submitted ? 'Submitted' : 'Draft'}</Badge>
+    </>
+  )
+}
+
+/** A draft as its card in the conversation shows it: application, status and the main fields. */
+export function DraftPreview({ draft, catalog, onMaximize, readOnly = false }: {
+  draft: DraftState; catalog: CatalogApp[]; onMaximize?: () => void; readOnly?: boolean
+}) {
+  const application = catalog.find((item) => item.id === draft.app_id)
+  const fields = (application?.layout ?? Object.keys(draft.parameters)).filter((key) => key in draft.parameters)
+  const shown = fields.slice(0, PREVIEW_FIELDS)
+  const submitted = draft.status === 'submitted'
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
+        <span className="font-medium text-default wrap-anywhere">{application?.title ?? draft.app_id}</span>
+        <DraftStatus draft={draft} />
+      </div>
+      <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 text-sm @medium:grid-cols-2">
+        <div className="flex min-w-0 gap-2">
+          <dt className="shrink-0 text-muted">Specimen query</dt>
+          <dd className="min-w-0 font-mono text-default wrap-anywhere">{draft.specimen_handle ?? 'Not set'}</dd>
+        </div>
+        {shown.map((key) => (
+          <div key={key} className="flex min-w-0 gap-2">
+            <dt className="shrink-0 text-muted">{application?.parameters.properties[key]?.title ?? key}</dt>
+            <dd className="min-w-0 text-default wrap-anywhere">{String(draft.parameters[key])}</dd>
+          </div>
+        ))}
+      </dl>
+      {fields.length > shown.length && (
+        <p className="text-xs text-muted">{plural(fields.length - shown.length, 'more parameter', 'more parameters')}</p>
+      )}
+      {draft.validation.length > 0 && !submitted && (
+        <p className="inline-flex items-center gap-1.5 text-sm text-warning">
+          <TriangleAlert aria-hidden className="size-icon-sm shrink-0" />
+          {plural(draft.validation.length, 'issue', 'issues')} to resolve before confirming
+        </p>
+      )}
+      {submitted ? (
+        <p role="status" className="inline-flex items-center gap-2 text-sm text-success">
+          <CircleCheck aria-hidden className="size-icon" />Submitted / {draft.job_id}
+        </p>
+      ) : (
+        onMaximize && (
+          <div>
+            <Button size="sm" icon={Maximize2} onClick={onMaximize}>{readOnly ? 'Open draft' : 'Review and confirm'}</Button>
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
 export function DraftEditor({ draft, catalog, sessionId, onConfirmed, readOnly = false }: {
-  draft: DraftState; catalog: CatalogApp[]; sessionId: string; onConfirmed?: () => void; readOnly?: boolean
+  draft: DraftState; catalog: CatalogApp[]; sessionId: string; onConfirmed?: (job: ConfirmedJob) => void; readOnly?: boolean
 }) {
   const [saved, setSaved] = useState<DraftState | null>(null)
   const current = saved && (saved.version >= draft.version || saved.status === 'submitted') ? saved : draft
@@ -69,23 +136,16 @@ export function DraftEditor({ draft, catalog, sessionId, onConfirmed, readOnly =
   async function confirm() {
     setBusy(true); setError(null)
     try {
-      const job = await request<JobState>(`${path}/confirm`, { method: 'POST', body: JSON.stringify({ content_hash: current.content_hash }) })
+      const job = await request<ConfirmedJob>(`${path}/confirm`, { method: 'POST', body: JSON.stringify({ content_hash: current.content_hash }) })
       setSaved({ ...current, status: 'submitted', job_id: job.job_id })
-      onConfirmed?.()
+      onConfirmed?.(job)
     } catch (reason) { failed(reason) }
     finally { setBusy(false) }
   }
 
   return (
     <section aria-label="Analysis draft" className="flex min-w-0 flex-col">
-      <ViewHeader
-        kind="Analysis draft"
-        title={application?.title ?? current.app_id}
-        meta={<>
-          <span>Version {current.version}</span>
-          <Badge tone={submitted ? 'success' : 'neutral'}>{submitted ? 'Submitted' : 'Draft'}</Badge>
-        </>}
-      />
+      <ArtifactMeta><DraftStatus draft={current} /></ArtifactMeta>
       {conflict && (
         <Notice
           tone="warning"
@@ -168,24 +228,36 @@ export function DraftEditor({ draft, catalog, sessionId, onConfirmed, readOnly =
   )
 }
 
-function DraftFormView({ spec, sessionId, drafts, onConfirmed, readOnly }: ViewRendererProps) {
+// Every draft card and the panel share one catalog request; a failure is retried on next use.
+let catalogRequest: Promise<CatalogApp[]> | undefined
+function loadCatalog() {
+  catalogRequest ??= request<CatalogApp[]>('/catalog').catch((reason: unknown) => {
+    catalogRequest = undefined
+    throw reason
+  })
+  return catalogRequest
+}
+
+function DraftFormArtifact({ spec, display, sessionId, drafts, onConfirmed, onMaximize, readOnly }: ArtifactRendererProps) {
   const [catalog, setCatalog] = useState<CatalogApp[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const draft = drafts?.[String(spec.props.draft_id)]
   useEffect(() => {
-    const controller = new AbortController()
-    request<CatalogApp[]>('/catalog', { signal: controller.signal }).then(setCatalog, (reason) => {
-      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Catalog unavailable')
-    })
-    return () => controller.abort()
+    let active = true
+    loadCatalog().then(
+      (apps) => { if (active) setCatalog(apps) },
+      (reason) => { if (active) setError(reason instanceof Error ? reason.message : 'Catalog unavailable') },
+    )
+    return () => { active = false }
   }, [])
   if (!sessionId || !draft) return <Notice tone="danger" role="alert">Draft unavailable in this session.</Notice>
   if (error) return <Notice tone="danger" role="alert">{error}</Notice>
   if (!catalog) return <p role="status" className="inline-flex items-center gap-2 text-sm text-muted"><Spinner />Loading application catalog…</p>
+  if (display === 'inline') return <DraftPreview draft={draft} catalog={catalog} onMaximize={onMaximize} readOnly={readOnly} />
   return <DraftEditor draft={draft} catalog={catalog} sessionId={sessionId} onConfirmed={onConfirmed} readOnly={readOnly} />
 }
 
-DraftFormView.kind = 'draft_form'
-DraftFormView.version = 1
+DraftFormArtifact.kind = 'draft_form'
+DraftFormArtifact.version = 1
 
-export default DraftFormView
+export default DraftFormArtifact

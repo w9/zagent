@@ -77,12 +77,18 @@ class DraftIssue(BaseModel):
 
 class DraftState(DraftContent):
     draft_id: str = Field(pattern=r"^draft-[0-9]{4,}$")
-    view_id: str = Field(pattern=r"^view-[0-9]{4,}$")
+    artifact_id: str = Field(pattern=r"^view-[0-9]{4,}$")
     version: int = Field(ge=1)
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     status: Literal["editing", "submitted"] = "editing"
     validation: list[DraftIssue] = Field(default_factory=list, max_length=30)
     job_id: str | None = None
+
+
+def model_facing_draft(draft: dict[str, Any]) -> dict[str, Any]:
+    """A draft as the model sees it. Models know a draft's form as its `view_id`, and every
+    recorded model request contains that name, so the draft keeps it at the model boundary."""
+    return {("view_id" if key == "artifact_id" else key): value for key, value in draft.items()}
 
 
 class JobState(DraftContent):
@@ -91,6 +97,11 @@ class JobState(DraftContent):
     confirmed_version: int
     content_hash: str
     status: Literal["pending"] = "pending"
+
+
+# A confirmation also names the job card it published, so the client can open it.
+class ConfirmedJob(JobState):
+    artifact_id: str | None = None
 
 
 def default_parameters(app_id: AppId) -> dict[str, Any]:

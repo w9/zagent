@@ -4,8 +4,8 @@ import { useSession } from './use-session'
 import type { PrivacyBinding } from './api'
 import { reduceEvent } from './events'
 import type { EventType, LogEvent, Payloads, Projection } from './events'
-import fixture from '../../../../evals/fixtures/view-replay.json'
-import { selectionAt, validateViewSpec, viewPosition } from './views'
+import fixture from '../../../../evals/fixtures/artifact-replay.json'
+import { validateArtifactSpec } from './artifacts'
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
@@ -13,7 +13,7 @@ const empty: Projection = {
   session_id: 'session',
   seq: 0,
   messages: [],
-  views: [],
+  artifacts: [],
   steps: [],
   conversation_turn: null,
 }
@@ -24,7 +24,7 @@ function event<Kind extends EventType>(
   payload: Payloads[Kind],
 ): LogEvent {
   return {
-    schema_version: 2,
+    schema_version: 3,
     session_id: 'session',
     seq,
     conversation_turn_id: 'turn',
@@ -197,7 +197,7 @@ describe('event projection', () => {
     expect(nextTurn.conversation_turn?.id).toBe('next-turn')
   })
 
-  it('replaces the latest attempt on retry and keeps its views', () => {
+  it('replaces the latest attempt on retry and keeps its artifacts', () => {
     const asked: Projection = {
       ...empty,
       seq: 7,
@@ -212,7 +212,7 @@ describe('event projection', () => {
         { id: 's2', seq: 5, title: 'Agent step 1', detail: '', status: 'complete' },
       ],
       refusals: [{ id: 'turn', seq: 6, code: 'out_of_domain', message: 'Declined.' }],
-      views: [{ id: 'view-0001', seq: 5, spec: { kind: 'table', version: 1, props: { title: 'Rows', columns: [], rows: [], row_count: 0 } } }],
+      artifacts: [{ id: 'view-0001', seq: 5, spec: { kind: 'table', version: 1, props: { title: 'Rows', columns: [], rows: [], row_count: 0 } } }],
       conversation_turn: { id: 'turn', status: 'finished', error: null },
     }
     const retried = reduceEvent(asked, {
@@ -222,7 +222,7 @@ describe('event projection', () => {
     expect(retried.messages.map((message) => message.id)).toEqual(['q1', 'a1', 'q2'])
     expect(retried.steps.map((step) => step.id)).toEqual(['s1'])
     expect(retried.refusals).toEqual([])
-    expect(retried.views).toBe(asked.views)
+    expect(retried.artifacts).toBe(asked.artifacts)
     expect(retried.conversation_turn).toEqual({ id: 'retry', status: 'running', error: null })
     const stale = reduceEvent(retried, {
       ...event(9, 'user_message', { message_id: 'q4', text: 'Again', retry_of: 'turn' }),
@@ -258,8 +258,8 @@ describe('event projection', () => {
     expect(empty.refusals).toBeUndefined()
   })
 
-  it('updates one persisted draft without replacing view history or turn lifecycle', () => {
-    const draft = { draft_id: 'draft-0001', view_id: 'view-0001', app_id: 'readqc',
+  it('updates one persisted draft without replacing artifacts or turn lifecycle', () => {
+    const draft = { draft_id: 'draft-0001', artifact_id: 'view-0001', app_id: 'readqc',
       specimen_handle: 'query-0001', parameters: { min_coverage: 30 }, version: 1,
       content_hash: 'a'.repeat(64), status: 'editing' as const, validation: [], job_id: null }
     const first = reduceEvent(empty, event(1, 'draft_updated', { draft }))
@@ -267,17 +267,17 @@ describe('event projection', () => {
     expect(next.drafts?.[draft.draft_id].parameters.min_coverage).toBe(40)
     expect(first.drafts?.[draft.draft_id].parameters.min_coverage).toBe(30)
     expect(next.conversation_turn).toBeNull()
-    expect(next.views).toBe(empty.views)
+    expect(next.artifacts).toBe(empty.artifacts)
   })
 })
 
-describe('view and step replay', () => {
+describe('artifact and step replay', () => {
   const events = fixture.events.map(
     (draft, index) =>
       ({
         ...draft,
         seq: index + 1,
-        schema_version: 2,
+        schema_version: 3,
         session_id: 'session',
         conversation_turn_id: 'turn',
         created_at: '2026-01-01T00:00:00Z',
@@ -289,20 +289,20 @@ describe('view and step replay', () => {
     'agrees with the shared log prefix %i',
     (index) => {
       const prefix = events.slice(0, index + 1).reduce(reduceEvent, empty)
-      expect(prefix.views.map((view) => view.id)).toEqual(
-        fixture.prefix_view_ids[index],
+      expect(prefix.artifacts.map((artifact) => artifact.id)).toEqual(
+        fixture.prefix_artifact_ids[index],
       )
       expect(reduceEvent(prefix, events[index])).toBe(prefix)
       const snapshot = JSON.parse(JSON.stringify(prefix)) as Projection
       expect(events.slice(index + 1).reduce(reduceEvent, snapshot)).toEqual(
         complete,
       )
-      expect(empty.views).toEqual([])
+      expect(empty.artifacts).toEqual([])
     },
   )
 
-  it('preserves view identity and marker positions across duplicates', () => {
-    expect(complete.views.map((view) => view.seq)).toEqual([4, 8])
+  it('preserves artifact identity and marker positions across duplicates', () => {
+    expect(complete.artifacts.map((artifact) => artifact.seq)).toEqual([4, 8])
     expect(complete.steps.map((step) => [step.seq, step.status])).toEqual([
       [3, 'complete'],
       [7, 'complete'],
@@ -311,59 +311,49 @@ describe('view and step replay', () => {
     expect(complete.messages[1].seq).toBe(5)
   })
 
-  it('keeps prior surface and pending marker states when a turn fails', () => {
+  it('keeps prior artifacts and pending marker states when a turn fails', () => {
     const prefix = events.slice(0, 8).reduce(reduceEvent, empty)
     const failed = reduceEvent(
       prefix,
-      event(9, 'conversation_turn_failed', { error: 'Invalid view' }),
+      event(9, 'conversation_turn_failed', { error: 'Invalid artifact' }),
     )
-    expect(failed.views).toBe(prefix.views)
+    expect(failed.artifacts).toBe(prefix.artifacts)
     expect(failed.steps[1].status).toBe('failed')
     expect(prefix.steps[1].status).toBe('running')
   })
 
-  it('rejects malformed view events without mutating the current surface', () => {
+  it('rejects malformed artifact events without mutating the current projection', () => {
     expect(() =>
       reduceEvent(
         empty,
-        event(1, 'view_pushed', {
-          view_id: 'invalid',
+        event(1, 'artifact_published', {
+          artifact_id: 'invalid',
           spec: { kind: 'table', version: 1, props: {} },
         }),
       ),
-    ).toThrow('View schema error')
-    expect(empty.views).toEqual([])
+    ).toThrow('Artifact schema error')
+    expect(empty.artifacts).toEqual([])
   })
 
-  it('pins history by identity and resumes following only at the head', () => {
-    const views = complete.views
-    expect(viewPosition([], undefined)).toBe(-1)
-    expect(viewPosition(views, undefined)).toBe(1)
-    const pinned = selectionAt(views, 0)
-    expect(pinned).toBe('intake')
-    const appended = [...views, { ...views[1], id: 'third', seq: 20 }]
-    expect(viewPosition(appended, pinned)).toBe(0)
-    expect(viewPosition(appended, undefined)).toBe(2)
-    expect(selectionAt(appended, 2)).toBeUndefined()
-    expect(viewPosition(appended, 'missing')).toBe(-1)
-    expect(viewPosition(appended, views[1].id)).toBe(1)
-    expect(viewPosition([...appended, { ...views[0], id: 'fourth', seq: 30 }], 'third')).toBe(2)
+  it('rejects events from an older schema version', () => {
+    expect(() => reduceEvent(empty, { ...event(1, 'conversation_turn_started', {}), schema_version: 2 } as unknown as LogEvent))
+      .toThrow('Unsupported event schema')
   })
 
   it('shares table row, cell, and source constraints with the server', () => {
-    const spec = complete.views[0].spec
-    expect(validateViewSpec(spec)).toBe(spec)
+    const spec = complete.artifacts[0].spec
+    expect(validateArtifactSpec(spec)).toBe(spec)
     for (const props of [
       { ...spec.props, rows: [[12]] },
       { ...spec.props, rows: [['extra', 'cell']] },
       { ...spec.props, row_count: 0 },
       { ...spec.props, handle: 'query-1' },
     ])
-      expect(() => validateViewSpec({ ...spec, props })).toThrow(
-        'View schema error',
+      expect(() => validateArtifactSpec({ ...spec, props })).toThrow(
+        'Artifact schema error',
       )
-    expect(() => validateViewSpec({ ...spec, version: 2 })).toThrow(
-      'Unsupported view',
+    expect(() => validateArtifactSpec({ ...spec, version: 2 })).toThrow(
+      'Unsupported artifact',
     )
   })
 })

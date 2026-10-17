@@ -18,9 +18,10 @@ type PrivacyProps = {
 
 const PrivacyContext = createContext<PrivacyProps>({})
 
-export type ViewLink = (viewId: string, children: ReactNode) => ReactNode
-const ViewLinkContext = createContext<ViewLink | undefined>(undefined)
-const VIEW_HREF = /^view:(view-[0-9]{4,})$/
+/** Renders a link to an artifact. The model writes them as `view:view-0001`, its name for artifacts. */
+export type ArtifactLink = (artifactId: string, children: ReactNode) => ReactNode
+const ArtifactLinkContext = createContext<ArtifactLink | undefined>(undefined)
+const ARTIFACT_HREF = /^view:(view-[0-9]{4,})$/
 
 /** Renders a citation the assistant wrote; without one, citations stay plain text. */
 export type CitationLink = (citation: Citation) => ReactNode
@@ -51,13 +52,13 @@ const proseClassNames: Record<string, string> = {
 }
 
 function MarkdownLink({ children, href, title }: { children?: ReactNode; href?: string; title?: string }) {
-  const viewLink = useContext(ViewLinkContext)
+  const artifactLink = useContext(ArtifactLinkContext)
   const citationLink = useContext(CitationLinkContext)
   const citation = citationLink && href ? parseCitationHref(href, title) : undefined
   if (citationLink && citation) return citationLink(citation)
   const content = <LinkText value={true}><VisibleText>{children}</VisibleText></LinkText>
-  const view = href?.match(VIEW_HREF)?.[1]
-  if (view) return viewLink ? viewLink(view, content) : <span><VisibleText>{children}</VisibleText></span>
+  const artifact = href?.match(ARTIFACT_HREF)?.[1]
+  if (artifact) return artifactLink ? artifactLink(artifact, content) : <span><VisibleText>{children}</VisibleText></span>
   return href ? (
     <a
       href={href}
@@ -200,14 +201,14 @@ export function TranscriptText({
   bindings = [],
   selected,
   onSelect,
-  viewLink,
+  artifactLink,
   citationLink,
 }: PrivacyProps & {
   text: string
   role: 'assistant' | 'user'
   size?: 'sm' | 'md'
   streaming?: boolean
-  viewLink?: ViewLink
+  artifactLink?: ArtifactLink
   citationLink?: CitationLink
 }) {
   const sizeClassName = size === 'sm' ? 'text-sm' : 'text-md'
@@ -220,7 +221,7 @@ export function TranscriptText({
   }
   return (
     <PrivacyContext value={{ bindings, selected, onSelect }}>
-      <ViewLinkContext value={viewLink}>
+      <ArtifactLinkContext value={artifactLink}>
         <CitationLinkContext value={citationLink}>
           <div
             data-testid="message-text"
@@ -232,7 +233,7 @@ export function TranscriptText({
               urlTransform={(value, key) =>
                 key !== 'href'
                   ? undefined
-                  : VIEW_HREF.test(value) || (citationLink && isCitationHref(value))
+                  : ARTIFACT_HREF.test(value) || (citationLink && isCitationHref(value))
                     ? value
                     : safeLink(value, bindings)
               }
@@ -248,7 +249,7 @@ export function TranscriptText({
             )}
           </div>
         </CitationLinkContext>
-      </ViewLinkContext>
+      </ArtifactLinkContext>
     </PrivacyContext>
   )
 }

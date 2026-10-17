@@ -5,11 +5,24 @@ from uuid import uuid4
 
 import asyncpg
 import pytest
+from zagent.artifacts import ArtifactSpec
 from zagent.events import EventDraft
 from zagent.privacy import Tokenized
 from zagent.store import ConversationTurnConflict, Store, configure_connection
 
 pytestmark = pytest.mark.integration
+
+
+TABLE_SPEC = {
+    "kind": "table",
+    "version": 1,
+    "props": {
+        "title": "Rows",
+        "columns": [{"key": "id", "label": "Id", "type": "string"}],
+        "rows": [],
+        "row_count": 0,
+    },
+}
 
 
 def delta(text="word "):
@@ -95,6 +108,54 @@ async def test_migration_and_seed_are_idempotent(store):
     assert await store.list_sessions() == before
 
 
+async def test_artifact_numbering_continues_after_stored_view_events(store):
+    session = await store.create_session()
+    turn = await store.begin_conversation_turn(session.id, "Show rows")
+    async with store.pool.acquire() as connection, connection.transaction():
+        seq = await connection.fetchval(
+            "UPDATE sessions SET last_seq = last_seq + 1 WHERE id = $1 RETURNING last_seq",
+            session.id,
+        )
+        await connection.execute(
+            """INSERT INTO events
+                      (session_id, seq, conversation_turn_id, schema_version, type, payload)
+               VALUES ($1, $2, $3, 2, 'view_pushed', $4)""",
+            session.id,
+            seq,
+            turn.conversation_turn_id,
+            {"view_id": "view-0001", "spec": TABLE_SPEC},
+        )
+    published = await store.publish_artifact(
+        session.id, turn.conversation_turn_id, ArtifactSpec.model_validate(TABLE_SPEC)
+    )
+    assert (published.schema_version, published.type) == (3, "artifact_published")
+    assert published.payload["artifact_id"] == "view-0002"
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
+    snapshot = await store.snapshot(session.id)
+    assert [artifact.id for artifact in snapshot.artifacts] == ["view-0001", "view-0002"]
+    assert snapshot.conversation_turn.status == "finished"
+    stored = await store.pool.fetch(
+        "SELECT schema_version, type FROM events WHERE session_id = $1 ORDER BY seq", session.id
+    )
+    assert [tuple(row) for row in stored] == [
+        (3, "user_message"),
+        (2, "view_pushed"),
+        (3, "artifact_published"),
+        (3, "conversation_turn_finished"),
+    ]
+    for schema_version, kind in [(3, "view_pushed"), (3, "run_finished"), (4, "user_message")]:
+        with pytest.raises(asyncpg.CheckViolationError):
+            await store.pool.execute(
+                """INSERT INTO events
+                          (session_id, seq, conversation_turn_id, schema_version, type, payload)
+                   VALUES ($1, 99, $2, $3, $4, '{}')""",
+                session.id,
+                turn.conversation_turn_id,
+                schema_version,
+                kind,
+            )
+
+
 async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, database_url):
     database = f"migration_{uuid4().hex}"
     await store.pool.execute(f'CREATE DATABASE "{database}"')
@@ -115,7 +176,7 @@ async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, data
         await isolated.pool.execute("INSERT INTO schema_migrations VALUES (1)")
         session_id, turn_id = uuid4(), uuid4()
         await isolated.pool.execute(
-            "INSERT INTO sessions (id, last_seq) VALUES ($1, 4)", session_id
+            "INSERT INTO sessions (id, last_seq) VALUES ($1, 5)", session_id
         )
         await isolated.pool.execute(
             "INSERT INTO runs (id, session_id, status) VALUES ($1, $2, 'finished')",
@@ -125,8 +186,9 @@ async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, data
         for seq, kind, payload in [
             (1, "user_message", {"message_id": "user", "text": "Hello NGC-0041872"}),
             (2, "run_started", {}),
-            (3, "text_delta", {"message_id": "answer", "text": "Saved response NGC-0041872"}),
-            (4, "run_finished", {}),
+            (3, "view_pushed", {"view_id": "view-0001", "spec": TABLE_SPEC}),
+            (4, "text_delta", {"message_id": "answer", "text": "Saved response NGC-0041872"}),
+            (5, "run_finished", {}),
         ]:
             await isolated.pool.execute(
                 """INSERT INTO events (session_id, seq, run_id, type, payload)
@@ -154,16 +216,29 @@ async def test_upgrade_preserves_legacy_history_and_allows_new_turns(store, data
             restored = await isolated.privacy.resolve(session_id, Tokenized(value=after["payload"]))
             assert {**dict(after), "payload": restored.value} == before
         snapshot = await isolated.snapshot(session_id)
-        assert snapshot.seq == 4
+        assert snapshot.seq == 5
+        assert [artifact.id for artifact in snapshot.artifacts] == ["view-0001"]
         assert snapshot.conversation_turn.id == turn_id
         assert snapshot.conversation_turn.status == "finished"
         assert snapshot.messages[-1].text == "Saved response [PT_1]"
         turn = await isolated.begin_conversation_turn(session_id, "Next")
         await isolated.finish_conversation_turn(session_id, turn.conversation_turn_id)
         events = await isolated.events_after(session_id, 0)
-        assert [event.seq for event in events] == list(range(1, 7))
-        assert all(event.schema_version == 2 for event in events)
+        assert [event.seq for event in events] == list(range(1, 8))
+        assert all(event.schema_version == 3 for event in events)
+        assert events[2].type == "artifact_published"
         assert events[-1].type == "conversation_turn_finished"
+        stored = await isolated.pool.fetch(
+            "SELECT schema_version, type FROM events WHERE session_id = $1 ORDER BY seq",
+            session_id,
+        )
+        assert [tuple(row) for row in stored][2:] == [
+            (1, "view_pushed"),
+            (1, "text_delta"),
+            (1, "run_finished"),
+            (3, "user_message"),
+            (3, "conversation_turn_finished"),
+        ]
         with pytest.raises(asyncpg.RaiseError, match="append-only"):
             await isolated.pool.execute("DELETE FROM events")
     finally:

@@ -1,4 +1,254 @@
 {
+  "artifacts": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "library",
+            "label": "Library",
+            "type": "string"
+          },
+          {
+            "key": "site",
+            "label": "Site",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "label": "Status",
+            "type": "string"
+          }
+        ],
+        "row_count": 14,
+        "rows": [
+          [
+            "[SP_1]",
+            "DNA",
+            "Northlake",
+            "Ready"
+          ],
+          [
+            "[SP_2]",
+            "DNA",
+            "Northlake",
+            "Review"
+          ],
+          [
+            "[SP_3]",
+            "RNA",
+            "Westhaven",
+            "Ready"
+          ],
+          [
+            "[SP_4]",
+            "DNA",
+            "Eastmere",
+            "Ready"
+          ],
+          [
+            "[SP_5]",
+            "RNA",
+            "Westhaven",
+            "Ready"
+          ],
+          [
+            "[SP_6]",
+            "DNA",
+            "Eastmere",
+            "Ready"
+          ]
+        ],
+        "title": "Specimens received in the last 24 hours"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "check",
+            "label": "Check",
+            "type": "string"
+          },
+          {
+            "key": "result",
+            "label": "Result",
+            "type": "string"
+          },
+          {
+            "key": "passed",
+            "label": "Passed",
+            "type": "boolean"
+          }
+        ],
+        "row_count": 4,
+        "rows": [
+          [
+            "[SP_1]",
+            "Library yield",
+            "Within range",
+            true
+          ],
+          [
+            "[SP_2]",
+            "Sample identity",
+            "Review required",
+            false
+          ],
+          [
+            "[SP_3]",
+            "RNA integrity",
+            "Within range",
+            true
+          ],
+          [
+            "[SP_4]",
+            "Library yield",
+            "Within range",
+            true
+          ]
+        ],
+        "title": "Intake quality checks"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "library",
+            "label": "Library",
+            "type": "string"
+          },
+          {
+            "key": "site",
+            "label": "Site",
+            "type": "string"
+          },
+          {
+            "key": "status",
+            "label": "Status",
+            "type": "string"
+          }
+        ],
+        "row_count": 14,
+        "rows": [
+          [
+            "[SP_1]",
+            "DNA",
+            "Northlake",
+            "Ready"
+          ],
+          [
+            "[SP_2]",
+            "DNA",
+            "Northlake",
+            "Review"
+          ],
+          [
+            "[SP_3]",
+            "RNA",
+            "Westhaven",
+            "Ready"
+          ],
+          [
+            "[SP_4]",
+            "DNA",
+            "Eastmere",
+            "Ready"
+          ],
+          [
+            "[SP_5]",
+            "RNA",
+            "Westhaven",
+            "Ready"
+          ],
+          [
+            "[SP_6]",
+            "DNA",
+            "Eastmere",
+            "Ready"
+          ]
+        ],
+        "title": "Specimens received in the last 24 hours"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "check",
+            "label": "Check",
+            "type": "string"
+          },
+          {
+            "key": "result",
+            "label": "Result",
+            "type": "string"
+          },
+          {
+            "key": "passed",
+            "label": "Passed",
+            "type": "boolean"
+          }
+        ],
+        "row_count": 4,
+        "rows": [
+          [
+            "[SP_1]",
+            "Library yield",
+            "Within range",
+            true
+          ],
+          [
+            "[SP_2]",
+            "Sample identity",
+            "Review required",
+            false
+          ],
+          [
+            "[SP_3]",
+            "RNA integrity",
+            "Within range",
+            true
+          ],
+          [
+            "[SP_4]",
+            "Library yield",
+            "Within range",
+            true
+          ]
+        ],
+        "title": "Intake quality checks"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -98,7 +348,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -178,7 +428,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -294,7 +544,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -374,7 +624,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -439,256 +689,6 @@
       "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started.",
       "status": "complete",
       "title": "Review intake quality checks"
-    }
-  ],
-  "views": [
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "specimen_id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "library",
-            "label": "Library",
-            "type": "string"
-          },
-          {
-            "key": "site",
-            "label": "Site",
-            "type": "string"
-          },
-          {
-            "key": "status",
-            "label": "Status",
-            "type": "string"
-          }
-        ],
-        "row_count": 14,
-        "rows": [
-          [
-            "[SP_1]",
-            "DNA",
-            "Northlake",
-            "Ready"
-          ],
-          [
-            "[SP_2]",
-            "DNA",
-            "Northlake",
-            "Review"
-          ],
-          [
-            "[SP_3]",
-            "RNA",
-            "Westhaven",
-            "Ready"
-          ],
-          [
-            "[SP_4]",
-            "DNA",
-            "Eastmere",
-            "Ready"
-          ],
-          [
-            "[SP_5]",
-            "RNA",
-            "Westhaven",
-            "Ready"
-          ],
-          [
-            "[SP_6]",
-            "DNA",
-            "Eastmere",
-            "Ready"
-          ]
-        ],
-        "title": "Specimens received in the last 24 hours"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "specimen_id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "check",
-            "label": "Check",
-            "type": "string"
-          },
-          {
-            "key": "result",
-            "label": "Result",
-            "type": "string"
-          },
-          {
-            "key": "passed",
-            "label": "Passed",
-            "type": "boolean"
-          }
-        ],
-        "row_count": 4,
-        "rows": [
-          [
-            "[SP_1]",
-            "Library yield",
-            "Within range",
-            true
-          ],
-          [
-            "[SP_2]",
-            "Sample identity",
-            "Review required",
-            false
-          ],
-          [
-            "[SP_3]",
-            "RNA integrity",
-            "Within range",
-            true
-          ],
-          [
-            "[SP_4]",
-            "Library yield",
-            "Within range",
-            true
-          ]
-        ],
-        "title": "Intake quality checks"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "specimen_id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "library",
-            "label": "Library",
-            "type": "string"
-          },
-          {
-            "key": "site",
-            "label": "Site",
-            "type": "string"
-          },
-          {
-            "key": "status",
-            "label": "Status",
-            "type": "string"
-          }
-        ],
-        "row_count": 14,
-        "rows": [
-          [
-            "[SP_1]",
-            "DNA",
-            "Northlake",
-            "Ready"
-          ],
-          [
-            "[SP_2]",
-            "DNA",
-            "Northlake",
-            "Review"
-          ],
-          [
-            "[SP_3]",
-            "RNA",
-            "Westhaven",
-            "Ready"
-          ],
-          [
-            "[SP_4]",
-            "DNA",
-            "Eastmere",
-            "Ready"
-          ],
-          [
-            "[SP_5]",
-            "RNA",
-            "Westhaven",
-            "Ready"
-          ],
-          [
-            "[SP_6]",
-            "DNA",
-            "Eastmere",
-            "Ready"
-          ]
-        ],
-        "title": "Specimens received in the last 24 hours"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "specimen_id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "check",
-            "label": "Check",
-            "type": "string"
-          },
-          {
-            "key": "result",
-            "label": "Result",
-            "type": "string"
-          },
-          {
-            "key": "passed",
-            "label": "Passed",
-            "type": "boolean"
-          }
-        ],
-        "row_count": 4,
-        "rows": [
-          [
-            "[SP_1]",
-            "Library yield",
-            "Within range",
-            true
-          ],
-          [
-            "[SP_2]",
-            "Sample identity",
-            "Review required",
-            false
-          ],
-          [
-            "[SP_3]",
-            "RNA integrity",
-            "Within range",
-            true
-          ],
-          [
-            "[SP_4]",
-            "Library yield",
-            "Within range",
-            true
-          ]
-        ],
-        "title": "Intake quality checks"
-      },
-      "version": 1
     }
   ]
 }

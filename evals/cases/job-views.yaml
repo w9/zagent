@@ -9,8 +9,8 @@ cases:
       golden: goldens/JOBS-VIEWS.json
       refusal: none
       submitted: true
-      view_references: true
-      views: [{kind: draft_form}, {kind: draft_form}, {kind: job_card}, {kind: job_card}, {kind: job_grid}]
+      artifact_references: true
+      artifacts: [{kind: draft_form}, {kind: draft_form}, {kind: job_card}, {kind: job_card}, {kind: job_grid}]
       tools_called: [find_patients, find_specimens, update_draft, show_jobs]
       egress: no_known_identifiers
       event_log: no_known_identifiers

@@ -12,20 +12,27 @@ async function open(page: Page, sessionId: string) {
   await expect(page.getByTestId('conversation-turn-status')).not.toHaveText(/Connecting|Reconnecting/)
 }
 
+/** Below desktop a maximized artifact covers the conversation; minimizing it shows the conversation again. */
+async function conversation(page: Page) {
+  if (await page.getByRole('textbox', { name: 'Message', exact: true }).isVisible()) return
+  await page.getByRole('complementary', { name: 'Maximized artifact' }).getByRole('button', { name: 'Minimize', exact: true }).click()
+}
+
 async function send(page: Page, text: string) {
-  const tab = page.getByRole('tab', { name: 'Conversation', exact: true })
-  if (await tab.isVisible()) await tab.click()
+  await conversation(page)
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill(text)
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete', { timeout: 30_000 })
 }
 
-async function showSurface(page: Page) {
-  const tab = page.getByRole('tab', { name: /Working surface/ })
-  if (await tab.isVisible()) await tab.click()
+async function maximize(page: Page, artifactId: string) {
+  const maximized = page.getByTestId('maximized-artifact')
+  if (await maximized.count() && await maximized.getAttribute('data-artifact-id') === artifactId) return
+  await page.locator(`[data-testid="artifact-card"][data-artifact-id="${artifactId}"]`).getByRole('button', { name: 'Maximize', exact: true }).click()
+  await expect(maximized).toHaveAttribute('data-artifact-id', artifactId)
 }
 
-test('draft chat edits, missing-normal validation and exact-view links survive refresh', async ({ page, request }, testInfo) => {
+test('draft chat edits, missing-normal validation and exact-artifact links survive refresh', async ({ page, request }, testInfo) => {
   const sessionId = await createSession(request)
   await open(page, sessionId)
   await send(page, 'Prepare somatic calling on specimens received in the last day for NGC-0041875.')
@@ -33,15 +40,22 @@ test('draft chat edits, missing-normal validation and exact-view links survive r
   await expect(link).toBeVisible()
   await link.focus()
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/view=view-/)
-  await expect(page.getByTestId('active-view')).toBeFocused()
-  await expect(page.getByRole('region', { name: 'Analysis draft' }).getByText('A matched normal specimen is missing.')).toBeVisible()
+  await expect(page).toHaveURL(/artifact=view-/)
+  const maximized = page.getByTestId('maximized-artifact')
+  await expect(maximized).toBeFocused()
+  await expect(maximized).toHaveAttribute('data-kind', 'draft_form')
+  await expect(maximized.getByRole('region', { name: 'Analysis draft' }).getByText('A matched normal specimen is missing.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Confirm submission' })).toBeDisabled()
-  const original = await page.getByTestId('active-view').getAttribute('data-view-id')
+  const original = (await maximized.getAttribute('data-artifact-id'))!
   await send(page, 'min VAF 0.03')
-  await showSurface(page)
+  const card = page.locator(`[data-testid="artifact-card"][data-artifact-id="${original}"]`)
+  if (testInfo.project.name === 'mobile') {
+    // The card previews the saved draft while it is not maximized.
+    await expect(card.getByText(/to resolve before confirming/)).toBeVisible()
+    await expect(card.getByRole('button', { name: 'Review and confirm' })).toBeVisible()
+  }
+  await maximize(page, original)
   await expect(page.getByRole('spinbutton', { name: 'Minimum VAF' })).toHaveValue('0.03')
-  await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', original!)
   await page.reload()
   await expect(page.getByRole('spinbutton', { name: 'Minimum VAF' })).toHaveValue('0.03')
   for (const viewport of testInfo.project.name === 'mobile'
@@ -51,8 +65,8 @@ test('draft chat edits, missing-normal validation and exact-view links survive r
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({ path: testInfo.outputPath(`draft-${viewport.width}.png`), animations: 'disabled' })
   }
-  await page.goto(`/sessions/${sessionId}?view=missing-view&panel=surface`)
-  await expect(page.getByRole('alert')).toContainText('View unavailable')
+  await page.goto(`/sessions/${sessionId}?artifact=missing-view`)
+  await expect(page.getByRole('alert')).toContainText('Artifact unavailable')
 })
 
 test('form edits synchronize, stale confirmation shows a diff, and confirmation creates one job', async ({ page, context, request }, testInfo) => {
@@ -83,7 +97,10 @@ test('form edits synchronize, stale confirmation shows a diff, and confirmation 
   expect(Object.keys(before.jobs)).toHaveLength(0)
   await page.getByRole('button', { name: 'Review current draft' }).click()
   await page.getByRole('button', { name: 'Confirm submission' }).click()
-  const jobFrame = page.frameLocator('[data-testid="mcp-job-frame"]')
+  // Confirming a maximized draft maximizes the job card it published.
+  const maximized = page.getByTestId('maximized-artifact')
+  await expect(maximized).toHaveAttribute('data-kind', 'job_card')
+  const jobFrame = maximized.frameLocator('[data-testid="mcp-job-frame"]')
   await expect(jobFrame.getByRole('region', { name: 'Job job-0001' })).toBeVisible()
   await expect(jobFrame.getByRole('progressbar', { name: 'Job progress' })).toBeVisible()
   const after = await (await request.get(`/api/sessions/${sessionId}/snapshot`)).json()
@@ -92,8 +109,8 @@ test('form edits synchronize, stale confirmation shows a diff, and confirmation 
   const repeated = await request.post(`/api/sessions/${sessionId}/drafts/${draft.draft_id}/confirm`, { data: { content_hash: current.content_hash } })
   expect(repeated.status()).toBe(200)
   await page.screenshot({ path: testInfo.outputPath('pending-job.png'), animations: 'disabled' })
-  const chat = page.getByRole('tab', { name: 'Conversation', exact: true })
-  if (await chat.isVisible()) await chat.click()
+  await expect(second.getByTestId('maximized-artifact')).toHaveAttribute('data-kind', 'draft_form')
+  await conversation(page)
   const references = page.getByRole('link', { name: 'Read quality control', exact: true })
   const sequence = after.seq
   await references.first().click()

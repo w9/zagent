@@ -2,9 +2,9 @@
 import catalogJson from '../../../../services/agent/zagent/catalog.json'
 import type { Persona, PrivacyBinding, Session, XrayData } from '../lib/api'
 import type { DraftState, Projection, StepState } from '../lib/events'
-import type { PushedView, TableData } from '../lib/views'
-import type { HandleResolver } from './surface/views/table.view'
-import type { CatalogApp } from './surface/views/draft_form.view'
+import type { PublishedArtifact, TableData } from '../lib/artifacts'
+import type { HandleResolver } from './artifact/kinds/table.artifact'
+import type { CatalogApp } from './artifact/kinds/draft_form.artifact'
 
 export const catalog = catalogJson as unknown as CatalogApp[]
 
@@ -65,12 +65,12 @@ export const failingHandle: HandleResolver = async () => {
   throw new Error('Handle query-0002 expired. Ask the agent to run the query again.')
 }
 
-export const tableView: PushedView = {
+export const tableArtifact: PublishedArtifact = {
   id: 'view-0001',
   seq: 6,
   spec: { kind: 'table', version: 1, props: { title: 'Specimens received this week', columns, rows, row_count: 14 } },
 }
-export const chartView: PushedView = {
+export const chartArtifact: PublishedArtifact = {
   id: 'view-0002',
   seq: 12,
   spec: {
@@ -84,10 +84,20 @@ export const chartView: PushedView = {
     },
   },
 }
-export const handleTableView: PushedView = {
+export const handleTableArtifact: PublishedArtifact = {
   id: 'view-0003',
   seq: 14,
   spec: { kind: 'table', version: 1, props: { title: 'Libraries for SPC-northgate-001-1', columns, handle: 'query-0003', row_count: 14 } },
+}
+export const draftArtifact: PublishedArtifact = {
+  id: 'view-0004',
+  seq: 16,
+  spec: { kind: 'draft_form', version: 1, props: { title: 'Somatic SNV calling for SPC-northgate-001-1', draft_id: 'draft-0001' } },
+}
+export const jobArtifact: PublishedArtifact = {
+  id: 'view-0005',
+  seq: 18,
+  spec: { kind: 'job_card', version: 2, props: { title: 'Read quality control', handle: 'jobs-0001', server: 'jobs', resource_uri: 'ui://jobs/card' } },
 }
 
 const answer = `Six of the **14 specimens** received this week are shown in [Specimens received this week](view:view-0001).
@@ -129,7 +139,7 @@ export const conversation: Projection = {
     { id: 'message-2', seq: 7, role: 'assistant', text: answer, status: 'complete' },
     { id: 'message-3', seq: 8, role: 'user', text: 'Book a courier to collect the failed samples tomorrow.', status: 'complete' },
     { id: 'message-4', seq: 11, role: 'user', text: 'Then chart library coverage for all of them.', status: 'complete' },
-    { id: 'message-5', seq: 13, role: 'assistant', text: 'The coverage chart is on the working surface. `SPC-northgate-003-1` has no library, so it has no bar.', status: 'complete' },
+    { id: 'message-5', seq: 13, role: 'assistant', text: 'Here is the coverage chart. `SPC-northgate-003-1` has no library, so it has no bar.', status: 'complete' },
   ],
   steps,
   refusals: [{
@@ -138,7 +148,7 @@ export const conversation: Projection = {
     code: 'out_of_domain',
     message: 'Courier booking is outside this workbench. I can list the specimens that need collection so you can book it in the logistics portal.',
   }],
-  views: [tableView, chartView],
+  artifacts: [tableArtifact, chartArtifact],
   conversation_turn: { id: 'turn-3', status: 'finished', error: null },
 }
 
@@ -191,7 +201,7 @@ export const refused: Projection = {
   ...conversation,
   seq: 10,
   messages: conversation.messages.slice(0, 3),
-  views: [tableView],
+  artifacts: [tableArtifact],
   conversation_turn: { id: 'turn-2', status: 'finished', error: null },
 }
 
@@ -210,7 +220,7 @@ export const empty: Projection = {
   session_id: 'session-4',
   seq: 0,
   messages: [],
-  views: [],
+  artifacts: [],
   steps: [],
   conversation_turn: null,
 }
@@ -252,13 +262,13 @@ export const cited: Projection = {
     { id: 'message-k2', seq: 5, role: 'assistant', text: citedAnswer, status: 'complete' },
   ],
   steps: citedSteps,
-  views: [],
+  artifacts: [],
   conversation_turn: { id: 'turn-k1', status: 'finished', error: null },
 }
 
 export const draft: DraftState = {
   draft_id: 'draft-0001',
-  view_id: 'view-0004',
+  artifact_id: 'view-0004',
   app_id: 'somatic-snv',
   specimen_handle: 'query-0001',
   parameters: { min_vaf: 0.05, min_depth: 20 },

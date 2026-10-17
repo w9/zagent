@@ -20,12 +20,12 @@ evidence. Goldens contain tokens; assertions verify actual execution arguments a
 fixture values without writing those values into model requests or golden transcripts.
 
 PLAN7 adds versioned drafts, human edit/stale-confirm/idempotent-confirm actions, session metadata
-checks, and receipt-to-view assertions. Four simulated users have hidden parameter targets,
+checks, and receipt-to-artifact assertions. Four simulated users have hidden parameter targets,
 three independent recorded conversations per application, and separately pinned model routes.
 
 PLAN8 adds real synthetic worker processes, leased dispatch, versioned SOP retrieval, MCP-owned
-job views, and journaled runtime recovery. Four execution cases have three independently recorded
-agent conversations each; ordinary job-view replay also drives desktop/mobile container tests.
+job artifacts, and journaled runtime recovery. Four execution cases have three independently recorded
+agent conversations each; ordinary job-artifact replay also drives desktop/mobile container tests.
 
 PLAN10 adds five adversarial families, nine paired enforcement mutations, narrow explanation
 judging, and a three-model/two-prompt matrix. Adversarial setup seeds synthetic drafts/jobs and
@@ -325,8 +325,10 @@ The readback regression follows a live stale-answer failure: newer persisted sta
 supersedes historical receipts. This prompt/context clarification is measured behavior, with no
 runtime response filtering or correction retries.
 
-`view_references: true` binds a successful tool receipt to a previously published view. Browser
-tests additionally check keyboard focus, pinned head views, later view pushes, back/forward,
+`artifact_references: true` binds a successful tool receipt to a previously published artifact.
+Tool receipts still name it `view_id`, because that field is part of the recorded model contract.
+Browser tests additionally check keyboard focus, pinned head artifacts, later artifact publications,
+back/forward,
 refresh, cross-session unavailable states, and unchanged sequence/draft/job state on navigation.
 These browser and direct concurrency checks complement the linked HTTP cases; the report's
 trial counts do not pretend they are additional model samples.
@@ -391,7 +393,7 @@ SIGKILL, and starts a replacement against the same database. It verifies partial
 one completed response, and no duplicate draft mutation. `test_jobs.py` verifies queue fencing,
 log deduplication, eviction retry, and an opt-in real Docker reconnect with unchanged container ID.
 A deployed dispatcher SIGKILL check confirmed two original live containers each completed once.
-`JOBS-VIEWS` and browser tests cover two independently updating MCP cards, exact-view links,
+`JOBS-VIEWS` and browser tests cover two independently updating MCP cards, exact-artifact links,
 sandbox mutation denial, refresh/history, mobile layout, and unchanged submission/chat state.
 
 ## Cases And Goldens
@@ -432,16 +434,16 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | STREAM-005 | A partial assistant message is removed and replaced | REQ-STREAM-01, REQ-STREAM-02 |
 | VIEW-001 | Two valid tables with ordered step markers | REQ-VIEW-01, REQ-VIEW-02 |
 | VIEW-002 | An empty table | REQ-VIEW-01, REQ-VIEW-02 |
-| VIEW-003 | A rejected view preserves the previous tables | REQ-VIEW-01, REQ-VIEW-02 |
-| VIEW-004 | A rejected view leaves a fresh surface empty | REQ-VIEW-01, REQ-VIEW-02 |
-| REAL-001 | Patient specimens, "those" libraries, then a coverage chart | Streams, views, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01, REQ-CTX-01 |
-| REAL-002 | Site-wide specimen count and handle-backed table | Streams, views, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01 |
+| VIEW-003 | A rejected artifact preserves the previous tables | REQ-VIEW-01, REQ-VIEW-02 |
+| VIEW-004 | A rejected artifact leaves a session without artifacts | REQ-VIEW-01, REQ-VIEW-02 |
+| REAL-001 | Patient specimens, "those" libraries, then a coverage chart | Streams, artifacts, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01, REQ-CTX-01 |
+| REAL-002 | Site-wide specimen count and handle-backed table | Streams, artifacts, REQ-TOOL-01, REQ-ISO-01, REQ-GROUND-01 |
 | REFUSE-001 through REFUSE-006 | Arithmetic, poem, job wrapper, and all four reason codes | REQ-SCOPE-03 |
 | ALLOW-001 | A real clarifying question followed by `yes` and a library table | REQ-SCOPE-03 |
 | SCOPE-* | 300 labeled guard-only examples, ten independent samples each | REQ-SCOPE-01, REQ-SCOPE-02, REQ-SCOPE-03 |
 | PRIVACY-001 | Token-only metadata/specimen conversation with resolved execution/display | REQ-PHI-01, REQ-PHI-02, REQ-PHI-03 |
 | DETECT-* | Literal MRN/name mentions across five sites | REQ-PHI-04 |
-| DRAFT-001 through DRAFT-004 | Generated forms, shared edits, deterministic validation, no submission | REQ-JOB-02, REQ-VALID-01, stream/view recovery |
+| DRAFT-001 through DRAFT-004 | Generated forms, shared edits, deterministic validation, no submission | REQ-JOB-02, REQ-VALID-01, stream/artifact recovery |
 | DRAFT-CONFIRM | Form edit, stale rejection, exact-hash confirmation, idempotency, session metadata | REQ-JOB-01, REQ-JOB-03, REQ-SESSION-01/02, REQ-VIEW-03 |
 | SLOT-* | Four hidden-goal simulated users, three independent samples per app | REQ-SLOT-01 |
 | JOBS-VIEWS | Two confirmed jobs and a stable MCP-owned live grid | REQ-VIEW-03 |
@@ -449,8 +451,9 @@ and a minimum trial count. Mutation names are traceability entries, not producti
 | EXEC-INJECT | Adversarial instructions in an inspected job log | REQ-INJECT-01, REQ-EXEC-01/02 |
 | EXEC-RESUME-TEXT / EXEC-RESUME-TOOL | Journal recovery around partial output and tool execution | REQ-RESUME-01, REQ-EXEC-01/02 |
 
-Stream and view requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: view validation is checked across the entire
-corpus, including cases that legitimately push no views. Requirement rows may share trials;
+Stream and artifact requirements also link the real-agent cases. REQ-VIEW-01 links all five stream cases: artifact validation is checked across the entire
+corpus, including cases that legitimately publish no artifacts. Requirement and case IDs such as
+REQ-VIEW-01, VIEW-001 and JOBS-VIEWS predate the artifact vocabulary and stay stable. Requirement rows may share trials;
 the report's total counts each case/mode/seed once, not once per linked requirement.
 
 YAML groups in [cases/streams.yaml](cases/streams.yaml) and [cases/views.yaml](cases/views.yaml)
@@ -458,9 +461,9 @@ contain a `cases` list. Each case declares
 its primary `requirement`, `agent`, `conversation_turns`, and `expect` assertions. Secondary
 requirements link the same case in the register. `scripted:default` uses the app's built-in
 script; other names load `scripts/<name>.yaml`. Case and script structure is validated before
-execution; event payloads are validated at emission so malformed views become failed turns.
+execution; event payloads are validated at emission so malformed artifacts become failed turns.
 
-Goldens contain normalized events **and the projected messages, views, steps, and final
+Goldens contain normalized events **and the projected messages, artifacts, steps, and final
 conversation-turn state**, plus nonempty draft/job projections, so a reducer bug is visible even
 when event bytes remain correct. IDs,
 sequence positions, timestamps, and
@@ -474,10 +477,10 @@ Pytest and CI never update fixtures. Add an assertion with `@assertion("name")` 
 [assertions.py](../services/agent/zagent/evals/assertions.py); the runner dispatches it without
 needing changes. Unknown assertion names and event types fail validation.
 
-PLAN3 adds `views` (ordered matching specs, with exact or `~regex` property matches) and
-`view_stack_depth`. Every case also checks all pushed specs against the registered schema and
-independently compares view history at each event prefix. The shared
-[view-replay fixture](fixtures/view-replay.json) is exercised by both server and browser reducers,
+PLAN3 adds `artifacts` (ordered matching specs, with exact or `~regex` property matches) and
+`artifact_count`. Every case also checks all published specs against the registered schema and
+independently compares artifact history at each event prefix. The shared
+[artifact-replay fixture](fixtures/artifact-replay.json) is exercised by both server and browser reducers,
 including duplicate identities and resuming from every prefix.
 
 PLAN4 adds `tools_only_handles`, `numeric_claims_grounded`, and `references_resolve`. The
@@ -491,19 +494,22 @@ goldens rejects refusal prose without an event and improvised assistant text in 
 The PLAN4 real-agent goldens were rerecorded because the shared scope prompt changes the
 provider request; legacy scripted goldens remain unchanged.
 
-### View Narration
+### Artifact Narration
 
-`push_view` now owns publication: it validates the handle-bound spec and appends `view_pushed`
-under the requesting conversation turn before returning `{ok, view_id, kind, title}`. View IDs
-are stable, session-local identities. Invalid or stale calls return errors without a publication
+`push_view` now owns publication: it validates the handle-bound spec and appends
+`artifact_published` under the requesting conversation turn before returning
+`{ok, view_id, kind, title}`. The tool name and receipt keep their original `view` names because
+they are part of every recorded model request. Artifact IDs (`view-0001`) are stable,
+session-local identities. Invalid or stale calls return errors without a publication
 receipt. The model sees the published artifact's identity and title, never its rows. MCP session
-and turn IDs come from the gateway, not model arguments. The agent no longer republishes the view.
+and turn IDs come from the gateway, not model arguments. The agent no longer republishes the artifact.
 
-`view_narration: true` measures the division between chat and the working surface. It uses a
+`artifact_narration: true` measures the division between chat and published artifacts. It uses a
 Markdown parser to identify chat tables whose headers overlap the query schema, and checks
 specific misleading location phrases, internal result identifiers, and display claims following
 a failed push. Markdown links of the form `[Title](view:view-0001)` are the one sanctioned place
-for a view ID and must target a view published in the session; bare IDs in prose still fail.
+for an artifact ID and must target an artifact published in the session; bare IDs in prose still
+fail. The model was taught the `view:` link scheme, so it stays.
 The reported `(1 record)` placeholder table is a negative regression example;
 clarifying questions, ordinary explanations, and unrelated conceptual tables are positive cases.
 
@@ -516,16 +522,16 @@ are rerecorded when the receipt/prompt changes. PLAN7's shared scope-policy chan
 required refreshing the guard requests.
 
 Legacy goldens intentionally remain scripted: their literal canned text, inline synthetic rows,
-`/fail`, and `/invalid-view` commands are not the real agent's contract. None were rewritten to
+`/fail`, and `/invalid-artifact` commands are not the real agent's contract. None were rewritten to
 make PLAN4 pass. The real-agent cases run the same public-HTTP, event-prefix, golden, snapshot,
 and reconnect assertions with handle-bound output and their own provider recordings.
 
 ## Chaos And Limits
 
 Each seed selects a conversation turn, a disconnect boundary, a disconnected interval, and
-an execution pause duration. For turns with views, the boundary follows a seeded complete view
-push before the terminal turn event; later human confirmation views are not model interruption
-targets. For other turns it uses text progress. The client closes the HTTP response, waits, then reconnects with
+an execution pause duration. For turns with artifacts, the boundary follows a seeded complete
+artifact publication before the terminal turn event; artifacts from later human confirmations are
+not model interruption targets. For other turns it uses text progress. The client closes the HTTP response, waits, then reconnects with
 `Last-Event-ID`. It verifies contiguous IDs, all terminal events, the public snapshot, the golden,
 and the uninterrupted reference. The report records the selected plan and actual sequence at
 disconnect, allowing a single seed to reproduce failures.
@@ -583,7 +589,7 @@ source; local development cannot enable that repository setting or perform the h
 The existing client reducer tests and `make browser` remain separate frontend acceptance gates.
 They prove actual browser refresh, native SSE reconnect, tab closure, and mobile layout; the
 Python harness's reducer checks do not replace those browser tests. PLAN3 adds table component
-snapshots, stable history selection, auto-follow behavior, invalid-view isolation, and mobile
+snapshots, stable history selection, auto-follow behavior, invalid-artifact isolation, and mobile
 panel navigation. PLAN4 adds desktop/mobile handle resolution, multi-turn charts, expanded tool
 details, visible replay misses, and nonblank chart-pixel checks. CI runs both scripted and LLM
 replay browser modes. Screenshots are inspection artifacts; no pixel-diff gate is introduced.

@@ -246,10 +246,12 @@
   --breakpoint-wide: 1920px;
   --breakpoint-ultra: 2560px;
 
-  /* Container query breakpoints: components (@narrow:, @medium:, @wide:) */
+  /* Container query breakpoints: components (@narrow:, @medium:, @wide:, @xwide:) */
   --container-narrow: 360px;
   --container-medium: 560px;
   --container-wide: 800px;
+  /* Room for the floating artifact list beside a centred max-w-prose column */
+  --container-xwide: 1152px;
 
   /* Shape */
   --radius-sm: 4px;

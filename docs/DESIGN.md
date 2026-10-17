@@ -3,7 +3,7 @@
 The rulebook for `apps/web` and the embedded MCP apps. It is written for people and coding agents
 alike: every rule has an ID, and a tag that says how it is checked.
 
-| Artifact | Owns | File |
+| Part | Owns | File |
 |---|---|---|
 | Tokens | Every raw value: colors, sizes, spacing, radii, shadows, motion, breakpoints | [tokens.css](../apps/web/src/design/tokens.css) |
 | Rulebook | How tokens and components may be used | This file |
@@ -43,7 +43,7 @@ Color namespaces are role-scoped: `bg-surface` exists, `text-surface` does not.
 | Background `bg-*` | Use for |
 |---|---|
 | `surface` | Main panels, cards, inputs, popovers |
-| `subtle` | Recessed areas: sidebar, working surface, table headers |
+| `subtle` | Recessed areas: sidebar, the maximized artifact panel, table headers |
 | `muted` | Inline code, neutral badges, tracks |
 | `hover` | Hover on any neutral item or row |
 | `selected` | The current item in a list (session, tab, row) |
@@ -85,7 +85,7 @@ Color namespaces are role-scoped: `bg-surface` exists, `text-surface` does not.
 | `text-base` | Default UI text, buttons, inputs |
 | `text-md` | Conversation prose (messages, Markdown) |
 | `text-lg` | Section and panel titles |
-| `text-xl` | View titles on the working surface |
+| `text-xl` | Large headings in embedded MCP apps (`--font-heading-lg`) |
 | `text-2xl` | Serif display: wordmark and empty-state headlines |
 
 Each size carries its line height. Weights: `font-normal`, `font-medium`, `font-semibold`.
@@ -117,14 +117,14 @@ content; never wider than the viewport). Resizable panel limits (`--panel-sideba
 - Shadows: `shadow-sm` (floating buttons), `shadow-md` (tooltips, popovers, menus), `shadow-lg`
   (drawers, dialogs).
 - Motion: `transition-colors` (default duration and easing), `animate-enter` (new content),
-  `animate-fade` (surface swaps), `animate-pulse` (live indicators), `animate-spin` (spinners),
+  `animate-fade` (artifact panel swaps, floating lists), `animate-pulse` (live indicators), `animate-spin` (spinners),
   `shimmer` (the title of running work).
 
 ### 2.5 Breakpoints
 
 Viewport variants (`tablet:`, `desktop:`, `wide:`, `ultra:`) are for the app shell, which also reads
 the breakpoints at runtime with `useBreakpoint` to lay out resizable panels. Components
-adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
+adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`, `@xwide:`.
 
 ---
 
@@ -179,8 +179,8 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 - **LAYOUT-02** Only the app shell (`src/components/shell/`) uses viewport variants; other
   components adapt with container queries. `[lint]`
 - **LAYOUT-03** No horizontal page overflow at any viewport. Only designated regions scroll:
-  session list, transcript, working-surface content, table and code blocks (both axes), X-ray
-  panes. `[visual]`
+  session list, transcript, maximized artifact, artifact list, table and code blocks (both axes),
+  X-ray panes. `[visual]`
 - **LAYOUT-04** Long unbroken strings (IDs, paths, variant names) wrap with `wrap-anywhere`, or
   truncate with the full value in a tooltip. Nothing is clipped without a way to read it.
   `[visual]`
@@ -244,6 +244,9 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 - **DOMAIN-03** Status mapping. Conversation turn: idle neutral, responding `accent` with pulse,
   connecting or reconnecting `warning`, failed `danger`. Job: queued neutral, running `accent`,
   retrying `warning`, completed `success`, failed `danger`. `[review]`
+- **DOMAIN-04** An artifact renders its live state in one place. While it is maximized, its card in
+  the conversation is a placeholder with an `accent` border; inline, a card previews what is too
+  large to fit (tables, drafts) and keeps small artifacts (charts, jobs) live. `[review]`
 
 ### Themes
 
@@ -270,22 +273,32 @@ adapt to their container with `@container` and `@narrow:`, `@medium:`, `@wide:`.
 
 ## 4. App shell contract
 
-| Viewport | Width | Sidebar | Chat and working surface | X-ray |
+| Viewport | Width | Sidebar | Conversation and maximized artifact | X-ray |
 |---|---|---|---|---|
-| Phone | < 768 | Drawer from a menu button | One at a time, switched by tabs | Panes switched by tabs |
-| Tablet | 768–1279 | Persistent and resizable; starts at `w-sidebar` | One at a time, switched by tabs | Panes switched by tabs |
+| Phone | < 768 | Drawer from a menu button | A maximized artifact replaces the conversation until minimized | Panes switched by tabs |
+| Tablet | 768–1279 | Persistent and resizable; starts at `w-sidebar` | A maximized artifact replaces the conversation until minimized | Panes switched by tabs |
 | Desktop | 1280–1919 | Persistent and resizable; starts at `w-sidebar` | Side by side and resizable; chat starts at 5/12 | Side by side |
 | Wide | 1920–2559 | Persistent and resizable; starts at `w-sidebar-wide` | Side by side and resizable; chat starts at 5/12 | Side by side |
 | Ultra | ≥ 2560 | Persistent and resizable; starts at `w-sidebar-wide` | Side by side and resizable; chat starts at 1/3, near `max-w-prose` | Side by side |
+
+With nothing maximized there is no right panel and the conversation takes the whole workspace. The
+artifact panel exists only while an artifact is maximized (`?artifact=<id>`).
 
 - The top bar and every panel header are `h-bar` tall.
 - The page never scrolls; panels do (LAYOUT-03).
 - Resizable panels are split by a `ResizableHandle`: a `border-subtle` line that turns
   `border-accent` while hovered or dragged, and takes focus for arrow-key resizing. The sidebar
-  stays within `--panel-sidebar-min` and `--panel-sidebar-max`; chat and surface each keep at
-  least `--panel-min`. Sizes chosen by the user are remembered in `localStorage`: the sidebar's
-  width in pixels, the chat's share of the workspace as a percentage.
-- Crossing a breakpoint adds or removes panels in place; panel content never remounts.
+  stays within `--panel-sidebar-min` and `--panel-sidebar-max`; the conversation and the artifact
+  panel each keep at least `--panel-min`. Sizes chosen by the user are remembered in
+  `localStorage`: the sidebar's width in pixels, the chat's share of the workspace as a
+  percentage.
+- Crossing a breakpoint, maximizing or minimizing adds or removes panels in place; panel content
+  never remounts.
+- While the session has artifacts and none is maximized, the conversation header has the artifact
+  list. From `@xwide`, where the transcript leaves room beside it, the list is a `shadow-md` card
+  floating under the header's right corner, which the user can collapse into a button. In
+  narrower conversations it is an "N artifacts" menu button in the header, so it never covers the
+  transcript.
 - The theme control (Light, Dark, System) sits in the top bar.
 
 ---
@@ -312,18 +325,20 @@ Each component has a story file next to it. Story data lives in `src/components/
 | `ui/` | EmptyState | display (serif), quiet | action, narrow box |
 | `ui/` | PanelHeader, Eyebrow, Spinner | — | long subtitle (truncated with its full value) |
 | `shell/` | AppShell, TopBar, Wordmark, ThemeToggle | — | every viewport in section 4; X-ray on; drawer open; error |
-| `shell/` | SessionLayout | chat or surface tab | every viewport in section 4 |
+| `shell/` | SessionLayout | nothing maximized, maximized | every viewport in section 4 |
 | `shell/` | SessionList | active, archived | empty, many, creating, very long title; persona chooser with a long hint, no personas; archived loading and empty |
-| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, failed before an answer, refused last, reconnecting, archived; persona badge, no persona |
+| `chat/` | ChatPanel | — | opening, new, conversation, responding, failed, failed before an answer, refused last, reconnecting, archived, artifact maximized; persona badge, no persona |
 | `chat/` | TranscriptText, PrivacyText | user, assistant; md, sm | streaming, Markdown with code, tables and links |
-| `chat/` | StepMarker | running, complete, failed | expanded, with a view link |
+| `chat/` | StepMarker | running, complete, failed | expanded, with an artifact link |
 | `chat/` | CitationChip | verified, unverified | preview open, single line, privacy values, long title, many lines, narrow box; in the chat panel |
-| `chat/` | RefusalChip, ViewReference, TurnStatus, Composer, MessageActions | — | in the chat panel stories |
-| `surface/` | WorkingSurface, ViewHeader | — | no views, unavailable view, chart, table |
-| `surface/views/` | TableView | inline, from a handle | loading, empty, error, nulls, booleans |
-| `surface/views/` | ChartView | each mark type | loading, error |
-| `surface/views/` | DraftEditor | — | editing, needs review, submitted, read-only |
-| `surface/` | McpAppFrame, McpAppView | — | running job, no jobs, both themes |
+| `chat/` | RefusalChip, TurnStatus, Composer, MessageActions | — | in the chat panel stories |
+| `artifact/` | ArtifactCard | inline, maximized | table, chart, draft (editing, needs review, submitted, read-only), job, unavailable, long title in a narrow box |
+| `artifact/` | ArtifactPanel, ArtifactMeta | — | table, chart, draft, job, loading, error, empty table, long title, opening, unavailable |
+| `artifact/` | ArtifactList | floating card, menu button | one, many, long titles, collapsed, narrow |
+| `artifact/kinds/` | TableArtifact | inline preview, maximized; inline rows or a handle | loading, empty, error, nulls, booleans |
+| `artifact/kinds/` | ChartArtifact | each mark type | loading, error |
+| `artifact/kinds/` | DraftEditor, DraftPreview | — | editing, needs review, submitted, read-only |
+| `artifact/` | McpAppFrame, McpAppArtifact | inline, fullscreen | running job, no jobs, both themes |
 | `xray/` | XrayContent, XrayPanel | — | requests with privacy values, nothing recorded |
 
 ---
@@ -335,8 +350,11 @@ Each component has a story file next to it. Story data lives in `src/components/
   that reads tokens at runtime. An inline script in `index.html` repeats the resolution before
   paint.
 - Embedded MCP apps (`services/agent/zagent/job_ui/`) style themselves only with the standard MCP
-  Apps host variables, with light fallbacks. `McpAppFrame` sends `theme` and these variables in the
-  host context, and again whenever the theme changes:
+  Apps host variables, with light fallbacks. `McpAppFrame` sends `theme`, these variables,
+  `displayMode` (`inline` in a card, `fullscreen` when maximized) and `availableDisplayModes` in the
+  host context, and again whenever the theme or the display mode changes. An app's
+  `ui/request-display-mode` maximizes or minimizes its artifact. Inline, the frame takes the height
+  the app reports, up to `max-h-96`, and the jobs app shows a compact summary:
 
 | MCP Apps variable | Zagent token |
 |---|---|

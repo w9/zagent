@@ -11,19 +11,19 @@
 
 - id: REQ-VIEW-01
   tier: invariant
-  statement: Every pushed view validates against its registered versioned schema before persistence.
+  statement: Every published artifact validates against its registered versioned schema before persistence.
   verification: standard
   enforced_by:
-    - services/agent/zagent/views.py
+    - services/agent/zagent/artifacts.py
     - services/agent/zagent/events.py
     - services/agent/zagent/store.py
-    - apps/web/src/lib/views.ts
+    - apps/web/src/lib/artifacts.ts
   mutations: [bypass_view_validation, corrupt_view_payload]
   cases: [STREAM-001, STREAM-002, STREAM-003, STREAM-004, STREAM-005, VIEW-001, VIEW-002, VIEW-003, VIEW-004, REAL-001, REAL-002]
 
 - id: REQ-VIEW-02
   tier: invariant
-  statement: View stacks agree for every replayed prefix and remain complete after interruption.
+  statement: Artifact lists agree for every replayed prefix and remain complete after interruption.
   verification: chaos
   enforced_by:
     - services/agent/zagent/events.py
@@ -77,7 +77,7 @@
 
 - id: REQ-PRESENT-01
   tier: measured
-  statement: Query narration refers to published views without duplicating result tables or making misleading display claims.
+  statement: Query narration refers to published artifacts without duplicating result tables or making misleading display claims.
   threshold: {min_lower_bound: 0.4, trials: 3}
   cases: [REAL-001, REAL-002, ALLOW-001]
 
@@ -180,8 +180,8 @@
 
 - id: REQ-VIEW-03
   tier: invariant
-  statement: View receipts resolve to published session views and reference activation has no workflow side effects.
-  enforced_by: [services/agent/zagent/evals/assertions.py, apps/web/src/components/working-surface.tsx, apps/web/e2e/drafts.spec.ts]
+  statement: Artifact receipts resolve to published session artifacts and reference activation has no workflow side effects.
+  enforced_by: [services/agent/zagent/evals/assertions.py, apps/web/src/components/chat/chat-panel.tsx, apps/web/e2e/drafts.spec.ts]
   mutations: [link_to_latest_view, navigate_by_querying_again]
   cases: [REAL-001, DRAFT-001, DRAFT-CONFIRM, JOBS-VIEWS, EXEC-SWAP, EXEC-RESUME-TEXT]
 

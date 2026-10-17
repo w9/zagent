@@ -12,12 +12,12 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const viewLink = (_: string, children: ReactNode) => (
-  <a href="#view" className="text-accent underline decoration-dotted underline-offset-2">{children}</a>
+const artifactLink = (_: string, children: ReactNode) => (
+  <a href="#artifact" className="text-accent underline decoration-dotted underline-offset-2">{children}</a>
 )
 
 export const Complete: Story = {}
-export const PublishedView: Story = { args: { step: steps[1], viewLink } }
+export const PublishedArtifact: Story = { args: { step: steps[1], artifactLink } }
 export const Running: Story = { args: { step: responding.steps.at(-1)! } }
 export const Failed: Story = { args: { step: failed.steps.at(-1)!, defaultOpen: true } }
 export const Expanded: Story = { args: { step: steps[0], defaultOpen: true } }

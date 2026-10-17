@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": "Scripted failure requested with /fail.",
     "status": "failed"
@@ -39,6 +40,5 @@
       "text": "Message received. The scripted conversation turn encountered an error."
     }
   ],
-  "steps": [],
-  "views": []
+  "steps": []
 }

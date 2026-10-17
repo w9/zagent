@@ -16,6 +16,14 @@ from zagent.tools import (
 )
 
 
+def test_model_facing_schemas_keep_the_view_names_models_were_taught():
+    assert set(INPUTS["push_view"].model_json_schema()["$defs"]) == {"ViewSpec"}
+    draft = RESPONSE_SCHEMAS["update_draft"]["$defs"]["DraftState"]["properties"]
+    assert "view_id" in draft and "artifact_id" not in draft
+    assert "ViewReceipt" in RESPONSE_SCHEMAS["push_view"]["$defs"]
+    assert "JobViewResult" in RESPONSE_SCHEMAS["show_jobs"]["$defs"]
+
+
 @given(
     # Reference rows are non-clinical: the documented exception to handles-only results.
     name=strategies.sampled_from([name for name in INPUTS if name != "query_reference"]),
@@ -163,13 +171,13 @@ async def test_mcp_tools_return_only_handles_and_support_followup_queries(store)
         "kind": "table",
         "title": "Specimens",
     }
-    view = (await store.snapshot(session.id)).views[-1]
-    assert (view.id, view.spec.kind, view.spec.props["title"]) == (
+    artifact = (await store.snapshot(session.id)).artifacts[-1]
+    assert (artifact.id, artifact.spec.kind, artifact.spec.props["title"]) == (
         receipt["view_id"],
         receipt["kind"],
         receipt["title"],
     )
-    assert view.spec.props["handle"] == specimens["handle"]
+    assert artifact.spec.props["handle"] == specimens["handle"]
     assert "rows" not in json.dumps(receipt)
     assert (
         await store.pool.fetchval(
@@ -214,7 +222,7 @@ async def test_validation_allowlist_and_unsafe_responses_are_audited(store):
 
 
 @pytest.mark.integration
-async def test_views_validate_handle_fields_and_reject_inline_data(store):
+async def test_published_artifacts_validate_handle_fields_and_reject_inline_data(store):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     await clinical.seed()
     backend = ClinicalTools(clinical)
@@ -242,7 +250,7 @@ async def test_views_validate_handle_fields_and_reject_inline_data(store):
         conversation_turn_id=turn.conversation_turn_id,
     )
     assert result == {"ok": True, "view_id": "view-0001", "kind": "chart", "title": "Purity"}
-    assert (await store.snapshot(session.id)).views[-1].id == result["view_id"]
+    assert (await store.snapshot(session.id)).artifacts[-1].id == result["view_id"]
     inline = {
         "kind": "table",
         "version": 1,
@@ -261,12 +269,12 @@ async def test_views_validate_handle_fields_and_reject_inline_data(store):
             conversation_turn_id=turn.conversation_turn_id,
         )
     )["error"]["code"] == "invalid_view"
-    assert len((await store.snapshot(session.id)).views) == 1
+    assert len((await store.snapshot(session.id)).artifacts) == 1
     await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
 
 
 @pytest.mark.integration
-async def test_view_receipts_require_a_valid_view_and_an_active_turn(store):
+async def test_view_receipts_require_a_valid_artifact_and_an_active_turn(store):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     await clinical.seed()
     backend = ClinicalTools(clinical)
@@ -294,7 +302,7 @@ async def test_view_receipts_require_a_valid_view_and_an_active_turn(store):
         conversation_turn_id=turn.conversation_turn_id,
     )
     assert rejected["error"]["code"] == "invalid_view"
-    assert (await store.snapshot(session.id)).views == []
+    assert (await store.snapshot(session.id)).artifacts == []
     first = await backend.dispatch(
         session.id,
         "push_view",
@@ -309,7 +317,7 @@ async def test_view_receipts_require_a_valid_view_and_an_active_turn(store):
     )
     assert first["view_id"] == "view-0001"
     assert second["view_id"] == "view-0002"
-    assert [view.id for view in (await store.snapshot(session.id)).views] == [
+    assert [artifact.id for artifact in (await store.snapshot(session.id)).artifacts] == [
         first["view_id"],
         second["view_id"],
     ]
@@ -322,5 +330,5 @@ async def test_view_receipts_require_a_valid_view_and_an_active_turn(store):
         conversation_turn_id=turn.conversation_turn_id,
     )
     assert stale["error"]["code"] == "invalid_view"
-    assert len((await store.snapshot(session.id)).views) == 2
+    assert len((await store.snapshot(session.id)).artifacts) == 2
     await store.finish_conversation_turn(session.id, next_turn.conversation_turn_id)

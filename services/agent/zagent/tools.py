@@ -13,16 +13,16 @@ from mcp.server.fastmcp import FastMCP
 from mcp.shared.memory import create_connected_server_and_client_session
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
+from zagent.artifacts import ArtifactSpec
 from zagent.cohort import MAX_RESULT_ROWS, ClinicalStore, HandleError
 from zagent.draft_store import DraftConflict, DraftStore
-from zagent.drafts import AppId, DraftState, JobState
+from zagent.drafts import AppId, DraftContent, DraftIssue, JobState, model_facing_draft
 from zagent.faults import enabled
 from zagent.identity import CALLER_CONTEXT_META
 from zagent.job_tools import JOB_DESCRIPTIONS, JOB_INPUTS, JOB_OUTPUTS, JobsTools
 from zagent.kb_tools import KB_DESCRIPTIONS, KB_INPUTS, KB_OUTPUTS, KB_SNAPSHOT_META
 from zagent.privacy import TOKEN, PrivacyError, Raw, Tokenized
 from zagent.store import AgentSession, ConversationTurnConflict, NotFound, Store
-from zagent.views import ViewSpec
 
 MAX_TOOL_RESULT_BYTES = 8192
 Handle = Annotated[str, Field(pattern=r"^query-[0-9]{4,}$", max_length=100)]
@@ -53,6 +53,12 @@ class FindLibraries(StrictModel):
     qc_status: Literal["passed", "review", "failed"] | None = None
 
 
+# Tool schemas name their models, and every recorded model request contains these schemas.
+# The model-facing names below predate artifacts and stay as they are.
+class ViewSpec(ArtifactSpec):
+    pass
+
+
 class PushView(StrictModel):
     spec: ViewSpec
 
@@ -69,6 +75,17 @@ class UpdateDraft(StrictModel):
 class SubmitJob(StrictModel):
     draft_id: str = Field(pattern=r"^draft-[0-9]{4,}$")
     content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
+class DraftState(DraftContent):
+    # drafts.DraftState as update_draft receipts show it: artifact_id keeps its view_id name.
+    draft_id: str = Field(pattern=r"^draft-[0-9]{4,}$")
+    view_id: str = Field(pattern=r"^view-[0-9]{4,}$")
+    version: int = Field(ge=1)
+    content_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    status: Literal["editing", "submitted"] = "editing"
+    validation: list[DraftIssue] = Field(default_factory=list, max_length=30)
+    job_id: str | None = None
 
 
 class DraftResult(StrictModel):
@@ -316,7 +333,7 @@ class ClinicalTools:
                     await DraftStore(self.clinical).confirm(
                         session_id, params.draft_id, params.content_hash
                     )
-                ).model_dump()
+                ).model_dump(exclude={"artifact_id"})
             if name in JOB_INPUTS:
                 return await JobsTools(self.clinical).dispatch(
                     session_id, conversation_turn_id, name, arguments
@@ -332,12 +349,14 @@ class ClinicalTools:
                     **params.model_dump(),
                 )
                 return DraftResult(
-                    draft=draft, view_id=draft.view_id, title=CATALOG[draft.app_id].title
+                    draft=model_facing_draft(draft.model_dump()),
+                    view_id=draft.artifact_id,
+                    title=CATALOG[draft.app_id].title,
                 ).model_dump()
             if name == "push_view":
                 if conversation_turn_id is None:
                     return failure("invalid_view", "Publishing a view requires a conversation turn")
-                return await self.push_view(session_id, conversation_turn_id, params.spec)
+                return await self.publish(session_id, conversation_turn_id, params.spec)
             identifiers = None
             if name == "find_specimens" and params.patient_handle:
                 identifiers = (
@@ -396,7 +415,9 @@ class ClinicalTools:
                 "The draft cannot be updated; use an editable draft and catalog values",
             )
 
-    async def push_view(self, session_id: UUID, conversation_turn_id: UUID, spec: ViewSpec) -> dict:
+    async def publish(
+        self, session_id: UUID, conversation_turn_id: UUID, spec: ArtifactSpec
+    ) -> dict:
         if spec.kind not in {"table", "chart"}:
             return failure("invalid_view", "Workflow views are published by their owning operation")
         handle = spec.props.get("handle")
@@ -424,10 +445,10 @@ class ClinicalTools:
                     and column["type"] != "number"
                 ):
                     return failure("invalid_view", "Quantitative channels require numeric fields")
-        event = await self.clinical.store.publish_view(session_id, conversation_turn_id, spec)
+        event = await self.clinical.store.publish_artifact(session_id, conversation_turn_id, spec)
         return ViewReceipt(
             ok=True,
-            view_id=event.payload["view_id"],
+            view_id=event.payload["artifact_id"],
             kind=spec.kind,
             title=spec.props["title"],
         ).model_dump()

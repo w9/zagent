@@ -1,4 +1,63 @@
 {
+  "artifacts": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Patient",
+            "type": "string"
+          },
+          {
+            "key": "mrn",
+            "label": "MRN",
+            "type": "string"
+          },
+          {
+            "key": "display_name",
+            "label": "Name",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0001",
+        "row_count": 1,
+        "title": "Patient metadata"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "kind",
+            "label": "Type",
+            "type": "string"
+          },
+          {
+            "key": "purity",
+            "label": "Purity",
+            "type": "number"
+          },
+          {
+            "key": "received_at",
+            "label": "Received",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0002",
+        "row_count": 3,
+        "title": "Specimens received in the last 24 hours"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -102,7 +161,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -255,7 +314,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -436,65 +495,6 @@
       "detail": "Response complete",
       "status": "complete",
       "title": "Agent step 3"
-    }
-  ],
-  "views": [
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Patient",
-            "type": "string"
-          },
-          {
-            "key": "mrn",
-            "label": "MRN",
-            "type": "string"
-          },
-          {
-            "key": "display_name",
-            "label": "Name",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0001",
-        "row_count": 1,
-        "title": "Patient metadata"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "kind",
-            "label": "Type",
-            "type": "string"
-          },
-          {
-            "key": "purity",
-            "label": "Purity",
-            "type": "number"
-          },
-          {
-            "key": "received_at",
-            "label": "Received",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0002",
-        "row_count": 3,
-        "title": "Specimens received in the last 24 hours"
-      },
-      "version": 1
     }
   ]
 }

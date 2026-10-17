@@ -18,7 +18,7 @@ export function PanelHeader({
   return (
     <header className={cn('flex h-bar shrink-0 items-center justify-between gap-3 border-b border-subtle px-4 @medium:px-6', className)}>
       <div className="min-w-0">
-        <h2 className="text-base font-semibold text-strong">{title}</h2>
+        <h2 title={title} className="truncate text-base font-semibold text-strong">{title}</h2>
         {subtitle && (
           <p data-testid={subtitleTestId} title={subtitle} className="truncate font-mono text-xs text-muted">
             {subtitle}

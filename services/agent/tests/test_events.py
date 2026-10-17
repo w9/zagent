@@ -87,7 +87,7 @@ def test_retry_hides_the_replaced_attempt_from_the_transcript_and_the_model():
         turn(first, 3, "conversation_turn_finished"),
         turn(second, 4, "user_message", message_id="q2", text="Chart it"),
         turn(second, 5, "step_started", step_id="s2", title="Agent step 1"),
-        turn(second, 6, "view_pushed", view_id="view-0001", spec=spec),
+        turn(second, 6, "artifact_published", artifact_id="view-0001", spec=spec),
         turn(second, 7, "refused", code="out_of_domain", message=REFUSAL_MESSAGES["out_of_domain"]),
         turn(second, 8, "conversation_turn_finished"),
         turn(retry, 9, "user_message", message_id="q3", text="Chart it", retry_of=str(second)),
@@ -103,7 +103,7 @@ def test_retry_hides_the_replaced_attempt_from_the_transcript_and_the_model():
     ]
     assert state.steps == []
     assert state.refusals == []
-    assert [view.id for view in state.views] == ["view-0001"]
+    assert [artifact.id for artifact in state.artifacts] == ["view-0001"]
     assert state.conversation_turn.id == retry
     assert [item.seq for item in without_retried(log)] == [1, 2, 3, 6, 9, 10, 11]
 
@@ -161,7 +161,7 @@ def test_legacy_events_replay_with_conversation_turn_names(kind):
     }
     upgraded = Event.model_validate(legacy)
     serialized = upgraded.model_dump(mode="json")
-    assert serialized["schema_version"] == 2
+    assert serialized["schema_version"] == 3
     assert serialized["conversation_turn_id"] == str(CONVERSATION_TURN_ID)
     assert serialized["type"] == f"conversation_turn_{kind}"
     assert "run_id" not in serialized
@@ -174,3 +174,77 @@ def test_legacy_events_replay_with_conversation_turn_names(kind):
 def test_legacy_names_are_not_accepted_for_new_events():
     with pytest.raises(ValidationError):
         EventDraft(type="run_started")
+    with pytest.raises(ValidationError):
+        EventDraft(type="view_pushed", payload={"view_id": "view-0001", "spec": TABLE_SPEC})
+
+
+TABLE_SPEC = {
+    "kind": "table",
+    "version": 1,
+    "props": {
+        "title": "Rows",
+        "columns": [{"key": "id", "label": "Id", "type": "string"}],
+        "rows": [],
+        "row_count": 0,
+    },
+}
+
+
+def stored(schema_version, seq, kind, payload):
+    return {
+        "schema_version": schema_version,
+        "session_id": SESSION_ID,
+        "seq": seq,
+        "run_id" if schema_version == 1 else "conversation_turn_id": CONVERSATION_TURN_ID,
+        "type": kind,
+        "payload": payload,
+        "created_at": datetime.now(UTC),
+    }
+
+
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_stored_view_events_are_read_as_published_artifacts(schema_version):
+    legacy = stored(schema_version, 1, "view_pushed", {"view_id": "view-0001", "spec": TABLE_SPEC})
+    upgraded = Event.model_validate(legacy)
+    assert upgraded.schema_version == 3
+    assert upgraded.type == "artifact_published"
+    assert upgraded.payload == {"artifact_id": "view-0001", "spec": TABLE_SPEC}
+    assert legacy["type"] == "view_pushed"
+    assert legacy["payload"] == {"view_id": "view-0001", "spec": TABLE_SPEC}
+    state = project(SESSION_ID, [upgraded])
+    assert [(artifact.id, artifact.seq) for artifact in state.artifacts] == [("view-0001", 1)]
+    assert "views" not in state.model_dump()
+
+
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_stored_draft_updates_are_read_with_artifact_ids(schema_version):
+    draft = {
+        "app_id": "readqc",
+        "specimen_handle": None,
+        "parameters": {"min_coverage": 30},
+        "draft_id": "draft-0001",
+        "view_id": "view-0002",
+        "version": 1,
+        "content_hash": "a" * 64,
+        "status": "editing",
+        "validation": [],
+        "job_id": None,
+    }
+    legacy = stored(schema_version, 1, "draft_updated", {"draft": draft})
+    upgraded = Event.model_validate(legacy)
+    assert upgraded.schema_version == 3
+    assert upgraded.type == "draft_updated"
+    assert list(upgraded.payload["draft"]) == [
+        "artifact_id" if key == "view_id" else key for key in draft
+    ]
+    assert upgraded.payload["draft"]["artifact_id"] == "view-0002"
+    assert legacy["payload"]["draft"]["view_id"] == "view-0002"
+    state = project(SESSION_ID, [upgraded])
+    assert state.drafts["draft-0001"].artifact_id == "view-0002"
+
+
+def test_current_events_are_not_rewritten():
+    current = stored(3, 1, "artifact_published", {"artifact_id": "view-0001", "spec": TABLE_SPEC})
+    assert Event.model_validate(current).payload == current["payload"]
+    with pytest.raises(ValidationError):
+        Event.model_validate({**current, "schema_version": 4})

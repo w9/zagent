@@ -41,6 +41,12 @@ function answer(page: Page) {
     .getByTestId('message-text')
 }
 
+function cardIds(page: Page) {
+  return page
+    .getByTestId('artifact-card')
+    .evaluateAll((cards) => cards.map((card) => (card as HTMLElement).dataset.artifactId))
+}
+
 async function assertAnswer(page: Page, request: APIRequestContext) {
   await expect(answer(page).locator('p')).toHaveText(expected.split('\n\n'))
   const path = new URL(page.url()).pathname
@@ -173,11 +179,10 @@ test('refresh, two tabs, socket reconnect, and a second conversation turn agree'
       'Complete',
     )
     await assertAnswer(second, request)
-    await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
-    await expect(second.getByTestId('view-position')).toHaveText('View 4 of 4')
-    expect(
-      await page.getByTestId('active-view').getAttribute('data-view-id'),
-    ).toBe(await second.getByTestId('active-view').getAttribute('data-view-id'))
+    await expect(page.getByTestId('artifact-card')).toHaveCount(4)
+    await expect(second.getByTestId('artifact-card')).toHaveCount(4)
+    expect(await cardIds(page)).toEqual(await cardIds(second))
+    await expect(page.getByTestId('maximized-artifact')).toHaveCount(0)
     await assertLayout(page)
     await page.screenshot({ path: testInfo.outputPath('desktop-complete.png') })
     expect(errors).toEqual([])
@@ -257,7 +262,7 @@ test('an answer can be copied and the latest turn retried in place', async ({
   await expect(reply.getByRole('button', { name: 'Copied', exact: true })).toBeVisible()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(expected)
   const before = await (await request.get(`/api/sessions/${sessionId}/snapshot`)).json()
-  // The scripted turn ends with views, so Retry sits under the turn rather than the answer.
+  // The scripted turn ends with artifacts, so Retry sits under the turn rather than the answer.
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Responding')
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
@@ -299,7 +304,7 @@ test('mobile sessions, streaming, refresh, and compact viewports', async ({
   await page.screenshot({ path: testInfo.outputPath('mobile-small.png') })
 })
 
-test('view history survives refresh, pauses following, and rejects invalid specs', async ({
+test('artifacts are cards that maximize, survive refresh, and reject invalid specs', async ({
   page,
   request,
 }, testInfo) => {
@@ -309,81 +314,87 @@ test('view history survives refresh, pauses following, and rejects invalid specs
   const sessionId = await createSession(request)
   await openSession(page, sessionId)
   await send(page, 'Show intake')
-  await expect(page.getByTestId('view-position')).toHaveText('View 2 of 2')
+  const cards = page.getByTestId('artifact-card')
+  await expect(cards).toHaveCount(2)
   await expect(page.getByTestId('conversation-turn-status')).toHaveText(
     'Complete',
   )
   await expect(
-    page.getByRole('heading', { name: 'Intake quality checks', exact: true }),
+    cards.getByRole('heading', { name: 'Intake quality checks', exact: true }),
   ).toBeVisible()
+  // Publishing never opens the panel; the conversation keeps the full width.
+  const panel = page.getByRole('complementary', { name: 'Maximized artifact' })
+  await expect(panel).toHaveCount(0)
+  const workspace = await page.locator('#workspace-layout').boundingBox()
+  const conversation = await page.locator('#conversation-panel').boundingBox()
+  expect(Math.abs(conversation!.width - workspace!.width)).toBeLessThan(2)
   await expect(page.getByTestId('step-marker')).toHaveCount(2)
   await expect(page.getByTestId('step-marker').first()).toHaveAttribute('data-open', 'false')
   await page.getByTestId('step-marker').first().getByRole('button', { name: 'Step details' }).click()
   await expect(
     page.getByText('14 synthetic specimens; 6 displayed in this snapshot.'),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Previous view', exact: true }).click()
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
-  const pinned = await page
-    .getByTestId('active-view')
-    .getAttribute('data-view-id')
-  expect(new URL(page.url()).searchParams.get('view')).toBe(pinned)
-  await expect(page.getByText('6 of 14 rows shown')).toBeVisible()
+  const intake = cards.first()
+  await expect(intake.getByText('5 of 14 rows shown')).toBeVisible()
+  const list = page.getByRole('navigation', { name: 'Artifacts' })
+  await expect(list.getByRole('button', { name: /Intake quality checks|Specimens received/ })).toHaveCount(2)
+  await page.screenshot({ path: testInfo.outputPath('desktop-artifact-cards.png'), animations: 'disabled' })
+
+  await intake.getByRole('button', { name: 'Show all rows' }).click()
+  const pinned = await intake.getAttribute('data-artifact-id')
+  const maximized = page.getByTestId('maximized-artifact')
+  await expect(maximized).toHaveAttribute('data-artifact-id', pinned!)
+  expect(new URL(page.url()).searchParams.get('artifact')).toBe(pinned)
+  await expect(maximized.getByText('6 of 14 rows shown')).toBeVisible()
+  await expect(intake).toHaveAttribute('data-state', 'maximized')
+  await expect(intake.getByText('5 of 14 rows shown')).toHaveCount(0)
+  await expect(list).toHaveCount(0)
   await page.reload()
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
-  await expect(page.getByTestId('active-view')).toHaveAttribute(
-    'data-view-id',
-    pinned!,
-  )
+  await expect(maximized).toHaveAttribute('data-artifact-id', pinned!)
+  await expect(intake).toHaveAttribute('data-state', 'maximized')
+
+  // New artifacts add cards without taking the panel.
   await send(page, 'Continue')
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 3')
-  await expect(page.getByTestId('active-view')).toHaveAttribute(
-    'data-view-id',
-    pinned!,
-  )
-  await page.getByRole('button', { name: 'Latest view', exact: true }).click()
-  await expect(page.getByTestId('view-position')).toHaveText('View 3 of 3')
-  expect(new URL(page.url()).searchParams.has('view')).toBe(false)
-  await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
+  await expect(cards).toHaveCount(4)
   await expect(page.getByTestId('conversation-turn-status')).toHaveText(
     'Complete',
   )
-  await expect(
-    page.getByRole('button', { name: 'Next view', exact: true }),
-  ).toBeDisabled()
-  const snapshot = await (
-    await request.get(`/api/sessions/${sessionId}/snapshot`)
-  ).json()
-  expect(
-    await page
-      .getByLabel('View history')
-      .locator('option')
-      .evaluateAll((options) =>
-        options.map((option) => (option as HTMLOptionElement).value),
-      ),
-  ).toEqual(snapshot.views.map((view: { id: string }) => view.id))
-  await page.getByLabel('View history').selectOption(snapshot.views[1].id)
-  await expect(page.getByTestId('view-position')).toHaveText('View 2 of 4')
-  await page.getByRole('button', { name: 'Next view', exact: true }).click()
-  await expect(page.getByTestId('view-position')).toHaveText('View 3 of 4')
-  await page.getByRole('button', { name: 'Latest view', exact: true }).click()
-  const previous = await page.getByTestId('active-view').innerText()
-  await page.screenshot({
-    path: testInfo.outputPath('desktop-working-surface.png'),
-      animations: 'disabled',
-  })
-  await send(page, '/invalid-view')
+  await expect(maximized).toHaveAttribute('data-artifact-id', pinned!)
+  const latest = cards.last()
+  await latest.getByRole('button', { name: 'Maximize', exact: true }).click()
+  await expect(maximized).toHaveAttribute('data-artifact-id', (await latest.getAttribute('data-artifact-id'))!)
+  await expect(intake).toHaveAttribute('data-state', 'inline')
+  await expect(latest).toHaveAttribute('data-state', 'maximized')
+  await page.screenshot({ path: testInfo.outputPath('desktop-artifact-maximized.png'), animations: 'disabled' })
+
+  await panel.getByRole('button', { name: 'Minimize', exact: true }).click()
+  await expect(panel).toHaveCount(0)
+  expect(new URL(page.url()).searchParams.has('artifact')).toBe(false)
+  await expect(latest.getByRole('button', { name: 'Maximize', exact: true })).toBeFocused()
+  await list.getByRole('button', { name: 'Intake quality checks' }).first().click()
+  await expect(maximized).toHaveAttribute('data-artifact-id', (await cards.nth(1).getAttribute('data-artifact-id'))!)
+  await cards.nth(1).getByRole('button', { name: 'Minimize', exact: true }).click()
+  await expect(panel).toHaveCount(0)
+  await page.goBack()
+  await expect(maximized).toHaveAttribute('data-artifact-id', (await cards.nth(1).getAttribute('data-artifact-id'))!)
+
+  const shown = await maximized.innerText()
+  await send(page, '/invalid-artifact')
   await expect(page.getByTestId('conversation-turn-status')).toHaveText(
     'Failed',
   )
   await expect(page.getByRole('alert')).toContainText('View schema error')
-  await expect(page.getByTestId('view-position')).toHaveText('View 4 of 4')
-  expect(await page.getByTestId('active-view').innerText()).toBe(previous)
+  await expect(cards).toHaveCount(4)
+  expect(await maximized.innerText()).toBe(shown)
   await expect(page.getByTestId('step-marker').last()).toContainText('Failed')
+  await page.goto(`/sessions/${sessionId}?artifact=view-9999`)
+  await expect(panel.getByRole('alert')).toContainText('This artifact is not available in this session.')
+  await panel.getByRole('alert').getByRole('button', { name: 'Minimize', exact: true }).click()
+  await expect(panel).toHaveCount(0)
   expect(errors).toEqual([])
 })
 
-test('mobile working surface retains selection and both panels remain accessible', async ({
+test('mobile artifacts take over the workspace and minimize back to the conversation', async ({
   page,
   request,
 }, testInfo) => {
@@ -394,18 +405,17 @@ test('mobile working surface retains selection and both panels remain accessible
   await expect(page.getByTestId('conversation-turn-status')).toHaveText(
     'Complete',
   )
-  await page.getByRole('tab', { name: /Working surface/ }).click()
-  await expect(
-    page.getByRole('heading', { name: 'Intake quality checks', exact: true }),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Previous view', exact: true }).click()
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
+  const message = page.getByRole('textbox', { name: 'Message', exact: true })
+  const panel = page.getByRole('complementary', { name: 'Maximized artifact' })
+  await expect(page.getByRole('navigation', { name: 'Artifacts' })).toBeHidden()
+  await page.getByRole('button', { name: '2 artifacts', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Specimens received in the last 24 hours' }).click()
+  await expect(panel).toBeVisible()
+  await expect(message).toBeHidden()
   await page.reload()
-  await expect(
-    page.getByRole('tab', { name: /Working surface/ }),
-  ).toHaveAttribute('aria-selected', 'true')
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
-  await expect(page.getByText('6 of 14 rows shown')).toBeVisible()
+  await expect(panel).toBeVisible()
+  await expect(message).toBeHidden()
+  await expect(panel.getByText('6 of 14 rows shown')).toBeVisible()
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 320, height: 568 },
@@ -413,15 +423,15 @@ test('mobile working surface retains selection and both panels remain accessible
     await page.setViewportSize(viewport)
     const layout = await page.evaluate(() => {
       const content = document
-        .querySelector('[data-testid="active-view"]')!
+        .querySelector('[data-testid="maximized-artifact"]')!
         .getBoundingClientRect()
-      const navigation = document
-        .querySelector('nav[aria-label="View navigation"]')!
+      const header = document
+        .querySelector('aside[aria-label="Maximized artifact"] > header')!
         .getBoundingClientRect()
-      const scroll = document.querySelector('[data-testid="table-scroll"]')!
+      const scroll = document.querySelector('[data-testid="maximized-artifact"] [data-testid="table-scroll"]')!
       return {
         noPageOverflow: document.documentElement.scrollWidth <= innerWidth,
-        noOverlap: content.top >= navigation.bottom,
+        noOverlap: content.top >= header.bottom,
         bounded:
           content.left >= 0 &&
           content.right <= innerWidth &&
@@ -436,15 +446,18 @@ test('mobile working surface retains selection and both panels remain accessible
       tableScrollable: true,
     })
     await page.screenshot({
-      path: testInfo.outputPath(`mobile-surface-${viewport.width}.png`),
-        animations: 'disabled',
+      path: testInfo.outputPath(`mobile-artifact-${viewport.width}.png`),
+      animations: 'disabled',
     })
   }
-  await page.getByRole('tab', { name: 'Conversation', exact: true }).click()
-  await expect(
-    page.getByRole('textbox', { name: 'Message', exact: true }),
-  ).toBeVisible()
+  await panel.getByRole('button', { name: 'Minimize', exact: true }).click()
+  await expect(panel).toBeHidden()
+  await expect(message).toBeVisible()
   await assertLayout(page)
-  await page.getByRole('tab', { name: /Working surface/ }).click()
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
+  const intake = page.getByTestId('artifact-card').first()
+  await expect(intake.getByText('5 of 14 rows shown')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('mobile-artifact-cards.png'), animations: 'disabled' })
+  await intake.getByRole('button', { name: 'Maximize', exact: true }).click()
+  await expect(panel.getByText('6 of 14 rows shown')).toBeVisible()
+  await expect(message).toBeHidden()
 })

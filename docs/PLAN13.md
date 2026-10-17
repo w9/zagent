@@ -196,7 +196,7 @@ There is no real authentication; identity is simulated as in PLAN12, but verific
 | Changing the prompt, tools or citation format | not in this plan; it would require a re-record |
 | Changing what snapshots contain | not in this plan; see Traps |
 | Chips in job cards or X-ray | not in this plan |
-| Operational data (runs, instruments, reagent lots, per-library QC) | PLAN14 |
+| Operational data (runs, instruments, reagent lots, per-library QC) | PLAN15 |
 
 ---
 
@@ -322,7 +322,7 @@ side.
 
 ## After this
 
-- PLAN14: operational data in the clinical zone (runs, instruments, reagent lots, per-library QC
+- PLAN15: operational data in the clinical zone (runs, instruments, reagent lots, per-library QC
   metrics), so questions can combine query handles with knowledge thresholds and known-issue
   tickets.
 - Deep links from job cards and refusal messages to relevant intranet pages.

@@ -20,8 +20,8 @@ export const Display: Story = {
 export const Quiet: Story = {
   args: {
     icon: Table2,
-    title: 'No views yet',
-    description: 'Tables, charts and analysis drafts the agent publishes appear here.',
+    title: 'No artifacts yet',
+    description: 'Tables, charts and analysis drafts the agent publishes appear in the conversation.',
   },
 }
 

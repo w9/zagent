@@ -1,80 +1,64 @@
-import { MessageSquare, Table2 } from 'lucide-react'
 import { useLayoutEffect } from 'react'
 import type { ReactNode } from 'react'
 import { useGroupRef } from 'react-resizable-panels'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '../ui/resizable'
-import { Tabs } from '../ui/tabs'
 import { loadSize, saveSize, token, useBreakpoint } from './layout'
 
-export type WorkspacePanel = 'chat' | 'surface'
-
 const chatKey = 'zagent.chat-share'
-const split = (chatShare: number) => ({ 'chat-panel': chatShare, 'surface-panel': 100 - chatShare })
+const split = (chatShare: number) => ({ 'chat-panel': chatShare, 'artifact-panel': 100 - chatShare })
 
-/** Conversation and working surface: tabs below `desktop:`, resizable side by side from it (DESIGN.md section 4). */
+/**
+ * The conversation, and the maximized artifact when there is one (DESIGN.md section 4). From
+ * `desktop:` the artifact sits beside the conversation and is resizable; below it, it takes over.
+ * Both panels stay mounted, so opening and closing the artifact never remounts the conversation.
+ */
 export function SessionLayout({
-  panel,
-  onPanelChange,
-  viewCount,
+  maximized,
   chat,
-  surface,
+  artifact,
 }: {
-  panel: WorkspacePanel
-  onPanelChange: (panel: WorkspacePanel) => void
-  viewCount: number
+  maximized: boolean
   chat: ReactNode
-  surface: ReactNode
+  artifact: ReactNode
 }) {
   const desktop = useBreakpoint('desktop')
   const ultra = useBreakpoint('ultra')
   const group = useGroupRef()
-  // Below desktop the selected tab fills the group; the other panel stays mounted, hidden.
+  const sideBySide = desktop && maximized
   const defaultShare = ultra ? 100 / 3 : (100 * 5) / 12
-  const share = desktop ? (loadSize(chatKey) ?? defaultShare) : panel === 'chat' ? 100 : 0
+  const share = !maximized ? 100 : desktop ? (loadSize(chatKey) ?? defaultShare) : 0
 
   useLayoutEffect(() => {
     group.current?.setLayout(split(share))
   }, [group, share])
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <Tabs
-        label="Workspace panels"
-        className="desktop:hidden"
-        value={panel}
-        onChange={onPanelChange}
-        items={[
-          { value: 'chat', label: 'Conversation', icon: MessageSquare, controls: 'conversation-panel' },
-          { value: 'surface', label: 'Working surface', icon: Table2, count: viewCount, controls: 'working-surface' },
-        ]}
-      />
-      <ResizablePanelGroup
-        id="workspace-layout"
-        groupRef={group}
-        defaultLayout={split(share)}
-        disabled={!desktop}
-        className="min-h-0 flex-1"
-        onLayoutChanged={(layout, meta) => {
-          const chatShare = (meta.requestedLayout ?? layout)['chat-panel']
-          if (meta.isUserInteraction && chatShare) saveSize(chatKey, chatShare)
-        }}
+    <ResizablePanelGroup
+      id="workspace-layout"
+      groupRef={group}
+      defaultLayout={split(share)}
+      disabled={!sideBySide}
+      className="min-h-0 flex-1"
+      onLayoutChanged={(layout, meta) => {
+        const chatShare = (meta.requestedLayout ?? layout)['chat-panel']
+        if (sideBySide && meta.isUserInteraction && chatShare) saveSize(chatKey, chatShare)
+      }}
+    >
+      <ResizablePanel
+        id="chat-panel"
+        minSize={sideBySide ? token('--panel-min') : undefined}
+        className={maximized && !desktop ? 'hidden flex-col' : 'flex flex-col'}
       >
-        <ResizablePanel
-          id="chat-panel"
-          minSize={desktop ? token('--panel-min') : undefined}
-          className={panel === 'chat' ? 'flex flex-col' : 'hidden flex-col desktop:flex'}
-        >
-          {chat}
-        </ResizablePanel>
-        {desktop && <ResizableHandle aria-label="Resize conversation" />}
-        <ResizablePanel
-          id="surface-panel"
-          minSize={desktop ? token('--panel-min') : undefined}
-          className={panel === 'surface' ? 'flex flex-col' : 'hidden flex-col desktop:flex'}
-        >
-          {surface}
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </div>
+        {chat}
+      </ResizablePanel>
+      {sideBySide && <ResizableHandle aria-label="Resize conversation" />}
+      <ResizablePanel
+        id="artifact-panel"
+        minSize={sideBySide ? token('--panel-min') : undefined}
+        className={maximized ? 'flex flex-col' : 'hidden flex-col'}
+      >
+        {artifact}
+      </ResizablePanel>
+    </ResizablePanelGroup>
   )
 }

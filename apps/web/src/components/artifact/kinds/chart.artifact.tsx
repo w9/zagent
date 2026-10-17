@@ -3,13 +3,13 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { VisualizationSpec } from 'vega-embed'
 import { plural } from '../../../lib/format'
 import { useTheme } from '../../../lib/theme'
-import { validateViewSpec } from '../../../lib/views'
-import type { ChartSpec } from '../../../lib/views'
+import { validateArtifactSpec } from '../../../lib/artifacts'
+import type { ChartSpec } from '../../../lib/artifacts'
 import { Button } from '../../ui/button'
 import { Notice } from '../../ui/notice'
 import { Spinner } from '../../ui/spinner'
-import type { ViewRendererProps } from '../view-renderer'
-import { ViewHeader } from '../view-header'
+import { ArtifactMeta } from '../artifact-meta'
+import type { ArtifactRendererProps } from '../artifact-renderer'
 
 /** Vega config from the current theme's tokens (DESIGN.md section 7). */
 function chartConfig() {
@@ -37,7 +37,7 @@ function chartConfig() {
   }
 }
 
-function ChartView({ spec, resolveHandle }: ViewRendererProps) {
+function ChartArtifact({ spec, resolveHandle, display }: ArtifactRendererProps) {
   const props = (spec as ChartSpec).props
   const target = useRef<HTMLDivElement>(null)
   const theme = useTheme()
@@ -59,7 +59,7 @@ function ChartView({ spec, resolveHandle }: ViewRendererProps) {
       try {
         const data = await resolve(controller.signal)
         if (!data.columns) throw new Error('Query column metadata is missing')
-        validateViewSpec({
+        validateArtifactSpec({
           kind: 'table', version: 1,
           props: { title: props.title, columns: data.columns, rows: data.rows, row_count: data.row_count },
         })
@@ -110,7 +110,7 @@ function ChartView({ spec, resolveHandle }: ViewRendererProps) {
 
   return (
     <section aria-label={props.title} className="flex min-w-0 flex-col">
-      <ViewHeader kind="Chart" title={props.title} meta={state.count !== undefined && plural(state.count, 'row', 'rows')} />
+      {display === 'maximized' && state.count !== undefined && <ArtifactMeta>{plural(state.count, 'row', 'rows')}</ArtifactMeta>}
       {state.error ? (
         <Notice
           tone="danger"
@@ -134,7 +134,7 @@ function ChartView({ spec, resolveHandle }: ViewRendererProps) {
   )
 }
 
-ChartView.kind = 'chart'
-ChartView.version = 1
+ChartArtifact.kind = 'chart'
+ChartArtifact.version = 1
 
-export default ChartView
+export default ChartArtifact

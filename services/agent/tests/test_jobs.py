@@ -134,7 +134,7 @@ async def test_live_job_handles_keep_identity_and_session_scope(store):
     job = await drafts.confirm(session.id, draft.draft_id, draft.content_hash)
     jobs = JobStore(drafts.clinical)
     before = await store.snapshot(session.id)
-    handle = before.views[-1].spec.props["handle"]
+    handle = before.artifacts[-1].spec.props["handle"]
     assert (await jobs.read_handle(session.id, handle))["jobs"][0]["status"] == "pending"
     lease = await jobs.claim(uuid4(), session_id=session.id)
     await jobs.ingest(lease, next(execution_records(lease.snapshot)))
@@ -223,7 +223,9 @@ async def test_jobs_mcp_inspection_retrieval_and_corrected_rerun(store):
 
 
 @pytest.mark.integration
-async def test_mcp_app_resources_and_public_reads_are_bound_to_published_view(database_url):
+async def test_mcp_app_resources_and_public_reads_are_bound_to_published_artifact(
+    database_url,
+):
     import httpx
     from test_drafts import fixture_draft
     from zagent.agent import ScriptedAgent
@@ -234,11 +236,15 @@ async def test_mcp_app_resources_and_public_reads_are_bound_to_published_view(da
         session, drafts, draft = await fixture_draft(app.state.store, app_id="readqc")
         job = await drafts.confirm(session.id, draft.draft_id, draft.content_hash)
         snapshot = await app.state.store.snapshot(session.id)
-        view = snapshot.views[-1]
+        artifact = snapshot.artifacts[-1]
+        assert job.artifact_id == artifact.id
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://bff"
         ) as client:
-            path = f"/sessions/{session.id}/views/{view.id}"
+            path = f"/sessions/{session.id}/artifacts/{artifact.id}"
+            assert (
+                await client.get(f"/sessions/{session.id}/views/{artifact.id}/app")
+            ).status_code == 404
             resource = await client.get(path + "/app")
             assert resource.status_code == 200
             assert resource.json()["resource_uri"] == "ui://jobs/card"
@@ -248,7 +254,7 @@ async def test_mcp_app_resources_and_public_reads_are_bound_to_published_view(da
             assert data.json()["jobs"][0]["job_id"] == job.job_id
             other = await app.state.store.create_session()
             assert (
-                await client.get(f"/sessions/{other.id}/views/{view.id}/app")
+                await client.get(f"/sessions/{other.id}/artifacts/{artifact.id}/app")
             ).status_code == 404
             assert (await app.state.store.snapshot(session.id)).seq == snapshot.seq
         async with app.state.jobs_client.connection() as mcp:

@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -1193,6 +1194,5 @@
       "status": "complete",
       "title": "Agent step 7"
     }
-  ],
-  "views": []
+  ]
 }

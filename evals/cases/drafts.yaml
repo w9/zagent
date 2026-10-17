@@ -9,13 +9,13 @@ cases:
       golden: goldens/DRAFT-001.json
       refusal: none
       draft: {app: somatic-snv, params_match: {min_vaf: 0.03}, validation: [missing_matched_normal]}
-      view_references: true
+      artifact_references: true
       submitted: false
       tools_called: [find_patients, find_specimens, update_draft]
       tools_only_handles: true
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      views: [{kind: draft_form}]
+      artifacts: [{kind: draft_form}]
       events_exclude: [conversation_turn_failed, job_submitted]
   - id: DRAFT-CONFIRM
     requirement: REQ-JOB-01
@@ -29,12 +29,12 @@ cases:
       refusal: none
       draft: {app: readqc, params_match: {min_coverage: 45}, validation: []}
       submitted: true
-      view_references: true
-      events_include: [draft_updated, job_submitted, view_pushed]
+      artifact_references: true
+      events_include: [draft_updated, job_submitted, artifact_published]
       events_exclude: [conversation_turn_failed]
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      views: [{kind: draft_form}, {kind: job_card}]
+      artifacts: [{kind: draft_form}, {kind: job_card}]
   - id: DRAFT-002
     requirement: REQ-VALID-01
     agent: llm:default
@@ -48,7 +48,7 @@ cases:
       tools_called: [find_patients, find_specimens, update_draft]
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      views: [{kind: draft_form}]
+      artifacts: [{kind: draft_form}]
       events_exclude: [conversation_turn_failed, job_submitted]
   - id: DRAFT-003
     requirement: REQ-VALID-01
@@ -62,7 +62,7 @@ cases:
       submitted: false
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      views: [{kind: draft_form}]
+      artifacts: [{kind: draft_form}]
       events_exclude: [conversation_turn_failed, job_submitted]
   - id: DRAFT-004
     requirement: REQ-VALID-01
@@ -76,5 +76,5 @@ cases:
       submitted: false
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      views: [{kind: draft_form}]
+      artifacts: [{kind: draft_form}]
       events_exclude: [conversation_turn_failed, job_submitted]

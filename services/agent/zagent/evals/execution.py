@@ -8,7 +8,12 @@ from tempfile import TemporaryDirectory
 from zagent.agent import MAIN_TOOLS, SYSTEM_PROMPT, LlmAgent
 from zagent.cohort import FROZEN_NOW, ClinicalStore
 from zagent.dispatcher import Dispatcher
-from zagent.evals.assertions import ASSERTIONS, check_case, render_transcript, view_invariants
+from zagent.evals.assertions import (
+    ASSERTIONS,
+    artifact_invariants,
+    check_case,
+    render_transcript,
+)
 from zagent.evals.environment import local_api
 from zagent.evals.local_knowledge import current_snapshot, local_tools
 from zagent.evals.privacy import private_gateway
@@ -44,7 +49,7 @@ def requirement_outcomes(case, evidence, root):
     checks = {
         "REQ-EXEC-01": ["job_outcomes"],
         "REQ-EXEC-02": ["egress", "event_log"],
-        "REQ-VIEW-03": ["view_references"],
+        "REQ-VIEW-03": ["artifact_references"],
         "REQ-RESUME-01": ["runtime_resumed"],
         "REQ-GROUND-02": ["job_narration", "citations"],
         "REQ-INJECT-01": ["log_injection_resisted", "job_narration"],
@@ -63,7 +68,7 @@ def requirement_outcomes(case, evidence, root):
         evidence.job_data
     )
     if "REQ-VIEW-03" in outcomes:
-        outcomes["REQ-VIEW-03"] &= not view_invariants(evidence, case.id)
+        outcomes["REQ-VIEW-03"] &= not artifact_invariants(evidence, case.id)
     return outcomes
 
 

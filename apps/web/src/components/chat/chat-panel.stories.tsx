@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { bindings, cited, conversation, empty, failed, personas, refused, responding, unanswered } from '../fixtures'
+import { bindings, cited, conversation, empty, failed, personas, refused, resolveHandle, responding, unanswered } from '../fixtures'
 import { ChatPanel } from './chat-panel'
 
 const meta = {
@@ -16,6 +16,9 @@ const meta = {
     onSend: async () => {},
     onRetry: async () => {},
     onOpenCitation: () => {},
+    onMaximize: () => {},
+    onMinimize: () => {},
+    resolveHandle,
   },
   decorators: [(Story) => <div className="flex h-dvh flex-col"><Story /></div>],
 } satisfies Meta<typeof ChatPanel>
@@ -33,3 +36,4 @@ export const Opening: Story = { args: { state: null, connection: 'connecting' } 
 export const WithoutPersona: Story = { args: { persona: undefined } }
 export const Archived: Story = { args: { onUnarchive: () => {} } }
 export const WithCitations: Story = { args: { state: cited, name: 'Tumor coverage and the last swap' } }
+export const ArtifactMaximized: Story = { args: { maximizedArtifact: 'view-0001' } }

@@ -31,21 +31,22 @@ legacy regressions, real-agent multi-turn cases, and 340 labeled scope cases wit
 recorded guard calls each. Scope recall and in-scope acceptance have separate lower-bound gates;
 the report also shows refusal precision, per-reason results, and disagreeing cases.
 
-`push_view` publishes a validated view before returning `{ok, view_id, kind, title}`. Chat can
-refer to that title in the working surface without receiving row data. The prompt separates
-result presentation from explanations and clarification; narration quality is measured in evals,
-not enforced by filtering prose or substituting canned responses.
+`push_view` publishes a validated artifact before returning `{ok, view_id, kind, title}` (the
+model still calls artifacts views). Chat can refer to that title without receiving row data. The
+prompt separates result presentation from explanations and clarification; narration quality is
+measured in evals, not enforced by filtering prose or substituting canned responses.
 
-Host-owned references in chat open the exact published table, chart, draft, or job view, including
-on mobile. New sessions appear first with stable fallback names. One optional background model
-call names the first completed in-scope exchange; a manual rename always takes precedence.
+Every published table, chart, draft or job appears as a card in the conversation where it was
+published, and host-owned references in chat maximize the exact artifact, including on mobile.
+New sessions appear first with stable fallback names. One optional background model call names
+the first completed in-scope exchange; a manual rename always takes precedence.
 
 Assistant messages use shared, streaming Markdown rendering in chat and X-ray's display pane;
 user messages and model-visible requests stay plain text. Code and GFM tables scroll within the
 transcript. Raw HTML is inert, images do not load, and only protected external HTTP(S) links are
 enabled. Privacy values are inserted into visible text after parsing, never into destinations.
 Stored responses, model context, cassettes, and exports are unchanged. Query results still belong
-in validated published views, and model-authored links cannot act as working-surface references.
+in validated published artifacts, and model-authored links cannot act as artifact references.
 
 A **conversation turn** is one user message plus the agent's processing and response. A
 **job run** is the execution of a submitted analysis job, with an independent lifecycle.
@@ -96,8 +97,8 @@ Three panels, in the shape most people already know.
 | Panel | Contents |
 |---|---|
 | Left | Sessions and navigation |
-| Middle | Chat, with token streaming and collapsible tool and step markers |
-| Right | A dynamic working surface: tables, charts, job forms, live job monitors. The agent pushes views onto it. You can always flip back to a previous one. |
+| Middle | Chat, with token streaming, collapsible tool and step markers, and a card for every artifact: tables, charts, job forms, live job monitors |
+| Right | The maximized artifact, when you maximize one. Otherwise the chat takes the full width. |
 
 Two controls matter more than the rest:
 
@@ -187,10 +188,12 @@ a corrected rerun. Verified selection changes only the query's role assignments,
 rows. The corrected draft requires another human confirmation. The independently recorded
 `EXEC-SWAP` evaluation exercises that whole path, including the corrected execution.
 
-Previous/next controls and the history menu let you revisit earlier views. Navigating back pins
-that view while new ones arrive; selecting the latest resumes following. Refresh keeps the
-chosen view through the session URL. On smaller screens, tabs switch between chat and the surface.
-Titled chat references pin their exact target even when it was the latest view when clicked.
+Small artifacts (charts, job cards, the job grid) are live in their cards; large ones (tables,
+drafts) show a preview. **Maximize** on a card, a titled chat reference, or an entry in the
+floating artifact list opens the artifact in the right panel, and **Minimize** returns it to its
+card. Publishing never maximizes anything; confirming a maximized draft switches the panel to the
+job card it started. Refresh keeps the maximized artifact through the session URL. On smaller
+screens a maximized artifact takes over the workspace until minimized.
 Opening a reference never reruns a query, edits a draft, or confirms a job. Use a session's … menu
 to rename it; naming and new activity do not change its creation-time ordering. The same menu
 archives a session: it leaves the list (Undo brings it back) and stays readable, read-only, under
@@ -199,7 +202,7 @@ asks first; archiving then stops the response, and the jobs keep running. Sessio
 
 Step markers start collapsed and expand to show tool names, arguments, results, and validation
 errors. Reopening `/` restores the last session in that browser. The old `/fail` and
-`/invalid-view` fixtures remain available with `make up ZAGENT_AGENT=scripted`.
+`/invalid-artifact` fixtures remain available with `make up ZAGENT_AGENT=scripted`.
 
 ### Live OpenRouter Access
 
@@ -339,8 +342,11 @@ Existing PLAN1 databases migrate automatically. PLAN6 preserves raw legacy histo
 while converting active event payloads to tokens.
 The API now returns `conversation_turn_id`, snapshots expose `conversation_turn`, and lifecycle
 events are `conversation_turn_started`, `conversation_turn_finished`, and
-`conversation_turn_failed` in event schema v2. Historical v1 events are translated on read.
-PLAN3 adds `views` and `steps` to the snapshot projection without a database migration.
+`conversation_turn_failed`. PLAN14 renames `view_pushed {view_id}` to
+`artifact_published {artifact_id}` and the snapshot's `views` to `artifacts` in event schema v3;
+historical v1 and v2 events are translated on read.
+PLAN3 adds the published views (now `artifacts`) and `steps` to the snapshot projection without a
+database migration.
 PLAN7 adds `drafts`, immutable draft revisions, and pending `jobs`, plus stable session titles.
 Draft updates and confirmation append events even after their originating conversation turn has
 finished. Draft/job tables are inaccessible to the runtime database role. Human edit and confirm
@@ -349,7 +355,7 @@ PLAN8 atomically freezes execution input and enqueues new confirmations. Existin
 records are preserved without retroactively executing expired selections; prepare and confirm a
 new draft to run one. Job state/logs live separately from the chat event sequence. The snapshot's
 `jobs` projection records submission; live state comes from the job API and handle subscriptions.
-View payloads have their own `{kind, version, props}` schema. Legacy scripted tables support
+Artifact payloads have their own `{kind, version, props}` schema. Legacy scripted tables support
 inline snapshots; real tools accept only handle-backed tables and charts. Handles are bound to
 one session and site, expire after 24 hours, and contain at most 200 rows. Expired handles return
 HTTP 410 rather than an empty table. Relative windows are `P1D`, `P7D`, and `P30D`, with `P1D`
@@ -400,7 +406,7 @@ Each workflow exercises a specific row in the guarantee table.
 | `Prepare somatic calling on specimens received in the last day for NGC-0041875.` | A pre-filled form appears with missing-normal validation. | Slot filling, validation |
 | `min VAF 0.03` | The form updates live. Chat and form are editing one object. | Draft state |
 | *(press Confirm on a valid draft)* | A synthetic job runs and a live MCP-owned job card appears. | Confirmation invariant |
-| `Show me the running jobs from today` | A live grid of active jobs in this session. | Dynamic views |
+| `Show me the running jobs from today` | A live grid of active jobs in this session, in a card you can maximize. | Dynamic artifacts |
 | *(refresh mid-stream)* | The stream picks up exactly where it left off. | Stream durability |
 | *(toggle X-ray)* | The model's view of the conversation, side by side with yours. | Privacy boundary |
 
@@ -445,7 +451,7 @@ NGC-0041878 the injected log.
 
 ## Running the evidence suite
 
-The suite covers 38 requirements with 510 cases. Thirty-six ordinary HTTP cases cover streams, views,
+The suite covers 38 requirements with 510 cases. Thirty-six ordinary HTTP cases cover streams, artifacts,
 tools, RLS, real conversations, refusals, knowledge questions, drafts, confirmation, and session
 metadata. The 340 labeled guard
 cases span obvious requests, short continuations, near-boundary questions, and scope wrappers.
@@ -625,6 +631,7 @@ quality weaknesses remain visible even when regression gates pass.
 | [PLAN11](docs/PLAN11.md) | The gallery: the guarantee showcase | ☐ |
 | [PLAN12](docs/PLAN12.md) | The knowledge service: a separately owned zone behind a broker | Implemented (relocation, corpus, identity, cutover) |
 | [PLAN13](docs/PLAN13.md) | The intranet: clickable citations that open the source document | Implemented |
+| [PLAN14](docs/PLAN14.md) | Artifacts in the conversation: cards that maximize into the right panel | Implemented |
 
 ---
 
@@ -632,7 +639,7 @@ quality weaknesses remain visible even when regression gates pass.
 
 Python 3.12, FastAPI and Pydantic v2 (managed with uv), Postgres 16, React 19 with TypeScript
 and Vite, TanStack Router, Tailwind with shadcn/ui. SSE for streaming. Docker Compose for
-local development. OpenTelemetry for tracing. MCP for tool and view
+local development. OpenTelemetry for tracing. MCP for tool and artifact
 delivery.
 
 Choices and the reasoning behind them are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#stack).

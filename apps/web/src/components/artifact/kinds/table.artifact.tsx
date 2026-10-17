@@ -1,16 +1,19 @@
-import { Check, RefreshCw, X } from 'lucide-react'
+import { Check, Maximize2, RefreshCw, X } from 'lucide-react'
 import { useEffect, useEffectEvent, useState } from 'react'
 import { plural } from '../../../lib/format'
 import { cn } from '../../../lib/utils'
-import { validateViewSpec } from '../../../lib/views'
-import type { TableCell, TableColumn, TableData, TableProps, TableSpec, ViewSpec } from '../../../lib/views'
+import { validateArtifactSpec } from '../../../lib/artifacts'
+import type { ArtifactSpec, TableCell, TableColumn, TableData, TableProps, TableSpec } from '../../../lib/artifacts'
 import { Button } from '../../ui/button'
 import { Notice } from '../../ui/notice'
 import { Spinner } from '../../ui/spinner'
-import type { ViewRendererProps } from '../view-renderer'
-import { ViewHeader } from '../view-header'
+import { ArtifactMeta } from '../artifact-meta'
+import type { ArtifactDisplay, ArtifactRendererProps } from '../artifact-renderer'
 
 export type HandleResolver = (handle: string, signal: AbortSignal) => Promise<TableData>
+
+/** Rows a table card shows in the conversation; the maximized table shows them all. */
+export const PREVIEW_ROWS = 5
 
 const headerClassNames: Record<TableColumn['type'], string> = {
   string: 'text-left',
@@ -38,22 +41,27 @@ function Cell({ value }: { value: TableCell }) {
 
 function TableContent({
   props,
+  display,
   data,
   pending = false,
   error,
   retry,
+  onMaximize,
 }: {
   props: TableProps
+  display: ArtifactDisplay
   data?: TableData
   pending?: boolean
   error?: string
   retry?: () => void
+  onMaximize?: () => void
 }) {
-  const rows = data?.rows ?? []
+  const inline = display === 'inline'
+  const rows = inline ? (data?.rows ?? []).slice(0, PREVIEW_ROWS) : (data?.rows ?? [])
   const count = data?.row_count ?? props.row_count
   return (
     <section aria-label={props.title} className="flex min-w-0 flex-col">
-      <ViewHeader kind="Table" title={props.title} meta={plural(count, 'row', 'rows')} />
+      {!inline && <ArtifactMeta>{plural(count, 'row', 'rows')}</ArtifactMeta>}
       <div
         role="region"
         aria-label={`${props.title} data`}
@@ -118,20 +126,26 @@ function TableContent({
         </table>
       </div>
       {!pending && !error && (
-        <div className="mt-3 flex flex-wrap justify-between gap-x-4 gap-y-1 text-xs text-muted">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs text-muted">
           <span>
             {rows.length < count
               ? `${rows.length} of ${count.toLocaleString('en-US')} rows shown`
               : `${plural(rows.length, 'row', 'rows')} shown`}
           </span>
-          <span>{props.handle ? 'Query result' : 'Inline snapshot'}</span>
+          {inline && onMaximize && rows.length < (data?.rows.length ?? 0) ? (
+            <Button size="sm" variant="ghost" icon={Maximize2} onClick={onMaximize}>Show all rows</Button>
+          ) : (
+            <span>{props.handle ? 'Query result' : 'Inline snapshot'}</span>
+          )}
         </div>
       )}
     </section>
   )
 }
 
-function HandleTable({ spec, resolveHandle }: { spec: TableSpec; resolveHandle: HandleResolver }) {
+function HandleTable({ spec, resolveHandle, display, onMaximize }: {
+  spec: TableSpec; resolveHandle: HandleResolver; display: ArtifactDisplay; onMaximize?: () => void
+}) {
   const [state, setState] = useState<{ data?: TableData; error?: string }>({})
   const [attempt, setAttempt] = useState(0)
   const props = spec.props
@@ -147,17 +161,17 @@ function HandleTable({ spec, resolveHandle }: { spec: TableSpec; resolveHandle: 
           rows: source.columns
             ? source.rows.map((row) => props.columns.map((column) => {
                 const index = source.columns!.findIndex((item) => item.key === column.key)
-                if (index < 0) throw new Error('View schema error: missing query column')
+                if (index < 0) throw new Error('Artifact schema error: missing query column')
                 return row[index]
               }))
             : source.rows,
         }
-        const inline: ViewSpec = {
+        const inline: ArtifactSpec = {
           kind: 'table',
           version: 1,
           props: { title: props.title, columns: props.columns, rows: data.rows, row_count: data.row_count },
         }
-        validateViewSpec(inline)
+        validateArtifactSpec(inline)
         if (!controller.signal.aborted) setState({ data })
       } catch (reason) {
         if (!controller.signal.aborted) setState({ error: reason instanceof Error ? reason.message : 'Data unavailable' })
@@ -169,6 +183,8 @@ function HandleTable({ spec, resolveHandle }: { spec: TableSpec; resolveHandle: 
   return (
     <TableContent
       props={props}
+      display={display}
+      onMaximize={onMaximize}
       data={state.data}
       error={state.error}
       pending={!state.data && !state.error}
@@ -180,14 +196,23 @@ function HandleTable({ spec, resolveHandle }: { spec: TableSpec; resolveHandle: 
   )
 }
 
-function TableView({ spec, resolveHandle }: ViewRendererProps) {
+function TableArtifact({ spec, resolveHandle, display, onMaximize }: ArtifactRendererProps) {
   const table = spec as TableSpec
-  if (table.props.rows) return <TableContent props={table.props} data={{ rows: table.props.rows, row_count: table.props.row_count }} />
-  if (!resolveHandle) return <TableContent props={table.props} error="Data source unavailable." />
-  return <HandleTable key={table.props.handle} spec={table} resolveHandle={resolveHandle} />
+  if (table.props.rows) {
+    return (
+      <TableContent
+        props={table.props}
+        display={display}
+        onMaximize={onMaximize}
+        data={{ rows: table.props.rows, row_count: table.props.row_count }}
+      />
+    )
+  }
+  if (!resolveHandle) return <TableContent props={table.props} display={display} error="Data source unavailable." />
+  return <HandleTable key={table.props.handle} spec={table} resolveHandle={resolveHandle} display={display} onMaximize={onMaximize} />
 }
 
-TableView.kind = 'table'
-TableView.version = 1
+TableArtifact.kind = 'table'
+TableArtifact.version = 1
 
-export default TableView
+export default TableArtifact

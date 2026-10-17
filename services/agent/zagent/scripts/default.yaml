@@ -15,9 +15,9 @@ steps:
         detail: Static synthetic fixture; no clinical records are queried.
   - delay_ms: 350
     event:
-      type: view_pushed
+      type: artifact_published
       payload:
-        view_id: intake
+        artifact_id: intake
         spec:
           kind: table
           version: 1
@@ -56,9 +56,9 @@ steps:
         detail: Static fixture checks for the displayed specimens.
   - delay_ms: 450
     event:
-      type: view_pushed
+      type: artifact_published
       payload:
-        view_id: quality
+        artifact_id: quality
         spec:
           kind: table
           version: 1

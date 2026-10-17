@@ -300,7 +300,7 @@ There is no real authentication. Identity is simulated, but its verification is 
 
 | Deferred | Owner |
 |---|---|
-| Operational data: sequencing runs, instruments, reagent lots, per-library QC metrics | PLAN14 |
+| Operational data: sequencing runs, instruments, reagent lots, per-library QC metrics | PLAN15 |
 | Citation viewer | [PLAN13](PLAN13.md), as a separate intranet site |
 | Dense or hybrid retrieval | only if REQ-KB-05 shows lexical misses |
 | Role-based access to clinical data | not in this plan; roles apply to knowledge only |
@@ -561,7 +561,7 @@ Duplicate what it needs. The friction is part of what this plan demonstrates.
 
 - [PLAN13](PLAN13.md): a mock company intranet that shows cited documents, with clickable
   citation chips in chat.
-- PLAN14: operational data in the clinical zone (runs, instruments, reagent lots, per-library QC
+- PLAN15: operational data in the clinical zone (runs, instruments, reagent lots, per-library QC
   metrics), so questions can combine query handles with knowledge thresholds and known-issue
   tickets.
 - Other teams' MCP servers attached through the broker, which turns "connect another MCP server"

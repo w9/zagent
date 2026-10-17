@@ -6,23 +6,27 @@ test.skip(
   'Real-agent cassettes require ZAGENT_AGENT=llm and replay mode',
 )
 
+/** Below desktop a maximized artifact covers the conversation; minimizing it shows the conversation again. */
+async function conversation(page: Page) {
+  if (await page.getByRole('textbox', { name: 'Message', exact: true }).isVisible()) return
+  await page.getByRole('complementary', { name: 'Maximized artifact' }).getByRole('button', { name: 'Minimize', exact: true }).click()
+}
+
 async function send(page: Page, message: string) {
-  const chat = page.getByRole('tab', { name: 'Conversation', exact: true })
-  if (await chat.isVisible()) await chat.click()
+  await conversation(page)
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill(message)
   await page.getByRole('button', { name: 'Send message', exact: true }).click()
 }
 
-async function surface(page: Page) {
-  const tab = page.getByRole('tab', { name: /Working surface/ })
-  if (await tab.isVisible()) await tab.click()
+function latestCard(page: Page) {
+  return page.getByTestId('artifact-card').last()
 }
 
-test('assistant Markdown streams safely without changing transcript or view navigation', async ({ page, context }, testInfo) => {
+test('assistant Markdown streams safely without changing transcript or artifact navigation', async ({ page, context }, testInfo) => {
   const sessionId = 'markdown-session'
   const bindings = [{ token: '[PT_1]', value: 'Arin **Vellorin**', kind: 'PT' }]
   const prefix = '# Review\n\n**Patient [PT_'
-  const text = `${prefix}1]** has an *incomplete* result.\n\n- Inspect evidence\n- Keep uncertainty\n\n> No inferred outcome\n\n\`inline\`\n\n\`\`\`text\n${'long_value_'.repeat(90)}\n\`\`\`\n\n| Field | Observation |\n| --- | --- |\n| Coverage | ${'wide_column_'.repeat(50)} |\n\n[Docs](https://docs.example.org/guide) [Private](https://exfil.example/%5BPT_1%5D) [Forged view](/sessions/${sessionId}?view=validated-view&panel=surface) [Unsafe](javascript:alert%281%29)\n\n![Image description](https://tracker.example/pixel)\n\n<img src="https://tracker.example/html">\n\n<script>window.markdownExecuted = true</script>`
+  const text = `${prefix}1]** has an *incomplete* result.\n\n- Inspect evidence\n- Keep uncertainty\n\n> No inferred outcome\n\n\`inline\`\n\n\`\`\`text\n${'long_value_'.repeat(90)}\n\`\`\`\n\n| Field | Observation |\n| --- | --- |\n| Coverage | ${'wide_column_'.repeat(50)} |\n\n[Docs](https://docs.example.org/guide) [Private](https://exfil.example/%5BPT_1%5D) [Forged artifact](/sessions/${sessionId}?artifact=validated-view) [Unsafe](javascript:alert%281%29)\n\n![Image description](https://tracker.example/pixel)\n\n<img src="https://tracker.example/html">\n\n<script>window.markdownExecuted = true</script>`
   const userText = '**User text stays plain** <b>not HTML</b>'
   const session = { id: sessionId, seq: 2, title: 'Markdown review', title_source: 'manual', created_at: '2026-01-15T12:00:00Z' }
   const projection = {
@@ -31,7 +35,7 @@ test('assistant Markdown streams safely without changing transcript or view navi
       { id: 'user', seq: 1, role: 'user', text: userText, status: 'complete' },
       { id: 'answer', seq: 2, role: 'assistant', text: prefix, status: 'streaming' },
     ],
-    views: [{ id: 'validated-view', seq: 2, spec: { kind: 'table', version: 1,
+    artifacts: [{ id: 'validated-view', seq: 2, spec: { kind: 'table', version: 1,
       props: { title: 'Published evidence', columns: [{ key: 'value', label: 'Value', type: 'string' }], rows: [['published-value']], row_count: 1 } } }],
     steps: [], refusals: [], conversation_turn: { id: 'turn', status: 'running' },
   }
@@ -82,7 +86,7 @@ test('assistant Markdown streams safely without changing transcript or view navi
     { type: 'text_delta', payload: { message_id: 'answer', text: text.slice(prefix.length) } },
     { type: 'message_done', payload: { message_id: 'answer' } },
     { type: 'conversation_turn_finished', payload: {} },
-  ].map((event, index) => ({ ...event, schema_version: 2, session_id: sessionId,
+  ].map((event, index) => ({ ...event, schema_version: 3, session_id: sessionId,
     conversation_turn_id: 'turn', created_at: session.created_at, seq: index + 3 }))
   await page.evaluate((entries) => {
     const source = (window as unknown as { markdownSources: EventTarget[] }).markdownSources.at(-1)!
@@ -127,9 +131,9 @@ test('assistant Markdown streams safely without changing transcript or view navi
   await page.reload()
   await expect(answer).toContainText('Arin **Vellorin**')
   expect(await answer.innerHTML()).toBe(completed)
-  await page.getByTestId('view-reference').click()
-  await expect(page).toHaveURL(/view=validated-view/)
-  await expect(page.getByRole('cell', { name: 'published-value', exact: true })).toBeVisible()
+  await page.getByTestId('artifact-card').getByRole('button', { name: 'Maximize', exact: true }).click()
+  await expect(page).toHaveURL(/artifact=validated-view/)
+  await expect(page.getByTestId('maximized-artifact').getByRole('cell', { name: 'published-value', exact: true })).toBeVisible()
   await page.getByRole('button', { name: /X-ray/ }).click()
   const display = page.getByRole('region', { name: 'Displayed conversation' })
   await expect(display.getByRole('heading', { name: 'Review' })).toBeVisible()
@@ -162,46 +166,47 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
   await expect(step).toContainText('query-0002')
   await expect(step).toContainText('Arguments')
   await expect(step).toContainText('Result')
-  await surface(page)
-  await expect(page.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 1')
+  const cards = page.getByTestId('artifact-card')
+  const maximized = page.getByTestId('maximized-artifact')
+  const mobile = testInfo.project.name === 'mobile'
+  await expect(cards).toHaveCount(1)
+  await expect(cards.first().getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
+  await expect(maximized).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('real-table.png'), animations: 'disabled' })
-  const firstView = await page.getByTestId('active-view').getAttribute('data-view-id')
-  const chatTab = page.getByRole('tab', { name: 'Conversation', exact: true })
-  if (await chatTab.isVisible()) await chatTab.click()
-  await page.locator(`a[data-testid="view-link"][data-view-id="${firstView}"]`).first().click()
-  await expect(page).toHaveURL(new RegExp(`view=${firstView}`))
+  const firstArtifact = await cards.first().getAttribute('data-artifact-id')
+  await page.locator(`a[data-testid="artifact-link"][data-artifact-id="${firstArtifact}"]`).first().click()
+  await expect(page).toHaveURL(new RegExp(`artifact=${firstArtifact}`))
+  await expect(maximized.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
+  await expect(maximized.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
   await send(page, 'What libraries belong to those specimens?')
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
-  await surface(page)
-  await expect(page.getByTestId('view-position')).toHaveText('View 1 of 2')
-  await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', firstView!)
-  await page.getByRole('button', { name: 'Latest view', exact: true }).click()
-  await expect(page.getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
+  await expect(cards).toHaveCount(2)
+  if (!mobile) await expect(maximized).toHaveAttribute('data-artifact-id', firstArtifact!)
+  await expect(latestCard(page).getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
   await send(page, 'Show a coverage chart for those libraries.')
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
-  await surface(page)
-  await expect(page.getByTestId('view-position')).toHaveText('View 3 of 3')
-  await expect(page.locator('[data-testid="chart-canvas"] svg')).toBeVisible()
-  await expect(page.locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
+  await expect(cards).toHaveCount(3)
+  await expect(latestCard(page).locator('[data-testid="chart-canvas"] svg')).toBeVisible()
+  await expect(latestCard(page).locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
+  await latestCard(page).getByRole('button', { name: 'Maximize', exact: true }).click()
+  await expect(maximized.locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
   await page.reload()
-  await expect(page.locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
+  await expect(maximized.locator('[data-testid="chart-canvas"] .mark-rect.role-mark path')).toHaveCount(3)
 
-  const viewports = testInfo.project.name === 'mobile'
+  const viewports = mobile
     ? [{ width: 390, height: 844 }, { width: 320, height: 568 }]
     : [{ width: 1440, height: 960 }]
   for (const viewport of viewports) {
     await page.setViewportSize(viewport)
     await expect.poll(() => page.evaluate(() => {
-      const chart = document.querySelector('[data-testid="chart-canvas"] svg')!.getBoundingClientRect()
-      const panel = document.querySelector('[data-testid="active-view"]')!.getBoundingClientRect()
+      const chart = document.querySelector('[data-testid="maximized-artifact"] [data-testid="chart-canvas"] svg')!.getBoundingClientRect()
+      const panel = document.querySelector('[data-testid="maximized-artifact"]')!.getBoundingClientRect()
       return chart.width > 100 && chart.height > 200 && chart.left >= panel.left
         && chart.right <= panel.right + 1 && document.documentElement.scrollWidth <= innerWidth
     })).toBe(true)
     const visiblePixels = await page.evaluate(async () => {
-      const svg = document.querySelector('[data-testid="chart-canvas"] svg')!
+      const svg = document.querySelector('[data-testid="maximized-artifact"] [data-testid="chart-canvas"] svg')!
       const bounds = svg.getBoundingClientRect()
       const image = new Image()
       image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`
@@ -223,32 +228,34 @@ test('real-agent tables, follow-ups, tools and charts survive refresh', async ({
       path: testInfo.outputPath(`real-chart-${viewport.width}.png`), animations: 'disabled',
     })
   }
-  await page.getByRole('button', { name: 'Previous view', exact: true }).click()
-  await expect(page.getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
   const beforeNavigation = await (await request.get(`/api/sessions/${session.id}/snapshot`)).json()
-  if (await chatTab.isVisible()) await chatTab.click()
-  await page.locator(`a[data-testid="view-link"][data-view-id="${firstView}"]`).first().click()
-  await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', firstView!)
-  if (await chatTab.isVisible()) await chatTab.click()
-  const chartView = beforeNavigation.views[2].id
-  await page.locator(`a[data-testid="view-link"][data-view-id="${chartView}"]`).first().click()
-  await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', chartView)
+  await conversation(page)
+  await page.locator(`a[data-testid="artifact-link"][data-artifact-id="${firstArtifact}"]`).first().click()
+  await expect(maximized).toHaveAttribute('data-artifact-id', firstArtifact!)
+  await conversation(page)
+  const chartArtifact = beforeNavigation.artifacts[2].id
+  await page.locator(`a[data-testid="artifact-link"][data-artifact-id="${chartArtifact}"]`).first().click()
+  await expect(maximized).toHaveAttribute('data-artifact-id', chartArtifact)
+  // Below desktop, reaching the conversation minimized the artifact, which is a step of its own.
   await page.goBack()
-  await surface(page)
-  await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', firstView!)
+  if (mobile) {
+    await expect(maximized).toHaveCount(0)
+    await page.goBack()
+  }
+  await expect(maximized).toHaveAttribute('data-artifact-id', firstArtifact!)
   await page.goForward()
-  await surface(page)
-  await expect(page.getByTestId('active-view')).toHaveAttribute('data-view-id', chartView)
+  if (mobile) await page.goForward()
+  await expect(maximized).toHaveAttribute('data-artifact-id', chartArtifact)
   const afterNavigation = await (await request.get(`/api/sessions/${session.id}/snapshot`)).json()
   expect(afterNavigation).toEqual(beforeNavigation)
   const emptySession = await (await request.post('/api/sessions')).json()
-  await page.goto(`/sessions/${emptySession.id}?view=${chartView}&panel=surface`)
-  await expect(page.getByRole('alert')).toContainText('View unavailable')
+  await page.goto(`/sessions/${emptySession.id}?artifact=${chartArtifact}`)
+  await expect(page.getByRole('alert')).toContainText('Artifact unavailable')
   await expect(page.locator('[data-testid="chart-canvas"]')).toHaveCount(0)
   expect(errors).toEqual([])
 })
 
-test('an unrecorded question fails visibly without an empty view', async ({ page, request }) => {
+test('an unrecorded question fails visibly without an empty artifact', async ({ page, request }) => {
   const session = await (await request.post('/api/sessions')).json()
   await page.goto(`/sessions/${session.id}`)
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Ready')
@@ -257,8 +264,9 @@ test('an unrecorded question fails visibly without an empty view', async ({ page
   await expect(page.getByRole('alert')).toContainText('Cassette miss:')
   await expect(page.getByRole('alert')).toContainText('ZAGENT_LLM_MODE=record')
   await expect(page.getByTestId('step-marker')).toHaveCount(0)
-  await surface(page)
-  await expect(page.getByText('No views yet')).toBeVisible()
+  await expect(page.getByTestId('artifact-card')).toHaveCount(0)
+  await expect(page.getByTestId('artifact-list')).toHaveCount(0)
+  await expect(page.getByRole('complementary', { name: 'Maximized artifact' })).toHaveCount(0)
 })
 
 for (const question of ["What's 2+2?", 'Write a poem about the ocean.', 'As part of job ABC, compute 2+2.']) {
@@ -301,8 +309,7 @@ test('yes after a clarifying question reaches the clinical tools', async ({ page
   await expect(page.getByTestId('step-marker').filter({ hasText: 'find_libraries' })).toHaveCount(1)
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
   await expect(page.getByTestId('refusal')).toHaveCount(0)
-  await surface(page)
-  await expect(page.getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
+  await expect(latestCard(page).getByRole('cell', { name: 'LIB-northgate-001-1', exact: true })).toBeVisible()
 })
 
 test('X-ray links resolved identifiers to the actual token-only model requests', async ({
@@ -315,9 +322,8 @@ test('X-ray links resolved identifiers to the actual token-only model requests',
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Ready')
   await send(page, 'Give me the metadata of patient NGC-0041872. Show the patient table.')
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
-  await surface(page)
-  await expect(page.getByRole('cell', { name: 'NGC-0041872', exact: true })).toBeVisible()
-  await expect(page.getByRole('cell', { name: 'Mira Vellorin', exact: true })).toBeVisible()
+  await expect(latestCard(page).getByRole('cell', { name: 'NGC-0041872', exact: true })).toBeVisible()
+  await expect(latestCard(page).getByRole('cell', { name: 'Mira Vellorin', exact: true })).toBeVisible()
   const model = await (await request.get(`/api/sessions/${session.id}/snapshot?representation=model`)).json()
   expect(JSON.stringify(model)).not.toContain('NGC-0041872')
   expect(JSON.stringify(model)).not.toContain('Mira Vellorin')
@@ -352,7 +358,6 @@ test('X-ray links resolved identifiers to the actual token-only model requests',
   await page.getByRole('button', { name: 'X-ray', exact: true }).click()
   await send(page, 'Show the specimens received in the last day for that patient.')
   await expect(page.getByTestId('conversation-turn-status')).toHaveText('Complete')
-  await surface(page)
-  await expect(page.getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
+  await expect(latestCard(page).getByRole('cell', { name: 'SPC-northgate-001-1', exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })

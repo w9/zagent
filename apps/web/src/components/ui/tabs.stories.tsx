@@ -14,7 +14,7 @@ export const Panels: Story = {
     return (
       <Tabs label="Workspace panels" value={value} onChange={setValue} items={[
         { value: 'chat', label: 'Conversation', icon: MessageSquare },
-        { value: 'surface', label: 'Working surface', icon: Table2, count: 3 },
+        { value: 'artifacts', label: 'Artifacts', icon: Table2, count: 3 },
       ]} />
     )
   },

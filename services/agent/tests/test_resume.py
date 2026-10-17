@@ -32,7 +32,7 @@ async def test_tool_replay_returns_the_committed_draft_without_a_second_mutation
     )
     assert first == second
     snapshot = await store.snapshot(session.id)
-    assert len(snapshot.drafts) == len(snapshot.views) == 1
+    assert len(snapshot.drafts) == len(snapshot.artifacts) == 1
     assert snapshot.drafts["draft-0001"].version == 1
     await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
 
@@ -176,7 +176,7 @@ async def test_interrupted_turn_replays_checkpoints_without_duplicate_effects(st
     if boundary == "text_delta":
         assert any(event.type == "message_dropped" for event in events)
     else:
-        assert len(snapshot.drafts) == len(snapshot.views) == 1
+        assert len(snapshot.drafts) == len(snapshot.artifacts) == 1
         assert snapshot.drafts["draft-0001"].version == 1
 
 
@@ -223,7 +223,7 @@ async def test_sigkill_runtime_process_resumes_its_persisted_journal(store, data
             "The draft is ready for review."
         ]
         if boundary == "tool_result":
-            assert len(state.drafts) == len(state.views) == 1
+            assert len(state.drafts) == len(state.artifacts) == 1
         else:
             assert any(
                 event.type == "message_dropped" for event in await store.snapshot_events(session.id)

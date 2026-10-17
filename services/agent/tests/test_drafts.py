@@ -169,7 +169,7 @@ async def test_draft_edits_publish_state_and_stale_confirmation_returns_diff(sto
     )
     assert second.version == 2 and second.content_hash != first.content_hash
     assert (await store.snapshot(session.id)).drafts[first.draft_id] == second
-    assert len((await store.snapshot(session.id)).views) == 1
+    assert len((await store.snapshot(session.id)).artifacts) == 1
     with pytest.raises(DraftConflict) as conflict:
         await drafts.confirm(session.id, first.draft_id, first.content_hash)
     assert conflict.value.changes == [
@@ -196,7 +196,7 @@ async def test_draft_edits_publish_state_and_stale_confirmation_returns_diff(sto
     )
     state = await store.snapshot(session.id)
     assert state.drafts[first.draft_id].status == "submitted"
-    assert state.views[-1].spec.kind == "job_card"
+    assert state.artifacts[-1].spec.kind == "job_card"
     with pytest.raises(DraftConflict, match="draft changed"):
         await drafts.update(session.id, draft_id=first.draft_id, parameters={"min_vaf": 0.02})
 
@@ -275,7 +275,17 @@ async def test_http_confirmation_checks_versions_and_runtime_cannot_call_it(data
                 path + "/confirm", json={"content_hash": edited.json()["content_hash"]}
             )
             assert response.status_code == 200 and response.json()["status"] == "pending"
-            history = conversation_messages(await app.state.store.snapshot_events(session.id))
+            card = (await app.state.store.snapshot(session.id)).artifacts[-1]
+            assert card.spec.kind == "job_card"
+            assert response.json()["artifact_id"] == card.id == "view-0002"
+            repeated = await client.post(
+                path + "/confirm", json={"content_hash": edited.json()["content_hash"]}
+            )
+            assert repeated.status_code == 200 and repeated.json() == response.json()
+            events = await app.state.store.snapshot_events(session.id)
+            submitted = next(event for event in events if event.type == "job_submitted")
+            assert "artifact_id" not in submitted.payload["job"]
+            history = conversation_messages(events)
             assert history[-1]["role"] == "system"
             assert "0.03" in history[-1]["content"]
             assert "authoritative over older versions" in history[-1]["content"]
@@ -292,6 +302,60 @@ async def test_http_confirmation_checks_versions_and_runtime_cannot_call_it(data
 
 
 @pytest.mark.integration
+async def test_confirmation_names_its_job_card_after_later_cards_for_the_same_job(store):
+    from zagent.job_tools import JobsTools
+
+    session, drafts, draft = await fixture_draft(store, app_id="readqc")
+    job = await drafts.confirm(session.id, draft.draft_id, draft.content_hash)
+    assert job.artifact_id == "view-0002"
+    turn = await store.begin_conversation_turn(session.id, "Show the job")
+    shown = await JobsTools(drafts.clinical).dispatch(
+        session.id, turn.conversation_turn_id, "show_jobs", {"job_id": job.job_id}
+    )
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
+    assert shown["view_id"] == "view-0003" and shown["kind"] == "job_card"
+    again = await drafts.confirm(session.id, draft.draft_id, draft.content_hash)
+    assert again == job
+
+
+@pytest.mark.integration
+async def test_model_facing_draft_state_keeps_view_id(store):
+    from jsonschema import Draft202012Validator
+    from zagent.agent import conversation_messages
+    from zagent.drafts import model_facing_draft
+    from zagent.llm import canonical_json
+    from zagent.scope import scope_context
+    from zagent.tools import RESPONSE_SCHEMAS, ClinicalTools
+
+    session, drafts, draft = await fixture_draft(store, app_id="readqc")
+    assert draft.artifact_id == "view-0001"
+    events = await store.snapshot_events(session.id)
+    stored = next(event for event in events if event.type == "draft_updated")
+    assert stored.payload["draft"]["artifact_id"] == "view-0001"
+    model_draft = model_facing_draft(stored.payload["draft"])
+    assert "artifact_id" not in model_draft
+    assert model_draft == {
+        ("view_id" if key == "artifact_id" else key): value
+        for key, value in draft.model_dump().items()
+    }
+    expected = canonical_json([model_draft])
+    assert '"view_id":"view-0001"' in expected
+    assert conversation_messages(events)[-1]["content"].endswith(expected)
+    assert scope_context(events)["current_draft"] == model_draft
+    turn = await store.begin_conversation_turn(session.id, "Raise the coverage threshold")
+    result = await ClinicalTools(drafts.clinical).dispatch(
+        session.id,
+        "update_draft",
+        {"draft_id": draft.draft_id, "parameters": {"min_coverage": 40}},
+        conversation_turn_id=turn.conversation_turn_id,
+    )
+    await store.finish_conversation_turn(session.id, turn.conversation_turn_id)
+    assert result["view_id"] == result["draft"]["view_id"] == "view-0001"
+    assert "artifact_id" not in result["draft"]
+    Draft202012Validator(RESPONSE_SCHEMAS["update_draft"]).validate(result)
+
+
+@pytest.mark.integration
 async def test_invalid_parameter_can_be_removed_without_recreating_the_draft(store):
     session, drafts, original = await fixture_draft(store)
     invalid = await drafts.update(
@@ -304,7 +368,7 @@ async def test_invalid_parameter_can_be_removed_without_recreating_the_draft(sto
     assert corrected.draft_id == original.draft_id
     assert corrected.parameters == {"min_vaf": 0.03, "min_depth": 20}
     assert corrected.validation == []
-    assert len((await store.snapshot(session.id)).views) == 1
+    assert len((await store.snapshot(session.id)).artifacts) == 1
 
 
 @pytest.mark.integration

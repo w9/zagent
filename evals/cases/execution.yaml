@@ -16,7 +16,7 @@ cases:
         - {status: completed, code: completed}
       citations: {documents: [sop-identity-001-v1]}
       job_narration: true
-      view_references: true
+      artifact_references: true
       tools_called: [get_job, search_knowledge, read_document, find_specimens, update_draft]
       events_exclude: [conversation_turn_failed]
       egress: no_known_identifiers
@@ -54,9 +54,9 @@ cases:
       job_outcomes: [{status: completed, code: low_purity_warning}]
       runtime_resumed: true
       job_narration: true
-      view_references: true
+      artifact_references: true
       tools_called: [show_jobs, get_job, update_draft]
-      views: [{kind: job_card}, {kind: job_grid}]
+      artifacts: [{kind: job_card}, {kind: job_grid}]
       events_include: [message_dropped]
       events_exclude: [conversation_turn_failed]
       egress: no_known_identifiers

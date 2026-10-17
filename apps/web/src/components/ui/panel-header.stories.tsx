@@ -30,10 +30,10 @@ export const WithStatus: Story = {
 }
 
 export const Plain: Story = {
-  args: { title: 'Working surface' },
+  args: { title: 'Specimens received this week' },
   render: () => (
     <div className="@container bg-subtle">
-      <PanelHeader title="Working surface" subtitle="3 views" actions={<Table2 aria-hidden className="size-icon" />} />
+      <PanelHeader title="Specimens received this week" subtitle="Table" actions={<Table2 aria-hidden className="size-icon" />} />
     </div>
   ),
 }

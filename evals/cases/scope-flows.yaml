@@ -8,8 +8,8 @@ cases:
       golden: goldens/REFUSE-001.json
       refusal: {code: out_of_domain}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
-      view_stack_depth: 0
+      events_exclude: [text_delta, tool_call, tool_result, artifact_published, conversation_turn_failed]
+      artifact_count: 0
 
   - id: REFUSE-002
     requirement: REQ-SCOPE-03
@@ -20,8 +20,8 @@ cases:
       golden: goldens/REFUSE-002.json
       refusal: {code: out_of_domain}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
-      view_stack_depth: 0
+      events_exclude: [text_delta, tool_call, tool_result, artifact_published, conversation_turn_failed]
+      artifact_count: 0
 
   - id: REFUSE-003
     requirement: REQ-SCOPE-03
@@ -32,8 +32,8 @@ cases:
       golden: goldens/REFUSE-003.json
       refusal: {code: out_of_domain}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
-      view_stack_depth: 0
+      events_exclude: [text_delta, tool_call, tool_result, artifact_published, conversation_turn_failed]
+      artifact_count: 0
 
   - id: REFUSE-004
     requirement: REQ-SCOPE-03
@@ -44,7 +44,7 @@ cases:
       golden: goldens/REFUSE-004.json
       refusal: {code: unsupported_capability}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, view_pushed, conversation_turn_failed]
+      events_exclude: [text_delta, tool_call, artifact_published, conversation_turn_failed]
 
   - id: REFUSE-005
     requirement: REQ-SCOPE-03
@@ -55,7 +55,7 @@ cases:
       golden: goldens/REFUSE-005.json
       refusal: {code: requires_human_authority}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, view_pushed, conversation_turn_failed]
+      events_exclude: [text_delta, tool_call, artifact_published, conversation_turn_failed]
 
   - id: REFUSE-006
     requirement: REQ-SCOPE-03
@@ -66,7 +66,7 @@ cases:
       golden: goldens/REFUSE-006.json
       refusal: {code: unsafe_request}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, view_pushed, conversation_turn_failed]
+      events_exclude: [text_delta, tool_call, artifact_published, conversation_turn_failed]
 
   - id: REFUSE-007
     requirement: REQ-SCOPE-03
@@ -77,8 +77,8 @@ cases:
       golden: goldens/REFUSE-007.json
       refusal: {code: out_of_domain}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
-      view_stack_depth: 0
+      events_exclude: [text_delta, tool_call, tool_result, artifact_published, conversation_turn_failed]
+      artifact_count: 0
 
   - id: REFUSE-008
     requirement: REQ-SCOPE-03
@@ -89,8 +89,8 @@ cases:
       golden: goldens/REFUSE-008.json
       refusal: {code: out_of_domain}
       events_include: [refused, conversation_turn_finished]
-      events_exclude: [text_delta, tool_call, tool_result, view_pushed, conversation_turn_failed]
-      view_stack_depth: 0
+      events_exclude: [text_delta, tool_call, tool_result, artifact_published, conversation_turn_failed]
+      artifact_count: 0
 
   - id: ALLOW-001
     requirement: REQ-SCOPE-03
@@ -103,12 +103,12 @@ cases:
       egress: no_known_identifiers
       event_log: no_known_identifiers
       refusal: none
-      events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
+      events_include: [tool_call, tool_result, artifact_published, conversation_turn_finished]
       events_exclude: [refused, conversation_turn_failed]
       tools_called: [find_patients, find_specimens, find_libraries, push_view]
       tools_only_handles: true
       numeric_claims_grounded: true
-      view_narration: true
-      views:
+      artifact_narration: true
+      artifacts:
         - kind: table
           props_match: {row_count: 3}

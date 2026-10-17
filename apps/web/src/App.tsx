@@ -1,12 +1,13 @@
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { MessageSquare, Plus, Undo2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChatPanel } from './components/chat/chat-panel'
 import { AppShell } from './components/shell/app-shell'
 import { SessionLayout } from './components/shell/session-layout'
 import { SessionList } from './components/shell/session-list'
 import type { SessionListView } from './components/shell/session-list'
-import { WorkingSurface } from './components/surface/working-surface'
+import { ArtifactPanel } from './components/artifact/artifact-panel'
+import { ArtifactRenderer } from './components/artifact/artifact-renderer'
 import { Button } from './components/ui/button'
 import { Dialog } from './components/ui/dialog'
 import { EmptyState } from './components/ui/empty-state'
@@ -17,7 +18,7 @@ import { ApiError, openCitation, request } from './lib/api'
 import type { Persona, PersonaRegistry, RuntimeHealth, Session } from './lib/api'
 import { plural } from './lib/format'
 import { useSession } from './lib/use-session'
-import type { TableData } from './lib/views'
+import type { TableData } from './lib/artifacts'
 
 const newestFirst = (first: Session, second: Session) =>
   second.created_at.localeCompare(first.created_at) || second.id.localeCompare(first.id)
@@ -36,8 +37,12 @@ function SessionWorkspace({
   const session = useSession(sessionId)
   const search = useSearch({ strict: false })
   const navigate = useNavigate()
-  const views = session.state?.views ?? []
+  const artifacts = useMemo(() => session.state?.artifacts ?? [], [session.state?.artifacts])
   const hasSnapshot = session.state !== null
+  const maximizedId = search.artifact
+  const maximized = artifacts.find((artifact) => artifact.id === maximizedId)
+  // The job card a confirmed draft published, to maximize once its event arrives.
+  const follow = useRef<string | null>(null)
 
   useEffect(() => {
     if (!hasSnapshot) return
@@ -48,17 +53,31 @@ function SessionWorkspace({
     }
   }, [sessionId, hasSnapshot])
 
-  if (search.xray) return <XrayPanel sessionId={sessionId} seq={session.state?.seq ?? 0} />
+  const resolveHandle = (handle: string, signal: AbortSignal) =>
+    request<TableData>(`/sessions/${sessionId}/handles/${encodeURIComponent(handle)}`, { signal })
 
-  function update(next: { view?: string; panel?: 'surface' }) {
-    void navigate({ to: '/sessions/$sessionId', params: { sessionId }, search: { ...search, ...next }, replace: true })
+  function show(artifact: string | undefined) {
+    void navigate({ to: '/sessions/$sessionId', params: { sessionId }, search: { ...search, artifact } })
   }
+
+  useEffect(() => {
+    const target = follow.current
+    if (!target || !artifacts.some((artifact) => artifact.id === target)) return
+    follow.current = null
+    void navigate({ to: '/sessions/$sessionId', params: { sessionId }, search: (current) => ({ ...current, artifact: target }) })
+  }, [artifacts, navigate, sessionId])
+
+  function followConfirmation(artifactId: string | null) {
+    if (!artifactId) return
+    if (artifacts.some((artifact) => artifact.id === artifactId)) show(artifactId)
+    else follow.current = artifactId
+  }
+
+  if (search.xray) return <XrayPanel sessionId={sessionId} seq={session.state?.seq ?? 0} />
 
   return (
     <SessionLayout
-      panel={search.panel === 'surface' ? 'surface' : 'chat'}
-      onPanelChange={(panel) => update({ panel: panel === 'surface' ? 'surface' : undefined })}
-      viewCount={views.length}
+      maximized={maximizedId !== undefined}
       chat={
         <ChatPanel
           sessionId={sessionId}
@@ -83,21 +102,31 @@ function SessionWorkspace({
               q: citation.quote,
             })
           }
+          maximizedArtifact={maximizedId}
+          onMaximize={(artifact) => show(artifact)}
+          onMinimize={() => show(undefined)}
+          resolveHandle={resolveHandle}
         />
       }
-      surface={
-        <WorkingSurface
-          sessionId={sessionId}
-          views={views}
-          drafts={session.state?.drafts}
-          jobs={session.state?.jobs}
-          selectedId={search.view}
-          onSelect={(view) => update({ view })}
-          resolveHandle={(handle, signal) =>
-            request<TableData>(`/sessions/${sessionId}/handles/${encodeURIComponent(handle)}`, { signal })
-          }
-          readOnly={Boolean(onUnarchive)}
-        />
+      artifact={
+        maximizedId !== undefined && (
+          <ArtifactPanel artifact={maximized} loading={!hasSnapshot} onMinimize={() => show(undefined)}>
+            {maximized && (
+              <ArtifactRenderer
+                spec={maximized.spec}
+                display="maximized"
+                artifactId={maximized.id}
+                sessionId={sessionId}
+                drafts={session.state?.drafts}
+                jobs={session.state?.jobs}
+                resolveHandle={resolveHandle}
+                readOnly={Boolean(onUnarchive)}
+                onConfirmed={(job) => followConfirmation(job.artifact_id)}
+                onMinimize={() => show(undefined)}
+              />
+            )}
+          </ArtifactPanel>
+        )
       }
     />
   )

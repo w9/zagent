@@ -590,7 +590,7 @@ async def test_iteration_cap_produces_clean_terminal_failure(store):
 
 
 @pytest.mark.integration
-async def test_model_receives_persisted_view_receipt_and_chat_remains_free_form(store):
+async def test_model_receives_persisted_artifact_receipt_and_chat_remains_free_form(store):
     clinical = ClinicalStore(store, lambda: FROZEN_NOW)
     await clinical.seed()
     tools = ToolsGateway(store, McpToolClient(server=create_mcp_server(clinical)))
@@ -622,7 +622,7 @@ async def test_model_receives_persisted_view_receipt_and_chat_remains_free_form(
     turn = await store.begin_conversation_turn(session.id, "Show recent specimens")
     await runtime._run_turn(turn)
     events = await store.snapshot_events(session.id)
-    view_event = next(event for event in events if event.type == "view_pushed")
+    artifact_event = next(event for event in events if event.type == "artifact_published")
     result_event = next(
         event
         for event in events
@@ -631,15 +631,15 @@ async def test_model_receives_persisted_view_receipt_and_chat_remains_free_form(
     receipt = result_event.payload["result"]
     assert receipt == {
         "ok": True,
-        "view_id": view_event.payload["view_id"],
+        "view_id": artifact_event.payload["artifact_id"],
         "kind": "table",
         "title": "Recent specimens",
     }
-    assert view_event.seq < result_event.seq
+    assert artifact_event.seq < result_event.seq
     assert json.loads(completer.requests[-1].messages[-1]["content"]) == receipt
     snapshot = await store.snapshot(session.id)
     assert snapshot.conversation_turn.status == "finished"
-    assert len(snapshot.views) == 1
+    assert len(snapshot.artifacts) == 1
     assert snapshot.messages[-1].text == explanation
     audit = await store.pool.fetchval(
         "SELECT result FROM tool_audit WHERE conversation_turn_id = $1 AND tool = 'push_view'",

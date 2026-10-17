@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 import asyncpg
 from pydantic import BaseModel, Field
 
+from zagent.artifacts import ArtifactSpec
 from zagent.events import Event, EventDraft, Projection, project
 from zagent.faults import configured, enabled
 from zagent.identity import DEFAULT_PERSONA, PersonaId
@@ -16,7 +17,6 @@ from zagent.privacy import Raw
 from zagent.privacy_client import PrivacyClient, Tokenizer
 from zagent.privacy_store import PrivacyStore
 from zagent.transactions import AtomicPool
-from zagent.views import ViewSpec
 
 DEFAULT_DATABASE_URL = "postgresql://zagent:zagent@localhost:5432/zagent"
 SEED_SESSION_ID = UUID("01950000-0000-7000-8000-000000000001")
@@ -28,13 +28,13 @@ EVENT_INGRESS = {
     "step_finished": "assistant_output",
     "tool_call": "tool_arguments",
     "tool_result": "tool_result",
-    "view_pushed": "view_spec",
+    "artifact_published": "artifact_spec",
     "draft_updated": "draft_updated",
     "refused": "assistant_output",
     "conversation_turn_failed": "assistant_output",
     "privacy_alert": "assistant_output",
     "job_submitted": "draft_updated",
-    "session_updated": "view_interaction",
+    "session_updated": "artifact_interaction",
 }
 LIFECYCLE_EVENTS = frozenset(
     {
@@ -287,7 +287,7 @@ class Store:
             await self.privacy.tokenize(
                 session_id,
                 Raw(value=title.strip()),
-                path="view_interaction",
+                path="artifact_interaction",
                 external=not automatic,
             )
         ).value
@@ -418,7 +418,8 @@ class Store:
         if status != "running" and not (
             allow_finished
             and status in {"finished", "failed"}
-            and event.type in {"draft_updated", "view_pushed", "job_submitted", "session_updated"}
+            and event.type
+            in {"draft_updated", "artifact_published", "job_submitted", "session_updated"}
         ):
             raise ConversationTurnConflict("Conversation turn is not active")
         if enabled("drop_events") and event.type == "text_delta":
@@ -449,15 +450,25 @@ class Store:
         async with self.pool.acquire() as connection, connection.transaction():
             return await self._append(connection, session_id, conversation_turn_id, event)
 
-    async def publish_view(
-        self, session_id: UUID, conversation_turn_id: UUID, spec: ViewSpec
+    @staticmethod
+    async def next_artifact_id(connection: asyncpg.Connection, session_id: UUID) -> str:
+        # Sessions from before schema v3 published their first artifacts as view_pushed.
+        number = await connection.fetchval(
+            """SELECT count(*) + 1 FROM events
+               WHERE session_id = $1 AND type IN ('view_pushed', 'artifact_published')""",
+            session_id,
+        )
+        return f"view-{number:04d}"
+
+    async def publish_artifact(
+        self, session_id: UUID, conversation_turn_id: UUID, spec: ArtifactSpec
     ) -> Event:
-        spec = ViewSpec.model_validate(
+        spec = ArtifactSpec.model_validate(
             (
                 await self.privacy.tokenize(
                     session_id,
                     Raw(value=spec.model_dump()),
-                    path="view_spec",
+                    path="artifact_spec",
                 )
             ).value
         )
@@ -474,19 +485,16 @@ class Store:
                 conversation_turn_id,
             )
             if turn_id is None:
+                # Tool failures return this message to the model, so it keeps the old wording.
                 raise ConversationTurnConflict("Publishing a view requires an active turn")
-            number = await connection.fetchval(
-                "SELECT count(*) + 1 FROM events WHERE session_id = $1 AND type = 'view_pushed'",
-                session_id,
-            )
             return await self._append(
                 connection,
                 session_id,
                 turn_id,
                 EventDraft(
-                    type="view_pushed",
+                    type="artifact_published",
                     payload={
-                        "view_id": f"view-{number:04d}",
+                        "artifact_id": await self.next_artifact_id(connection, session_id),
                         "spec": spec.model_dump(),
                     },
                 ),

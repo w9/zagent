@@ -3,11 +3,11 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from zagent.artifacts import ArtifactSpec
 from zagent.cohort import ClinicalStore, HandleError
 from zagent.jobs import JobStore
 from zagent.privacy import Raw
 from zagent.store import ConversationTurnConflict, NotFound
-from zagent.views import ViewSpec
 
 
 class ClosedModel(BaseModel):
@@ -26,6 +26,7 @@ class GetJob(ClosedModel):
     limit: int = Field(default=8, ge=1, le=10)
 
 
+# The show_jobs receipt is part of the recorded model contract and keeps its view names.
 class JobViewResult(ClosedModel):
     ok: Literal[True] = True
     view_id: str
@@ -111,7 +112,7 @@ class JobsTools:
                 current = await self.jobs.read_handle(session_id, handle)
                 kind = "job_card" if params.job_id else "job_grid"
                 title = f"Job {params.job_id}" if params.job_id else "Analysis jobs"
-                spec = ViewSpec(
+                spec = ArtifactSpec(
                     kind=kind,
                     version=2 if params.job_id else 1,
                     props={
@@ -121,9 +122,9 @@ class JobsTools:
                         "resource_uri": "ui://jobs/card" if params.job_id else "ui://jobs/grid",
                     },
                 )
-                event = await self.clinical.store.publish_view(session_id, turn_id, spec)
+                event = await self.clinical.store.publish_artifact(session_id, turn_id, spec)
                 result = JobViewResult(
-                    view_id=event.payload["view_id"],
+                    view_id=event.payload["artifact_id"],
                     kind=kind,
                     title=title,
                     handle=handle,

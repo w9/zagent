@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { catalog, draft } from '../../fixtures'
-import { DraftEditor } from './draft_form.view'
+import { DraftEditor } from './draft_form.artifact'
 
 const meta = {
-  title: 'Surface/Draft editor',
+  title: 'Artifact/Draft editor',
   component: DraftEditor,
   args: { draft, catalog, sessionId: 'session-1' },
   decorators: [(Story) => <div className="@container max-w-prose"><Story /></div>],

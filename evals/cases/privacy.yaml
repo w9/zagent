@@ -17,10 +17,10 @@ cases:
         contains: [NGC-0041872]
         contains_fixture: patient.display_name
       tools_only_handles: true
-      view_narration: true
-      events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
+      artifact_narration: true
+      events_include: [tool_call, tool_result, artifact_published, conversation_turn_finished]
       events_exclude: [conversation_turn_failed, privacy_alert]
-      views:
+      artifacts:
         - kind: table
           props_match: {row_count: 1}
         - kind: table

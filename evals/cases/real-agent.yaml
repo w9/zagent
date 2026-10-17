@@ -10,20 +10,20 @@ cases:
       golden: goldens/REAL-001.json
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      events_include: [tool_call, tool_result, view_pushed, step_started, step_finished, conversation_turn_finished]
+      events_include: [tool_call, tool_result, artifact_published, step_started, step_finished, conversation_turn_finished]
       events_exclude: [conversation_turn_failed]
-      views:
+      artifacts:
         - kind: table
           props_match: {row_count: 3}
         - kind: table
           props_match: {row_count: 3}
         - kind: chart
-      view_stack_depth: 3
+      artifact_count: 3
       tools_only_handles: true
       numeric_claims_grounded: true
       references_resolve: true
-      view_references: true
-      view_narration: true
+      artifact_references: true
+      artifact_narration: true
       refusal: none
       tools_called: [find_patients, find_specimens, find_libraries, push_view]
 
@@ -36,14 +36,14 @@ cases:
       golden: goldens/REAL-002.json
       egress: no_known_identifiers
       event_log: no_known_identifiers
-      events_include: [tool_call, tool_result, view_pushed, conversation_turn_finished]
+      events_include: [tool_call, tool_result, artifact_published, conversation_turn_finished]
       events_exclude: [conversation_turn_failed]
-      views:
+      artifacts:
         - kind: table
           props_match: {row_count: 29}
-      view_stack_depth: 1
+      artifact_count: 1
       tools_only_handles: true
       numeric_claims_grounded: true
       refusal: none
-      view_narration: true
+      artifact_narration: true
       tools_called: [find_specimens, push_view]

@@ -8,10 +8,10 @@ import yaml
 from pydantic import ValidationError
 from zagent.evals.assertions import (
     Evidence,
+    artifact_narration,
     check_case,
     render_transcript,
     transcript_diff,
-    view_narration,
 )
 from zagent.evals.schema import Case, Requirement, Suite, fixture_path
 from zagent.events import Event, project
@@ -452,7 +452,7 @@ def test_numeric_grounding_requires_a_preceding_entity_count(tmp_path):
     )
 
 
-def test_numeric_grounding_does_not_treat_a_view_title_identifier_as_a_count(tmp_path):
+def test_numeric_grounding_does_not_treat_an_artifact_title_identifier_as_a_count(tmp_path):
     case = sample_case(expect={"golden": "test.json", "numeric_claims_grounded": True})
     evidence = sample_evidence(
         'See "Libraries for NGC-0041872 specimens (last 24 hours)" in the working surface.'
@@ -556,7 +556,7 @@ def test_real_agent_assertions_reject_bad_configuration_and_inline_rows(tmp_path
         "tools_only_handles",
         "numeric_claims_grounded",
         "references_resolve",
-        "view_narration",
+        "artifact_narration",
     ):
         with pytest.raises(ValueError, match="must be a boolean"):
             check_case(sample_case(expect={"golden": "test.json", name: "yes"}), evidence, tmp_path)
@@ -594,11 +594,11 @@ def narration_evidence(text: str, *, published: bool = True) -> Evidence:
             }
         }
     )
-    pushed = query.model_copy(
+    published_artifact = query.model_copy(
         update={
-            "type": "view_pushed",
+            "type": "artifact_published",
             "payload": {
-                "view_id": "view-0001",
+                "artifact_id": "view-0001",
                 "spec": {
                     "kind": "table",
                     "version": 1,
@@ -615,7 +615,7 @@ def narration_evidence(text: str, *, published: bool = True) -> Evidence:
     events = (
         source.events[:2]
         + [query]
-        + ([pushed] if published else [])
+        + ([published_artifact] if published else [])
         + [receipt]
         + source.events[2:]
     )
@@ -633,11 +633,11 @@ def test_narration_measurement_detects_the_reported_placeholder_without_changing
     )
     evidence = narration_evidence(text)
     original = render_transcript(evidence)
-    failure = view_narration(evidence, True, tmp_path, "PRESENT-TEST")
+    failure = artifact_narration(evidence, True, tmp_path, "PRESENT-TEST")
     assert "chat duplicates a query-result table" in failure
     assert render_transcript(evidence) == original
     assert evidence.projection.messages[-1].text == text
-    assert len(evidence.projection.views) == 1
+    assert len(evidence.projection.artifacts) == 1
 
 
 @pytest.mark.parametrize(
@@ -650,36 +650,38 @@ def test_narration_measurement_detects_the_reported_placeholder_without_changing
     ],
 )
 def test_narration_measurement_preserves_explanations_and_non_result_tables(tmp_path, text):
-    assert view_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST") is None
-    assert view_narration(sample_evidence(text), True, tmp_path, "PRESENT-TEST") is None
+    assert artifact_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST") is None
+    assert artifact_narration(sample_evidence(text), True, tmp_path, "PRESENT-TEST") is None
 
 
 @pytest.mark.parametrize(
     "text,issue",
     [
-        ("See [Libraries](view:view-0002).", "links a view that was not published"),
+        ("See [Libraries](view:view-0002).", "links an artifact that was not published"),
         ("See [Libraries](view:view-0001), also view-0001.", "internal result identifier"),
     ],
 )
-def test_narration_measurement_rejects_unpublished_view_links_and_bare_ids(tmp_path, text, issue):
-    assert issue in view_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST")
+def test_narration_measurement_rejects_unpublished_artifact_links_and_bare_ids(
+    tmp_path, text, issue
+):
+    assert issue in artifact_narration(narration_evidence(text), True, tmp_path, "PRESENT-TEST")
 
 
 @pytest.mark.parametrize(
     "text,issue",
     [
-        ("The table is displayed above.", "misleading view location"),
+        ("The table is displayed above.", "misleading artifact location"),
         ("See query-0003 for the result.", "internal result identifier"),
         ("The table is available in the working surface.", "publication claimed"),
     ],
 )
-def test_narration_measurement_detects_misleading_view_claims(tmp_path, text, issue):
-    failure = view_narration(
+def test_narration_measurement_detects_misleading_artifact_claims(tmp_path, text, issue):
+    failure = artifact_narration(
         narration_evidence(text, published=False), True, tmp_path, "PRESENT-TEST"
     )
     assert issue in failure
     assert (
-        view_narration(
+        artifact_narration(
             narration_evidence(
                 "The view could not be published. Which columns would you like?",
                 published=False,
@@ -692,8 +694,8 @@ def test_narration_measurement_detects_misleading_view_claims(tmp_path, text, is
     )
 
 
-def view_evidence():
-    fixture = json.loads((Path(__file__).parent / "fixtures/view-replay.json").read_text())
+def artifact_evidence():
+    fixture = json.loads((Path(__file__).parent / "fixtures/artifact-replay.json").read_text())
     session_id, turn_id = uuid4(), uuid4()
     events = [
         Event(
@@ -708,56 +710,58 @@ def view_evidence():
     return Evidence(events, project(session_id, events))
 
 
-def test_view_assertions_validate_schema_and_every_replayed_prefix(tmp_path):
+def test_artifact_assertions_validate_schema_and_every_replayed_prefix(tmp_path):
     case = sample_case(
         expect={
             "golden": "test.json",
-            "views": [{"kind": "table", "props_match": {"title": "~received"}}],
-            "view_stack_depth": 2,
+            "artifacts": [{"kind": "table", "props_match": {"title": "~received"}}],
+            "artifact_count": 2,
         }
     )
-    evidence = view_evidence()
+    evidence = artifact_evidence()
     assert check_case(case, evidence, tmp_path, skip_golden=True) == []
-    evidence.projection.views.pop()
+    evidence.projection.artifacts.pop()
     failures = check_case(case, evidence, tmp_path, skip_golden=True)
     assert any("REQ-VIEW-02" in failure for failure in failures)
-    assert any("expected view stack depth 2" in failure for failure in failures)
+    assert any("expected 2 artifacts" in failure for failure in failures)
 
 
-def test_view_schema_is_checked_even_without_view_expectations(tmp_path):
-    evidence = view_evidence()
+def test_artifact_schema_is_checked_even_without_artifact_expectations(tmp_path):
+    evidence = artifact_evidence()
     evidence.events[3].payload["spec"]["props"]["row_count"] = -1
     failures = check_case(sample_case(), evidence, tmp_path, skip_golden=True)
-    assert "REQ-VIEW-01 invalid view" in failures[0]
+    assert "REQ-VIEW-01 invalid artifact" in failures[0]
 
 
-def test_bad_view_assertion_configuration_is_rejected(tmp_path):
+def test_bad_artifact_assertion_configuration_is_rejected(tmp_path):
     for expected in [
-        {"view_stack_depth": -1},
-        {"view_stack_depth": True},
-        {"views": [{"kind": "table", "props_match": {"title": "~["}}]},
-        {"views": [{"kind": "table", "typo": True}]},
+        {"artifact_count": -1},
+        {"artifact_count": True},
+        {"artifacts": [{"kind": "table", "props_match": {"title": "~["}}]},
+        {"artifacts": [{"kind": "table", "typo": True}]},
     ]:
         with pytest.raises(ValueError):
             check_case(
-                sample_case(expect={"golden": "test.json", **expected}), view_evidence(), tmp_path
+                sample_case(expect={"golden": "test.json", **expected}),
+                artifact_evidence(),
+                tmp_path,
             )
 
 
-def test_view_chaos_targets_complete_view_push_boundaries():
+def test_artifact_chaos_targets_complete_artifact_publication_boundaries():
     from zagent.evals.runner import chaos_plan
 
-    reference = view_evidence()
+    reference = artifact_evidence()
     plans = [chaos_plan(sample_case(), reference, seed) for seed in range(10)]
-    assert all(plan.disconnect_after_view is not None for plan in plans)
-    assert len({plan.disconnect_after_view for plan in plans}) > 1
+    assert all(plan.disconnect_after_artifact is not None for plan in plans)
+    assert len({plan.disconnect_after_artifact for plan in plans}) > 1
 
 
-def test_chaos_does_not_target_views_from_later_human_actions():
+def test_chaos_does_not_target_artifacts_from_later_human_actions():
     from zagent.evals.runner import chaos_plan
 
-    reference = view_evidence()
-    published = next(event for event in reference.events if event.type == "view_pushed")
+    reference = artifact_evidence()
+    published = next(event for event in reference.events if event.type == "artifact_published")
     later = published.model_copy(update={"seq": reference.events[-1].seq + 1})
     with_workflow = Evidence(
         [*reference.events, later],

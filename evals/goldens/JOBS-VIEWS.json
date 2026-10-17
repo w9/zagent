@@ -1,4 +1,52 @@
 {
+  "artifacts": [
+    {
+      "kind": "draft_form",
+      "props": {
+        "draft_id": "draft-0001",
+        "title": "Read quality control"
+      },
+      "version": 1
+    },
+    {
+      "kind": "draft_form",
+      "props": {
+        "draft_id": "draft-0002",
+        "title": "Read quality control"
+      },
+      "version": 1
+    },
+    {
+      "kind": "job_card",
+      "props": {
+        "handle": "jobs-0001",
+        "resource_uri": "ui://jobs/card",
+        "server": "jobs",
+        "title": "Read quality control"
+      },
+      "version": 2
+    },
+    {
+      "kind": "job_card",
+      "props": {
+        "handle": "jobs-0002",
+        "resource_uri": "ui://jobs/card",
+        "server": "jobs",
+        "title": "Read quality control"
+      },
+      "version": 2
+    },
+    {
+      "kind": "job_grid",
+      "props": {
+        "handle": "jobs-0003",
+        "resource_uri": "ui://jobs/grid",
+        "server": "jobs",
+        "title": "Analysis jobs"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -6,6 +54,7 @@
   "drafts": {
     "draft-0001": {
       "app_id": "readqc",
+      "artifact_id": "view-0001",
       "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
       "draft_id": "draft-0001",
       "job_id": "job-0001",
@@ -16,11 +65,11 @@
       "specimen_handle": "query-0002",
       "status": "submitted",
       "validation": [],
-      "version": 1,
-      "view_id": "view-0001"
+      "version": 1
     },
     "draft-0002": {
       "app_id": "readqc",
+      "artifact_id": "view-0002",
       "content_hash": "3c4e10f4423dc3568690c30f4908b366f0dd34d6f7220dce3e94007ea9ef9d39",
       "draft_id": "draft-0002",
       "job_id": "job-0002",
@@ -31,8 +80,7 @@
       "specimen_handle": "query-0002",
       "status": "submitted",
       "validation": [],
-      "version": 1,
-      "view_id": "view-0002"
+      "version": 1
     }
   },
   "events": [
@@ -182,7 +230,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -239,7 +287,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -339,7 +387,7 @@
           "version": 2
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -385,7 +433,7 @@
           "version": 2
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -423,7 +471,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -676,54 +724,6 @@
       "detail": "Response complete",
       "status": "complete",
       "title": "Agent step 2"
-    }
-  ],
-  "views": [
-    {
-      "kind": "draft_form",
-      "props": {
-        "draft_id": "draft-0001",
-        "title": "Read quality control"
-      },
-      "version": 1
-    },
-    {
-      "kind": "draft_form",
-      "props": {
-        "draft_id": "draft-0002",
-        "title": "Read quality control"
-      },
-      "version": 1
-    },
-    {
-      "kind": "job_card",
-      "props": {
-        "handle": "jobs-0001",
-        "resource_uri": "ui://jobs/card",
-        "server": "jobs",
-        "title": "Read quality control"
-      },
-      "version": 2
-    },
-    {
-      "kind": "job_card",
-      "props": {
-        "handle": "jobs-0002",
-        "resource_uri": "ui://jobs/card",
-        "server": "jobs",
-        "title": "Read quality control"
-      },
-      "version": 2
-    },
-    {
-      "kind": "job_grid",
-      "props": {
-        "handle": "jobs-0003",
-        "resource_uri": "ui://jobs/grid",
-        "server": "jobs",
-        "title": "Analysis jobs"
-      },
-      "version": 1
     }
   ]
 }

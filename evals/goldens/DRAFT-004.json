@@ -1,4 +1,14 @@
 {
+  "artifacts": [
+    {
+      "kind": "draft_form",
+      "props": {
+        "draft_id": "draft-0001",
+        "title": "Germline panel"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -6,6 +16,7 @@
   "drafts": {
     "draft-0001": {
       "app_id": "germline-panel",
+      "artifact_id": "view-0001",
       "content_hash": "b17eda5fbb6d00f6565f0ab58e7d2d426f3e11885f8d2dfee54c55f53b7edfd1",
       "draft_id": "draft-0001",
       "job_id": null,
@@ -16,8 +27,7 @@
       "specimen_handle": "query-0002",
       "status": "editing",
       "validation": [],
-      "version": 1,
-      "view_id": "view-0001"
+      "version": 1
     }
   },
   "events": [
@@ -167,7 +177,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -342,16 +352,6 @@
       "detail": "Response complete",
       "status": "complete",
       "title": "Agent step 4"
-    }
-  ],
-  "views": [
-    {
-      "kind": "draft_form",
-      "props": {
-        "draft_id": "draft-0001",
-        "title": "Germline panel"
-      },
-      "version": 1
     }
   ]
 }

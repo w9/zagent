@@ -2,32 +2,32 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState } from 'react'
 import { ChatPanel } from '../chat/chat-panel'
 import { bindings, conversation, empty, personas, resolveHandle, responding, sessions, xray } from '../fixtures'
-import { WorkingSurface } from '../surface/working-surface'
+import { ArtifactPanel } from '../artifact/artifact-panel'
+import { ArtifactRenderer } from '../artifact/artifact-renderer'
 import { XrayContent } from '../xray/xray-panel'
 import type { Projection } from '../../lib/events'
 import { AppShell } from './app-shell'
 import { SessionLayout } from './session-layout'
-import type { WorkspacePanel } from './session-layout'
 import { SessionList } from './session-list'
 
 function Workspace({
   state = conversation,
-  panel = 'chat',
+  maximized,
   showXray = false,
   drawer = false,
   archivedSession = false,
   error,
 }: {
   state?: Projection
-  panel?: WorkspacePanel
+  maximized?: string
   showXray?: boolean
   drawer?: boolean
   archivedSession?: boolean
   error?: string
 }) {
   const [drawerOpen, setDrawerOpen] = useState(drawer)
-  const [current, setCurrent] = useState(panel)
-  const [selected, setSelected] = useState<string>()
+  const [current, setCurrent] = useState(maximized)
+  const artifact = state.artifacts.find((item) => item.id === current)
   const [persona, setPersona] = useState('analyst')
   const session = sessions.find((item) => item.id === state.session_id) ?? sessions[0]
   return (
@@ -58,9 +58,7 @@ function Workspace({
         </section>
       ) : (
         <SessionLayout
-          panel={current}
-          onPanelChange={setCurrent}
-          viewCount={state.views.length}
+          maximized={current !== undefined}
           chat={
             <ChatPanel
               sessionId={session.id}
@@ -73,10 +71,27 @@ function Workspace({
               onRetry={async () => {}}
               onUnarchive={archivedSession ? () => {} : undefined}
               onOpenCitation={() => {}}
+              maximizedArtifact={current}
+              onMaximize={setCurrent}
+              onMinimize={() => setCurrent(undefined)}
+              resolveHandle={resolveHandle}
             />
           }
-          surface={
-            <WorkingSurface sessionId={session.id} views={state.views} selectedId={selected} onSelect={setSelected} resolveHandle={resolveHandle} readOnly={archivedSession} />
+          artifact={
+            current !== undefined && (
+              <ArtifactPanel artifact={artifact} onMinimize={() => setCurrent(undefined)}>
+                {artifact && (
+                  <ArtifactRenderer
+                    spec={artifact.spec}
+                    display="maximized"
+                    artifactId={artifact.id}
+                    sessionId={session.id}
+                    resolveHandle={resolveHandle}
+                    readOnly={archivedSession}
+                  />
+                )}
+              </ArtifactPanel>
+            )
           }
         />
       )}
@@ -93,7 +108,8 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Conversation: Story = {}
-export const WorkingSurfaceTab: Story = { args: { panel: 'surface' } }
+export const Maximized: Story = { args: { maximized: 'view-0001' } }
+export const MaximizedChart: Story = { args: { maximized: 'view-0002' } }
 export const Responding: Story = { args: { state: responding } }
 export const NewSession: Story = { args: { state: empty } }
 export const Xray: Story = { args: { showXray: true } }

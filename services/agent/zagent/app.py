@@ -19,7 +19,7 @@ from zagent.agent import Agent, LlmAgent, ScriptedAgent
 from zagent.cohort import ClinicalStore, HandleError, configured_clock
 from zagent.display import SessionDisplay
 from zagent.draft_store import DraftConflict, DraftStore, InvalidDraft
-from zagent.drafts import CATALOG
+from zagent.drafts import CATALOG, ConfirmedJob
 from zagent.events import Projection
 from zagent.identity import DEFAULT_PERSONA, PERSONAS, CallerSigner, GrantSigner, PersonaId
 from zagent.jobs import JobStore
@@ -283,26 +283,27 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
     async def catalog():
         return [app.model_dump() for app in CATALOG.values()]
 
-    async def job_view(session_id: UUID, view_id: str):
+    async def app_artifact(session_id: UUID, artifact_id: str):
         display_only()
         await scoped_session(session_id)
         snapshot = await app.state.store.snapshot(session_id)
-        view = next((item for item in snapshot.views if item.id == view_id), None)
-        if view is None or view.spec.kind not in UI_RESOURCES:
-            raise NotFound("MCP view not found in this session")
-        return view
+        artifact = next((item for item in snapshot.artifacts if item.id == artifact_id), None)
+        if artifact is None or artifact.spec.kind not in UI_RESOURCES:
+            raise NotFound("MCP artifact not found in this session")
+        return artifact
 
-    @app.get("/sessions/{session_id}/views/{view_id}/app")
-    async def app_resource(session_id: UUID, view_id: str):
-        view = await job_view(session_id, view_id)
-        uri = UI_RESOURCES[view.spec.kind]
+    @app.get("/sessions/{session_id}/artifacts/{artifact_id}/app")
+    async def app_resource(session_id: UUID, artifact_id: str):
+        artifact = await app_artifact(session_id, artifact_id)
+        uri = UI_RESOURCES[artifact.spec.kind]
         return {"resource_uri": uri, "html": await app.state.jobs_client.resource(uri)}
 
-    @app.get("/sessions/{session_id}/views/{view_id}/data")
-    async def app_data(session_id: UUID, view_id: str):
-        view = await job_view(session_id, view_id)
+    @app.get("/sessions/{session_id}/artifacts/{artifact_id}/data")
+    async def app_data(session_id: UUID, artifact_id: str):
+        artifact = await app_artifact(session_id, artifact_id)
+        props = artifact.spec.props
         data = await app.state.jobs_client.app_data(
-            session_id, handle=view.spec.props.get("handle"), job_id=view.spec.props.get("job_id")
+            session_id, handle=props.get("handle"), job_id=props.get("job_id")
         )
         return (await app.state.store.privacy.resolve(session_id, Tokenized(value=data))).value
 
@@ -319,9 +320,9 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             else (await app.state.store.privacy.resolve(session_id, Tokenized(value=data))).value
         )
 
-    @app.get("/sessions/{session_id}/views/{view_id}/updates")
-    async def app_updates(request: Request, session_id: UUID, view_id: str):
-        await job_view(session_id, view_id)
+    @app.get("/sessions/{session_id}/artifacts/{artifact_id}/updates")
+    async def app_updates(request: Request, session_id: UUID, artifact_id: str):
+        await app_artifact(session_id, artifact_id)
 
         async def updates():
             yield "retry: 1000\n\n"
@@ -330,11 +331,11 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
                 while not await request.is_disconnected():
                     signal.clear()
                     try:
-                        current = json.dumps(await app_data(session_id, view_id))
+                        current = json.dumps(await app_data(session_id, artifact_id))
                     except (ValueError, HandleError, NotFound):
                         yield (
                             'event: jobs\ndata: {"jobs": [], '
-                            '"error": "Job view unavailable or expired"}\n\n'
+                            '"error": "Job artifact unavailable or expired"}\n\n'
                         )
                         return
                     if current != previous:
@@ -367,7 +368,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             await app.state.store.privacy.tokenize(
                 session_id,
                 Raw(value=body.parameters),
-                path="view_interaction",
+                path="artifact_interaction",
                 external=True,
             )
         ).value
@@ -380,7 +381,7 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             parameters=params,
         )
 
-    @app.post("/sessions/{session_id}/drafts/{draft_id}/confirm")
+    @app.post("/sessions/{session_id}/drafts/{draft_id}/confirm", response_model=ConfirmedJob)
     async def confirm_draft(session_id: UUID, draft_id: str, body: ConfirmInput):
         display_only()
         await writable_session(session_id)

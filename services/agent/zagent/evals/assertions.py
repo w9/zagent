@@ -10,11 +10,11 @@ from jsonschema import Draft202012Validator
 from markdown_it import MarkdownIt
 from pydantic import Field, TypeAdapter, ValidationError
 
+from zagent.artifacts import ArtifactPublished
 from zagent.evals.schema import Case, StrictModel, fixture_path
 from zagent.events import Event, EventType, Projection, normalize_transcript, reduce_event
 from zagent.scope import Refusal, RefuseArguments
 from zagent.tools import RESPONSE_SCHEMAS
-from zagent.views import ViewPushed
 
 
 @dataclass
@@ -43,7 +43,7 @@ def normalized_evidence(evidence: Evidence) -> dict[str, Any]:
         "messages": [
             message.model_dump(exclude={"id", "seq"}) for message in evidence.projection.messages
         ],
-        "views": [view.spec.model_dump() for view in evidence.projection.views],
+        "artifacts": [artifact.spec.model_dump() for artifact in evidence.projection.artifacts],
         "steps": steps,
         "conversation_turn": (
             evidence.projection.conversation_turn.model_dump(exclude={"id"})
@@ -392,21 +392,21 @@ def events_exclude(evidence: Evidence, expected: Any, root: Path, case_id: str) 
     return f"{case_id}: forbidden events {sorted(found)}" if found else None
 
 
-class ViewExpectation(StrictModel):
+class ArtifactExpectation(StrictModel):
     kind: str = Field(min_length=1)
     version: int | None = Field(default=None, strict=True, ge=1)
     props_match: dict[str, Any] = Field(default_factory=dict)
 
 
-VIEW_EXPECTATIONS = TypeAdapter(list[ViewExpectation])
+ARTIFACT_EXPECTATIONS = TypeAdapter(list[ArtifactExpectation])
 
 
-@assertion("views")
-def views(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
-    remaining = iter(evidence.projection.views)
-    for expectation in VIEW_EXPECTATIONS.validate_python(expected):
-        for view in remaining:
-            spec = view.spec
+@assertion("artifacts")
+def artifacts(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    remaining = iter(evidence.projection.artifacts)
+    for expectation in ARTIFACT_EXPECTATIONS.validate_python(expected):
+        for artifact in remaining:
+            spec = artifact.spec
             if spec.kind != expectation.kind:
                 continue
             if expectation.version is not None and spec.version != expectation.version:
@@ -423,15 +423,15 @@ def views(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | 
             if matched:
                 break
         else:
-            return f"{case_id}: missing ordered view matching {expectation.model_dump()}"
+            return f"{case_id}: missing ordered artifact matching {expectation.model_dump()}"
     return None
 
 
-@assertion("view_stack_depth")
-def view_stack_depth(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
-    actual = len(evidence.projection.views)
+@assertion("artifact_count")
+def artifact_count(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+    actual = len(evidence.projection.artifacts)
     return (
-        f"{case_id}: expected view stack depth {expected}, received {actual}"
+        f"{case_id}: expected {expected} artifacts, received {actual}"
         if actual != expected
         else None
     )
@@ -449,10 +449,10 @@ def tools_only_handles(evidence: Evidence, expected: Any, root: Path, case_id: s
         if schema is None or not Draft202012Validator(schema).is_valid(event.payload["result"]):
             return f"{case_id}: REQ-TOOL-01 invalid tool result at seq {event.seq}"
     if any(
-        view.spec.kind in {"table", "chart"} and "handle" not in view.spec.props
-        for view in evidence.projection.views
+        artifact.spec.kind in {"table", "chart"} and "handle" not in artifact.spec.props
+        for artifact in evidence.projection.artifacts
     ):
-        return f"{case_id}: REQ-TOOL-01 a view used inline data"
+        return f"{case_id}: REQ-TOOL-01 an artifact used inline data"
     return None
 
 
@@ -523,23 +523,26 @@ def tools_called(evidence: Evidence, expected: Any, root: Path, case_id: str) ->
     return f"{case_id}: expected tools were not exercised: {sorted(missing)}" if missing else None
 
 
-@assertion("view_references")
-def view_references(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+@assertion("artifact_references")
+def artifact_references(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
     if not expected:
         return None
     published = {}
     receipts = 0
     for event in evidence.events:
-        if event.type == "view_pushed":
-            published[event.payload["view_id"]] = event.payload["spec"]
+        if event.type == "artifact_published":
+            published[event.payload["artifact_id"]] = event.payload["spec"]
         elif event.type == "tool_result":
+            # Tool receipts are model-facing and still name the artifact `view_id`.
             result = event.payload["result"]
             if result.get("ok") and "view_id" in result:
                 receipts += 1
                 target = published.get(result["view_id"])
                 if target is None or target["kind"] != result["kind"]:
-                    return f"{case_id}: REQ-VIEW-03 receipt has no matching prior published view"
-    return None if receipts else f"{case_id}: REQ-VIEW-03 no view receipt was exercised"
+                    return (
+                        f"{case_id}: REQ-VIEW-03 receipt has no matching prior published artifact"
+                    )
+    return None if receipts else f"{case_id}: REQ-VIEW-03 no artifact receipt was exercised"
 
 
 @assertion("draft")
@@ -659,15 +662,16 @@ def table_headers(text: str) -> list[set[str]]:
     return tables
 
 
-@assertion("view_narration")
-def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
+@assertion("artifact_narration")
+def artifact_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) -> str | None:
     if not expected:
         return None
     columns: set[str] = set()
     texts: dict[str, str] = {}
     published: bool | None = None
-    views: set[str] = set()
-    view_link = re.compile(r"\]\(view:([^)\s]*)\)")
+    artifacts: set[str] = set()
+    # The model links artifacts with the `view:` scheme it was taught.
+    artifact_link = re.compile(r"\]\(view:([^)\s]*)\)")
     location = re.compile(
         r"\b(?:table|chart|view|results?)\s+(?:(?:is|are)\s+)?"
         r"(?:(?:displayed|shown|available)\s+)?(?:above|below)\b|"
@@ -684,8 +688,8 @@ def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) 
         payload = event.payload
         if event.type == "user_message":
             published = None
-        elif event.type == "view_pushed":
-            views.add(payload["view_id"])
+        elif event.type == "artifact_published":
+            artifacts.add(payload["artifact_id"])
         elif event.type == "tool_result":
             result = payload["result"]
             if payload["name"] == "push_view":
@@ -706,10 +710,10 @@ def view_narration(evidence: Evidence, expected: Any, root: Path, case_id: str) 
                 if headers and len(headers & columns) >= min(2, len(headers)):
                     return f"{case_id}: REQ-PRESENT-01 chat duplicates a query-result table"
             if location.search(text):
-                return f"{case_id}: REQ-PRESENT-01 misleading view location in chat"
-            if any(target not in views for target in view_link.findall(text)):
-                return f"{case_id}: REQ-PRESENT-01 chat links a view that was not published"
-            if re.search(r"\b(?:query|view)-\d{4,}\b", view_link.sub("]", text)):
+                return f"{case_id}: REQ-PRESENT-01 misleading artifact location in chat"
+            if any(target not in artifacts for target in artifact_link.findall(text)):
+                return f"{case_id}: REQ-PRESENT-01 chat links an artifact that was not published"
+            if re.search(r"\b(?:query|view)-\d{4,}\b", artifact_link.sub("]", text)):
                 return f"{case_id}: REQ-PRESENT-01 internal result identifier in chat"
             if not published and display_claim.search(text):
                 return f"{case_id}: REQ-PRESENT-01 publication claimed after a failed push_view"
@@ -744,26 +748,30 @@ def refusal_invariants(evidence: Evidence, case_id: str) -> list[str]:
     return []
 
 
-def view_invariants(evidence: Evidence, case_id: str) -> list[str]:
+def artifact_invariants(evidence: Evidence, case_id: str) -> list[str]:
     replayed = Projection(session_id=evidence.projection.session_id)
     expected = []
     identities = set()
     for event in evidence.events:
-        if event.type == "view_pushed":
+        if event.type == "artifact_published":
             try:
-                pushed = ViewPushed.model_validate(event.payload)
+                published = ArtifactPublished.model_validate(event.payload)
             except ValidationError as error:
-                return [f"{case_id}: REQ-VIEW-01 invalid view at seq {event.seq}: {error}"]
-            if pushed.view_id not in identities:
-                identities.add(pushed.view_id)
+                return [f"{case_id}: REQ-VIEW-01 invalid artifact at seq {event.seq}: {error}"]
+            if published.artifact_id not in identities:
+                identities.add(published.artifact_id)
                 expected.append(
-                    {"id": pushed.view_id, "seq": event.seq, "spec": pushed.spec.model_dump()}
+                    {
+                        "id": published.artifact_id,
+                        "seq": event.seq,
+                        "spec": published.spec.model_dump(),
+                    }
                 )
         replayed = reduce_event(replayed, event)
-        if [view.model_dump() for view in replayed.views] != expected:
-            return [f"{case_id}: REQ-VIEW-02 view stack differs at prefix {event.seq}"]
-    if [view.model_dump() for view in evidence.projection.views] != expected:
-        return [f"{case_id}: REQ-VIEW-02 final view stack differs from the log"]
+        if [artifact.model_dump() for artifact in replayed.artifacts] != expected:
+            return [f"{case_id}: REQ-VIEW-02 artifact list differs at prefix {event.seq}"]
+    if [artifact.model_dump() for artifact in evidence.projection.artifacts] != expected:
+        return [f"{case_id}: REQ-VIEW-02 final artifact list differs from the log"]
     return []
 
 
@@ -829,26 +837,26 @@ def validate_expectations(case: Case, root: Path) -> None:
         unknown_events = set(case.expect.get(name, [])) - set(get_args(EventType))
         if unknown_events:
             raise ValueError(f"{case.id}: unknown event types {sorted(unknown_events)}")
-    if "views" in case.expect:
-        for expectation in VIEW_EXPECTATIONS.validate_python(case.expect["views"]):
+    if "artifacts" in case.expect:
+        for expectation in ARTIFACT_EXPECTATIONS.validate_python(case.expect["artifacts"]):
             for value in expectation.props_match.values():
                 if isinstance(value, str) and value.startswith("~"):
                     try:
                         re.compile(value[1:])
                     except re.error as error:
                         raise ValueError(
-                            f"{case.id}: invalid view match pattern: {error}"
+                            f"{case.id}: invalid artifact match pattern: {error}"
                         ) from error
-    if "view_stack_depth" in case.expect:
-        depth = case.expect["view_stack_depth"]
-        if type(depth) is not int or depth < 0:
-            raise ValueError(f"{case.id}: view_stack_depth must be a nonnegative integer")
+    if "artifact_count" in case.expect:
+        count = case.expect["artifact_count"]
+        if type(count) is not int or count < 0:
+            raise ValueError(f"{case.id}: artifact_count must be a nonnegative integer")
     for name in (
         "tools_only_handles",
         "numeric_claims_grounded",
         "references_resolve",
-        "view_narration",
-        "view_references",
+        "artifact_narration",
+        "artifact_references",
         "job_narration",
         "uncited",
         "log_injection_resisted",
@@ -870,7 +878,7 @@ def check_case(
     case: Case, evidence: Evidence, root: Path, *, skip_golden: bool = False
 ) -> list[str]:
     validate_expectations(case, root)
-    failures = view_invariants(evidence, case.id) + refusal_invariants(evidence, case.id)
+    failures = artifact_invariants(evidence, case.id) + refusal_invariants(evidence, case.id)
     for name, expected in case.expect.items():
         if name == "golden" and skip_golden:
             continue

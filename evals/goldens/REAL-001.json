@@ -1,4 +1,92 @@
 {
+  "artifacts": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "kind",
+            "label": "Type",
+            "type": "string"
+          },
+          {
+            "key": "purity",
+            "label": "Purity",
+            "type": "number"
+          },
+          {
+            "key": "received_at",
+            "label": "Received",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0002",
+        "row_count": 3,
+        "title": "Specimens received in the last 24 hours for patient [PT_1]"
+      },
+      "version": 1
+    },
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "id",
+            "label": "Library",
+            "type": "string"
+          },
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "prep",
+            "label": "Preparation",
+            "type": "string"
+          },
+          {
+            "key": "coverage",
+            "label": "Coverage",
+            "type": "number"
+          },
+          {
+            "key": "qc_status",
+            "label": "QC status",
+            "type": "string"
+          }
+        ],
+        "handle": "query-0003",
+        "row_count": 3,
+        "title": "Libraries for specimens received in the last 24 hours for patient [PT_1]"
+      },
+      "version": 1
+    },
+    {
+      "kind": "chart",
+      "props": {
+        "encoding": {
+          "x": {
+            "field": "id",
+            "type": "nominal"
+          },
+          "y": {
+            "field": "coverage",
+            "type": "quantitative"
+          }
+        },
+        "handle": "query-0003",
+        "mark": "bar",
+        "title": "Coverage for libraries of specimens received in the last 24 hours for patient [PT_1]"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -158,7 +246,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -321,7 +409,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -411,7 +499,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -666,94 +754,6 @@
       "detail": "Response complete",
       "status": "complete",
       "title": "Agent step 2"
-    }
-  ],
-  "views": [
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "kind",
-            "label": "Type",
-            "type": "string"
-          },
-          {
-            "key": "purity",
-            "label": "Purity",
-            "type": "number"
-          },
-          {
-            "key": "received_at",
-            "label": "Received",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0002",
-        "row_count": 3,
-        "title": "Specimens received in the last 24 hours for patient [PT_1]"
-      },
-      "version": 1
-    },
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "id",
-            "label": "Library",
-            "type": "string"
-          },
-          {
-            "key": "specimen_id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "prep",
-            "label": "Preparation",
-            "type": "string"
-          },
-          {
-            "key": "coverage",
-            "label": "Coverage",
-            "type": "number"
-          },
-          {
-            "key": "qc_status",
-            "label": "QC status",
-            "type": "string"
-          }
-        ],
-        "handle": "query-0003",
-        "row_count": 3,
-        "title": "Libraries for specimens received in the last 24 hours for patient [PT_1]"
-      },
-      "version": 1
-    },
-    {
-      "kind": "chart",
-      "props": {
-        "encoding": {
-          "x": {
-            "field": "id",
-            "type": "nominal"
-          },
-          "y": {
-            "field": "coverage",
-            "type": "quantitative"
-          }
-        },
-        "handle": "query-0003",
-        "mark": "bar",
-        "title": "Coverage for libraries of specimens received in the last 24 hours for patient [PT_1]"
-      },
-      "version": 1
     }
   ]
 }

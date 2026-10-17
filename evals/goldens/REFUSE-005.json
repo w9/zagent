@@ -1,4 +1,5 @@
 {
+  "artifacts": [],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -39,6 +40,5 @@
       "message": "That decision or action requires an authorized person. I can display the relevant specimen and library records for their review, but cannot approve or execute it."
     }
   ],
-  "steps": [],
-  "views": []
+  "steps": []
 }

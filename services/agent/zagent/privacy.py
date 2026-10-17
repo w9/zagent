@@ -36,12 +36,12 @@ INGRESS_PATHS = frozenset(
         "user_message",
         "tool_arguments",
         "tool_result",
-        "view_spec",
+        "artifact_spec",
         "assistant_output",
         "draft_updated",
         "job_log",
         "retrieved_document",
-        "view_interaction",
+        "artifact_interaction",
     }
 )
 

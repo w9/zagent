@@ -1,264 +1,5 @@
 {
-  "conversation_turn": {
-    "error": "Invalid event payload: Value error, View schema error at props.row_count: -1 is less than the minimum of 0",
-    "status": "failed"
-  },
-  "events": [
-    {
-      "payload": {
-        "text": "Show specimen intake"
-      },
-      "type": "user_message"
-    },
-    {
-      "payload": {},
-      "type": "conversation_turn_started"
-    },
-    {
-      "payload": {
-        "text": "Message received.\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {
-        "detail": "Static synthetic fixture; no clinical records are queried.",
-        "title": "Review specimen intake"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "table",
-          "props": {
-            "columns": [
-              {
-                "key": "specimen_id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "library",
-                "label": "Library",
-                "type": "string"
-              },
-              {
-                "key": "site",
-                "label": "Site",
-                "type": "string"
-              },
-              {
-                "key": "status",
-                "label": "Status",
-                "type": "string"
-              }
-            ],
-            "row_count": 14,
-            "rows": [
-              [
-                "[SP_1]",
-                "DNA",
-                "Northlake",
-                "Ready"
-              ],
-              [
-                "[SP_2]",
-                "DNA",
-                "Northlake",
-                "Review"
-              ],
-              [
-                "[SP_3]",
-                "RNA",
-                "Westhaven",
-                "Ready"
-              ],
-              [
-                "[SP_4]",
-                "DNA",
-                "Eastmere",
-                "Ready"
-              ],
-              [
-                "[SP_5]",
-                "RNA",
-                "Westhaven",
-                "Ready"
-              ],
-              [
-                "[SP_6]",
-                "DNA",
-                "Eastmere",
-                "Ready"
-              ]
-            ],
-            "title": "Specimens received in the last 24 hours"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "detail": "14 synthetic specimens; 6 displayed in this snapshot."
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "text": "For this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\n"
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {
-        "detail": "Static fixture checks for the displayed specimens.",
-        "title": "Review intake quality checks"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "spec": {
-          "kind": "table",
-          "props": {
-            "columns": [
-              {
-                "key": "specimen_id",
-                "label": "Specimen",
-                "type": "string"
-              },
-              {
-                "key": "check",
-                "label": "Check",
-                "type": "string"
-              },
-              {
-                "key": "result",
-                "label": "Result",
-                "type": "string"
-              },
-              {
-                "key": "passed",
-                "label": "Passed",
-                "type": "boolean"
-              }
-            ],
-            "row_count": 4,
-            "rows": [
-              [
-                "[SP_1]",
-                "Library yield",
-                "Within range",
-                true
-              ],
-              [
-                "[SP_2]",
-                "Sample identity",
-                "Review required",
-                false
-              ],
-              [
-                "[SP_3]",
-                "RNA integrity",
-                "Within range",
-                true
-              ],
-              [
-                "[SP_4]",
-                "Library yield",
-                "Within range",
-                true
-              ]
-            ],
-            "title": "Intake quality checks"
-          },
-          "version": 1
-        }
-      },
-      "type": "view_pushed"
-    },
-    {
-      "payload": {
-        "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started."
-      },
-      "type": "step_finished"
-    },
-    {
-      "payload": {
-        "text": "No records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
-      },
-      "type": "text_delta"
-    },
-    {
-      "payload": {},
-      "type": "message_done"
-    },
-    {
-      "payload": {},
-      "type": "conversation_turn_finished"
-    },
-    {
-      "payload": {
-        "text": "/invalid-view"
-      },
-      "type": "user_message"
-    },
-    {
-      "payload": {},
-      "type": "conversation_turn_started"
-    },
-    {
-      "payload": {
-        "detail": "The fixture intentionally contains an invalid row count.",
-        "title": "Validate table fixture"
-      },
-      "type": "step_started"
-    },
-    {
-      "payload": {
-        "error": "Invalid event payload: Value error, View schema error at props.row_count: -1 is less than the minimum of 0"
-      },
-      "type": "conversation_turn_failed"
-    }
-  ],
-  "messages": [
-    {
-      "role": "user",
-      "status": "complete",
-      "text": "Show specimen intake"
-    },
-    {
-      "role": "assistant",
-      "status": "complete",
-      "text": "Message received.\n\nFor this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\nNo records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
-    },
-    {
-      "role": "user",
-      "status": "complete",
-      "text": "/invalid-view"
-    }
-  ],
-  "steps": [
-    {
-      "detail": "14 synthetic specimens; 6 displayed in this snapshot.",
-      "status": "complete",
-      "title": "Review specimen intake"
-    },
-    {
-      "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started.",
-      "status": "complete",
-      "title": "Review intake quality checks"
-    },
-    {
-      "detail": "The fixture intentionally contains an invalid row count.",
-      "status": "failed",
-      "title": "Validate table fixture"
-    }
-  ],
-  "views": [
+  "artifacts": [
     {
       "kind": "table",
       "props": {
@@ -382,6 +123,265 @@
         "title": "Intake quality checks"
       },
       "version": 1
+    }
+  ],
+  "conversation_turn": {
+    "error": "Invalid event payload: Value error, View schema error at props.row_count: -1 is less than the minimum of 0",
+    "status": "failed"
+  },
+  "events": [
+    {
+      "payload": {
+        "text": "Show specimen intake"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "text": "Message received.\n\n"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {
+        "detail": "Static synthetic fixture; no clinical records are queried.",
+        "title": "Review specimen intake"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "specimen_id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "library",
+                "label": "Library",
+                "type": "string"
+              },
+              {
+                "key": "site",
+                "label": "Site",
+                "type": "string"
+              },
+              {
+                "key": "status",
+                "label": "Status",
+                "type": "string"
+              }
+            ],
+            "row_count": 14,
+            "rows": [
+              [
+                "[SP_1]",
+                "DNA",
+                "Northlake",
+                "Ready"
+              ],
+              [
+                "[SP_2]",
+                "DNA",
+                "Northlake",
+                "Review"
+              ],
+              [
+                "[SP_3]",
+                "RNA",
+                "Westhaven",
+                "Ready"
+              ],
+              [
+                "[SP_4]",
+                "DNA",
+                "Eastmere",
+                "Ready"
+              ],
+              [
+                "[SP_5]",
+                "RNA",
+                "Westhaven",
+                "Ready"
+              ],
+              [
+                "[SP_6]",
+                "DNA",
+                "Eastmere",
+                "Ready"
+              ]
+            ],
+            "title": "Specimens received in the last 24 hours"
+          },
+          "version": 1
+        }
+      },
+      "type": "artifact_published"
+    },
+    {
+      "payload": {
+        "detail": "14 synthetic specimens; 6 displayed in this snapshot."
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "text": "For this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\n"
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {
+        "detail": "Static fixture checks for the displayed specimens.",
+        "title": "Review intake quality checks"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "spec": {
+          "kind": "table",
+          "props": {
+            "columns": [
+              {
+                "key": "specimen_id",
+                "label": "Specimen",
+                "type": "string"
+              },
+              {
+                "key": "check",
+                "label": "Check",
+                "type": "string"
+              },
+              {
+                "key": "result",
+                "label": "Result",
+                "type": "string"
+              },
+              {
+                "key": "passed",
+                "label": "Passed",
+                "type": "boolean"
+              }
+            ],
+            "row_count": 4,
+            "rows": [
+              [
+                "[SP_1]",
+                "Library yield",
+                "Within range",
+                true
+              ],
+              [
+                "[SP_2]",
+                "Sample identity",
+                "Review required",
+                false
+              ],
+              [
+                "[SP_3]",
+                "RNA integrity",
+                "Within range",
+                true
+              ],
+              [
+                "[SP_4]",
+                "Library yield",
+                "Within range",
+                true
+              ]
+            ],
+            "title": "Intake quality checks"
+          },
+          "version": 1
+        }
+      },
+      "type": "artifact_published"
+    },
+    {
+      "payload": {
+        "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started."
+      },
+      "type": "step_finished"
+    },
+    {
+      "payload": {
+        "text": "No records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
+      },
+      "type": "text_delta"
+    },
+    {
+      "payload": {},
+      "type": "message_done"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_finished"
+    },
+    {
+      "payload": {
+        "text": "/invalid-artifact"
+      },
+      "type": "user_message"
+    },
+    {
+      "payload": {},
+      "type": "conversation_turn_started"
+    },
+    {
+      "payload": {
+        "detail": "The fixture intentionally contains an invalid row count.",
+        "title": "Validate table fixture"
+      },
+      "type": "step_started"
+    },
+    {
+      "payload": {
+        "error": "Invalid event payload: Value error, View schema error at props.row_count: -1 is less than the minimum of 0"
+      },
+      "type": "conversation_turn_failed"
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "Show specimen intake"
+    },
+    {
+      "role": "assistant",
+      "status": "complete",
+      "text": "Message received.\n\nFor this synthetic genomics workspace, the review order is specimen intake, analysis status, then unresolved quality checks.\n\nNo records have been queried and no analysis has been started. This response is a fixed script, independent of your message."
+    },
+    {
+      "role": "user",
+      "status": "complete",
+      "text": "/invalid-artifact"
+    }
+  ],
+  "steps": [
+    {
+      "detail": "14 synthetic specimens; 6 displayed in this snapshot.",
+      "status": "complete",
+      "title": "Review specimen intake"
+    },
+    {
+      "detail": "4 synthetic checks; 1 flagged for review. No analysis job was started.",
+      "status": "complete",
+      "title": "Review intake quality checks"
+    },
+    {
+      "detail": "The fixture intentionally contains an invalid row count.",
+      "status": "failed",
+      "title": "Validate table fixture"
     }
   ]
 }

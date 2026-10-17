@@ -1,4 +1,27 @@
 {
+  "artifacts": [
+    {
+      "kind": "table",
+      "props": {
+        "columns": [
+          {
+            "key": "specimen_id",
+            "label": "Specimen",
+            "type": "string"
+          },
+          {
+            "key": "check",
+            "label": "Check",
+            "type": "string"
+          }
+        ],
+        "row_count": 0,
+        "rows": [],
+        "title": "Unresolved checks"
+      },
+      "version": 1
+    }
+  ],
   "conversation_turn": {
     "error": null,
     "status": "finished"
@@ -44,7 +67,7 @@
           "version": 1
         }
       },
-      "type": "view_pushed"
+      "type": "artifact_published"
     },
     {
       "payload": {
@@ -69,29 +92,6 @@
       "detail": "No unresolved checks in this synthetic fixture.",
       "status": "complete",
       "title": "Review unresolved checks"
-    }
-  ],
-  "views": [
-    {
-      "kind": "table",
-      "props": {
-        "columns": [
-          {
-            "key": "specimen_id",
-            "label": "Specimen",
-            "type": "string"
-          },
-          {
-            "key": "check",
-            "label": "Check",
-            "type": "string"
-          }
-        ],
-        "row_count": 0,
-        "rows": [],
-        "title": "Unresolved checks"
-      },
-      "version": 1
     }
   ]
 }

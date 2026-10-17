@@ -9,9 +9,9 @@ steps:
         detail: The fixture intentionally contains an invalid row count.
   - delay_ms: 500
     event:
-      type: view_pushed
+      type: artifact_published
       payload:
-        view_id: invalid
+        artifact_id: invalid
         spec:
           kind: table
           version: 1

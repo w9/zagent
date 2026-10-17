@@ -8,6 +8,7 @@ from typing import Any, Protocol
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
+from zagent.drafts import model_facing_draft
 from zagent.events import Event, EventDraft, EventType, without_retried
 from zagent.llm import AssistantMessage, Completer, CompletionRequest, canonical_json
 from zagent.scope import (
@@ -139,7 +140,9 @@ def conversation_messages(events: list[Event]) -> list[dict[str, Any]]:
     latest_drafts = {}
     for event in events:
         if event.type == "draft_updated" and "draft_id" in event.payload.get("draft", {}):
-            latest_drafts[event.payload["draft"]["draft_id"]] = event.payload["draft"]
+            latest_drafts[event.payload["draft"]["draft_id"]] = model_facing_draft(
+                event.payload["draft"]
+            )
     if latest_drafts:
         messages.append(
             {
@@ -381,7 +384,7 @@ class ScriptedAgent:
     def __init__(self, script: Path | None = None, *, delay_scale: float = 1):
         self.script = self.load(script or files("zagent").joinpath("scripts/default.yaml"))
         self.failure = self.load(files("zagent").joinpath("scripts/failure.yaml"))
-        self.invalid_view = self.load(files("zagent").joinpath("scripts/invalid-view.yaml"))
+        self.invalid_artifact = self.load(files("zagent").joinpath("scripts/invalid-artifact.yaml"))
         self.delay_scale = delay_scale
 
     @staticmethod
@@ -389,7 +392,7 @@ class ScriptedAgent:
         return Script.model_validate(yaml.safe_load(path.read_text()))
 
     async def run_turn(self, session: AgentSession, emit: Emit) -> None:
-        script = {"/fail": self.failure, "/invalid-view": self.invalid_view}.get(
+        script = {"/fail": self.failure, "/invalid-artifact": self.invalid_artifact}.get(
             session.message.strip(), self.script
         )
         for step in script.steps:
@@ -397,7 +400,7 @@ class ScriptedAgent:
             if step.raise_error is not None:
                 raise RuntimeError(step.raise_error)
             event = step.event.model_copy(deep=True)
-            for key in ("message_id", "view_id", "step_id"):
+            for key in ("message_id", "artifact_id", "step_id"):
                 if key in event.payload:
                     event.payload[key] = f"{session.conversation_turn_id}:{event.payload[key]}"
             if event.type == "text_delta":

@@ -6,15 +6,15 @@ cases:
       - user: Show specimen intake
     expect:
       golden: goldens/VIEW-001.json
-      events_include: [view_pushed, step_started, step_finished, conversation_turn_finished]
+      events_include: [artifact_published, step_started, step_finished, conversation_turn_finished]
       events_exclude: [conversation_turn_failed]
-      views:
+      artifacts:
         - kind: table
           version: 1
           props_match: {title: "~received in the last 24 hours", row_count: 14}
         - kind: table
           props_match: {title: Intake quality checks, row_count: 4}
-      view_stack_depth: 2
+      artifact_count: 2
 
   - id: VIEW-002
     requirement: REQ-VIEW-01
@@ -23,36 +23,36 @@ cases:
       - user: Show unresolved checks
     expect:
       golden: goldens/VIEW-002.json
-      events_include: [view_pushed, conversation_turn_finished]
+      events_include: [artifact_published, conversation_turn_finished]
       events_exclude: [conversation_turn_failed]
-      views:
+      artifacts:
         - kind: table
           props_match: {title: Unresolved checks, row_count: 0, rows: []}
-      view_stack_depth: 1
+      artifact_count: 1
 
   - id: VIEW-003
     requirement: REQ-VIEW-01
     agent: scripted:default
     conversation_turns:
       - user: Show specimen intake
-      - user: /invalid-view
+      - user: /invalid-artifact
     expect:
       golden: goldens/VIEW-003.json
-      events_include: [view_pushed, step_started, step_finished, conversation_turn_failed]
-      views:
+      events_include: [artifact_published, step_started, step_finished, conversation_turn_failed]
+      artifacts:
         - kind: table
           props_match: {title: "~received in the last 24 hours"}
         - kind: table
           props_match: {title: Intake quality checks}
-      view_stack_depth: 2
+      artifact_count: 2
 
   - id: VIEW-004
     requirement: REQ-VIEW-01
     agent: scripted:default
     conversation_turns:
-      - user: /invalid-view
+      - user: /invalid-artifact
     expect:
       golden: goldens/VIEW-004.json
       events_include: [step_started, conversation_turn_failed]
-      events_exclude: [view_pushed, conversation_turn_finished]
-      view_stack_depth: 0
+      events_exclude: [artifact_published, conversation_turn_finished]
+      artifact_count: 0

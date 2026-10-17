@@ -4,9 +4,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from zagent.artifacts import ArtifactPublished, ArtifactSpec
 from zagent.drafts import DraftState, JobState
 from zagent.scope import Refusal
-from zagent.views import ViewPushed, ViewSpec
 
 EventType = Literal[
     "user_message",
@@ -20,7 +20,7 @@ EventType = Literal[
     "step_finished",
     "tool_call",
     "tool_result",
-    "view_pushed",
+    "artifact_published",
     "refused",
     "draft_updated",
     "privacy_alert",
@@ -95,8 +95,8 @@ class EventDraft(BaseModel):
             MessageRef.model_validate(self.payload)
         elif self.type == "conversation_turn_failed":
             Failure.model_validate(self.payload)
-        elif self.type == "view_pushed":
-            ViewPushed.model_validate(self.payload)
+        elif self.type == "artifact_published":
+            ArtifactPublished.model_validate(self.payload)
         elif self.type == "step_started":
             StepStarted.model_validate(self.payload)
         elif self.type == "step_finished":
@@ -120,8 +120,12 @@ class EventDraft(BaseModel):
         return self
 
 
+def renamed_key(value: dict[str, Any], old: str, new: str) -> dict[str, Any]:
+    return {(new if key == old else key): item for key, item in value.items()}
+
+
 class Event(EventDraft):
-    schema_version: Literal[2] = 2
+    schema_version: Literal[3] = 3
     session_id: UUID
     seq: int = Field(gt=0)
     conversation_turn_id: UUID
@@ -130,9 +134,11 @@ class Event(EventDraft):
     @model_validator(mode="before")
     @classmethod
     def upgrade_legacy_event(cls, value: Any) -> Any:
-        if isinstance(value, dict) and value.get("schema_version") == 1:
-            value = dict(value)
-            value["schema_version"] = 2
+        """Stored events are immutable, so older schema versions are translated on read."""
+        if not isinstance(value, dict) or value.get("schema_version") not in {1, 2}:
+            return value
+        value = dict(value)
+        if value["schema_version"] == 1:
             if "run_id" in value:
                 value["conversation_turn_id"] = value.pop("run_id")
             legacy_types = {
@@ -141,6 +147,21 @@ class Event(EventDraft):
                 "run_failed": "conversation_turn_failed",
             }
             value["type"] = legacy_types.get(value["type"], value["type"])
+        value["schema_version"] = 3
+        payload = value.get("payload")
+        if value.get("type") == "view_pushed":
+            value["type"] = "artifact_published"
+            if isinstance(payload, dict):
+                value["payload"] = renamed_key(payload, "view_id", "artifact_id")
+        elif (
+            value.get("type") == "draft_updated"
+            and isinstance(payload, dict)
+            and isinstance(payload.get("draft"), dict)
+        ):
+            value["payload"] = {
+                **payload,
+                "draft": renamed_key(payload["draft"], "view_id", "artifact_id"),
+            }
         return value
 
 
@@ -158,10 +179,10 @@ class ConversationTurnState(BaseModel):
     error: str | None = None
 
 
-class PushedView(BaseModel):
+class PublishedArtifact(BaseModel):
     id: str
     seq: int
-    spec: ViewSpec
+    spec: ArtifactSpec
 
 
 class ToolActivity(BaseModel):
@@ -189,7 +210,7 @@ class Projection(BaseModel):
     session_id: UUID
     seq: int = 0
     messages: list[ChatMessage] = Field(default_factory=list)
-    views: list[PushedView] = Field(default_factory=list)
+    artifacts: list[PublishedArtifact] = Field(default_factory=list)
     steps: list[StepState] = Field(default_factory=list)
     refusals: list[RefusedState] = Field(default_factory=list)
     drafts: dict[str, DraftState] = Field(default_factory=dict)
@@ -256,13 +277,13 @@ def reduce_event(state: Projection, event: Event) -> Projection:
     elif event.type == "job_submitted":
         job = JobState.model_validate(payload["job"])
         result.jobs[job.job_id] = job
-    elif event.type == "view_pushed":
-        if not any(view.id == payload["view_id"] for view in result.views):
-            result.views.append(
-                PushedView(
-                    id=payload["view_id"],
+    elif event.type == "artifact_published":
+        if not any(artifact.id == payload["artifact_id"] for artifact in result.artifacts):
+            result.artifacts.append(
+                PublishedArtifact(
+                    id=payload["artifact_id"],
                     seq=event.seq,
-                    spec=ViewSpec.model_validate(payload["spec"]),
+                    spec=ArtifactSpec.model_validate(payload["spec"]),
                 )
             )
     elif event.type == "step_started":
@@ -323,7 +344,7 @@ def project(session_id: UUID, events: list[Event]) -> Projection:
 
 def without_retried(events: list[Event]) -> list[Event]:
     """The conversation the model continues: a retried turn's exchange is left out, but the
-    views, drafts and jobs it created remain."""
+    artifacts, drafts and jobs it created remain."""
     retried = {
         event.payload["retry_of"]
         for event in events
@@ -333,7 +354,7 @@ def without_retried(events: list[Event]) -> list[Event]:
         event
         for event in events
         if str(event.conversation_turn_id) not in retried
-        or event.type in {"view_pushed", "draft_updated", "job_submitted", "session_updated"}
+        or event.type in {"artifact_published", "draft_updated", "job_submitted", "session_updated"}
     ]
 
 

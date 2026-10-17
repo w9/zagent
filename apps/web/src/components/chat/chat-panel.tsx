@@ -5,11 +5,13 @@ import type { ReactNode } from 'react'
 import type { Persona, PrivacyBinding } from '../../lib/api'
 import { citedRead, readResults } from '../../lib/citations'
 import type { Citation, CitedRead } from '../../lib/citations'
-import { toolView } from '../../lib/events'
-import type { ChatMessage, Projection, RefusedState, StepState } from '../../lib/events'
+import type { Projection } from '../../lib/events'
 import { resolveDisplayText } from '../../lib/use-session'
-import type { PushedView } from '../../lib/views'
 import { cn } from '../../lib/utils'
+import { ArtifactCard } from '../artifact/artifact-card'
+import { ArtifactList } from '../artifact/artifact-list'
+import { ArtifactRenderer } from '../artifact/artifact-renderer'
+import type { HandleResolver } from '../artifact/kinds/table.artifact'
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
 import { EmptyState } from '../ui/empty-state'
@@ -22,11 +24,11 @@ import { Composer } from './composer'
 import { MessageActions } from './message-actions'
 import { RefusalChip } from './refusal-chip'
 import { StepMarker } from './step-marker'
+import { timeline } from './timeline'
 import { TranscriptText } from './transcript-text'
-import type { CitationLink, ViewLink } from './transcript-text'
+import type { ArtifactLink, CitationLink } from './transcript-text'
 import { TurnStatus } from './turn-status'
 import type { Connection, TurnStatusLabel } from './turn-status'
-import { ViewReference } from './view-reference'
 
 function turnStatus(state: Projection | null, connection: Connection): TurnStatusLabel {
   if (connection === 'connecting') return 'Connecting'
@@ -35,31 +37,6 @@ function turnStatus(state: Projection | null, connection: Connection): TurnStatu
   if (turn?.status === 'running') return 'Responding'
   if (turn?.status === 'failed') return 'Failed'
   return turn ? 'Complete' : 'Ready'
-}
-
-type Entry =
-  | { kind: 'message'; value: ChatMessage }
-  | { kind: 'steps'; value: StepState[] }
-  | { kind: 'refusal'; value: RefusedState }
-  | { kind: 'view'; value: PushedView }
-
-/** Messages, steps, refusals and unreferenced views in log order; consecutive steps form one group. */
-function timeline(state: Projection): Entry[] {
-  const linked = new Set(state.steps.flatMap((step) => (step.tools ?? []).flatMap((tool) => toolView(tool)?.id ?? [])))
-  const items = [
-    ...state.messages.map((value) => ({ kind: 'message' as const, value })),
-    ...state.steps.map((value) => ({ kind: 'step' as const, value })),
-    ...(state.refusals ?? []).map((value) => ({ kind: 'refusal' as const, value })),
-    ...state.views.filter((view) => !linked.has(view.id)).map((value) => ({ kind: 'view' as const, value })),
-  ].sort((first, second) => first.value.seq - second.value.seq)
-  const entries: Entry[] = []
-  for (const item of items) {
-    const last = entries.at(-1)
-    if (item.kind === 'step' && last?.kind === 'steps') last.value.push(item.value)
-    else if (item.kind === 'step') entries.push({ kind: 'steps', value: [item.value] })
-    else entries.push(item)
-  }
-  return entries
 }
 
 export function ChatPanel({
@@ -74,6 +51,10 @@ export function ChatPanel({
   onRetry,
   onUnarchive,
   onOpenCitation,
+  maximizedArtifact,
+  onMaximize,
+  onMinimize,
+  resolveHandle,
   className,
 }: {
   sessionId: string
@@ -89,6 +70,11 @@ export function ChatPanel({
   /** Set for an archived session, which is read-only until unarchived. */
   onUnarchive?: () => void
   onOpenCitation: (citation: Citation, read?: CitedRead) => void
+  /** The artifact shown in the right panel; its card is a placeholder. */
+  maximizedArtifact?: string
+  onMaximize: (artifactId: string) => void
+  onMinimize: () => void
+  resolveHandle?: HandleResolver
   className?: string
 }) {
   const [draft, setDraft] = useState('')
@@ -104,17 +90,18 @@ export function ChatPanel({
   const canSend = Boolean(state && connection === 'live' && status !== 'Responding' && !sending && !retryPending && draft.trim())
   const showRetry = Boolean(lastTurn && lastTurn.status !== 'running' && !onUnarchive)
   const canRetry = connection === 'live' && !sending && !retryPending
-  const views = state?.views ?? []
+  const artifacts = state?.artifacts ?? []
   const problem = error || sendError || state?.conversation_turn?.error
+  const readOnly = Boolean(onUnarchive)
 
-  const viewLink: ViewLink = (viewId, children: ReactNode) =>
-    views.some((view) => view.id === viewId) ? (
+  const artifactLink: ArtifactLink = (artifactId, children: ReactNode) =>
+    artifacts.some((artifact) => artifact.id === artifactId) ? (
       <Link
-        data-testid="view-link"
-        data-view-id={viewId}
+        data-testid="artifact-link"
+        data-artifact-id={artifactId}
         to="/sessions/$sessionId"
         params={{ sessionId }}
-        search={{ view: viewId, panel: 'surface' }}
+        search={{ artifact: artifactId }}
         className="text-accent underline decoration-dotted underline-offset-2 hover:decoration-solid"
       >
         {children}
@@ -122,6 +109,17 @@ export function ChatPanel({
     ) : (
       children
     )
+
+  // After a minimize, focus returns to the card that was maximized.
+  const previousMaximized = useRef(maximizedArtifact)
+  useEffect(() => {
+    const previous = previousMaximized.current
+    previousMaximized.current = maximizedArtifact
+    if (!previous || maximizedArtifact) return
+    scrollArea.current
+      ?.querySelector<HTMLElement>(`[data-testid="artifact-card"][data-artifact-id="${CSS.escape(previous)}"] [data-action="maximize"]`)
+      ?.focus()
+  }, [maximizedArtifact])
 
   const reads = useMemo(() => readResults(state?.steps ?? []), [state?.steps])
   const citationLink: CitationLink = (citation) => (
@@ -166,13 +164,14 @@ export function ChatPanel({
   const lastIsAnswer = lastEntry?.kind === 'message' && lastEntry.value.role === 'assistant'
 
   return (
-    <section id="conversation-panel" aria-label="Conversation" className={cn('@container flex min-h-0 min-w-0 flex-1 flex-col bg-surface', className)}>
+    <section id="conversation-panel" aria-label="Conversation" className={cn('@container relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface', className)}>
       <PanelHeader
         title="Conversation"
         subtitle={name}
         subtitleTestId="session-title"
         actions={
           <>
+            {artifacts.length > 0 && !maximizedArtifact && <ArtifactList artifacts={artifacts} onSelect={onMaximize} />}
             <TurnStatus status={status} />
             <span title="Last event sequence" className="hidden items-center gap-0.5 font-mono text-xs @narrow:inline-flex">
               <Hash aria-hidden className="size-icon-sm" />
@@ -207,10 +206,28 @@ export function ChatPanel({
           ) : (
             <ol aria-label="Conversation" className="mx-auto flex max-w-prose flex-col gap-6 px-4 py-6 @medium:px-6 @medium:py-8">
               {entries.map((entry) => {
-                if (entry.kind === 'view') {
+                if (entry.kind === 'artifact') {
+                  const artifact = entry.value
                   return (
-                    <li key={`view:${entry.value.id}`} className="min-w-0 animate-enter">
-                      <ViewReference sessionId={sessionId} view={entry.value} />
+                    <li key={`artifact:${artifact.id}`} className="min-w-0 animate-enter">
+                      <ArtifactCard
+                        artifact={artifact}
+                        maximized={artifact.id === maximizedArtifact}
+                        onMaximize={() => onMaximize(artifact.id)}
+                        onMinimize={onMinimize}
+                      >
+                        <ArtifactRenderer
+                          spec={artifact.spec}
+                          display="inline"
+                          artifactId={artifact.id}
+                          sessionId={sessionId}
+                          drafts={state.drafts}
+                          jobs={state.jobs}
+                          resolveHandle={resolveHandle}
+                          readOnly={readOnly}
+                          onMaximize={() => onMaximize(artifact.id)}
+                        />
+                      </ArtifactCard>
                     </li>
                   )
                 }
@@ -224,7 +241,7 @@ export function ChatPanel({
                 if (entry.kind === 'steps') {
                   return (
                     <li key={`steps:${entry.value[0].id}`} className="flex min-w-0 flex-col gap-0.5">
-                      {entry.value.map((step) => <StepMarker key={step.id} step={step} viewLink={viewLink} />)}
+                      {entry.value.map((step) => <StepMarker key={step.id} step={step} artifactLink={artifactLink} />)}
                     </li>
                   )
                 }
@@ -243,7 +260,7 @@ export function ChatPanel({
                       text={message.text}
                       role={message.role}
                       bindings={bindings}
-                      viewLink={viewLink}
+                      artifactLink={artifactLink}
                       citationLink={message.role === 'assistant' ? citationLink : undefined}
                       streaming={message.status === 'streaming'}
                     />

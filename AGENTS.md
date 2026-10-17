@@ -36,10 +36,10 @@ Guidance for coding agents in this repository. Product overview and full configu
   only token utilities exist; a class that compiles to nothing is a bug.
 - Tailwind only sees complete class strings; never build class names with `${}`.
 - Components live in `apps/web/src/components/` by area: `ui/` (primitives), `shell/`, `chat/`,
-  `surface/`, `xray/`. Data fetching stays in `App.tsx` and `lib/`; components take data as props
+  `artifact/`, `xray/`. Data fetching stays in `App.tsx` and `lib/`; components take data as props
   so stories can render every state.
 - There are no semantic CSS class names. Tests select by role, label, `data-testid` or data
-  attributes such as `data-view-id`, `data-session-id` and `data-token`.
+  attributes such as `data-artifact-id`, `data-session-id` and `data-token`.
 - Design checks live in `apps/web/scripts/design/`: `npm --prefix apps/web run lint:design` for
   the lexical rules (part of `make lint`), `npm --prefix apps/web test` for tokens and contrast.
 - Storybook: `npm --prefix apps/web run storybook` (port 6006). The token overview is the

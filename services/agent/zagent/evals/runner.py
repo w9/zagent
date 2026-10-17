@@ -48,7 +48,7 @@ from zagent.tools import ToolsGateway
 class ChaosPlan(StrictModel):
     conversation_turn_index: int = Field(ge=0)
     disconnect_after_characters: int = Field(ge=0)
-    disconnect_after_view: int | None = Field(default=None, ge=1)
+    disconnect_after_artifact: int | None = Field(default=None, ge=1)
     disconnect_seconds: float = Field(gt=0)
     pause_emit_index: int = Field(ge=1)
     pause_seconds: float = Field(gt=0)
@@ -71,11 +71,11 @@ def chaos_plan(case: Case, reference: Evidence, seed: int) -> ChaosPlan:
     text_length = sum(
         len(event.payload["text"]) for event in turn_events if event.type == "text_delta"
     )
-    view_count = sum(event.type == "view_pushed" for event in turn_events)
+    artifact_count = sum(event.type == "artifact_published" for event in turn_events)
     return ChaosPlan(
         conversation_turn_index=turn_index,
         disconnect_after_characters=randomizer.randint(0, max(0, text_length // 2)),
-        disconnect_after_view=randomizer.randint(1, view_count) if view_count else None,
+        disconnect_after_artifact=randomizer.randint(1, artifact_count) if artifact_count else None,
         disconnect_seconds=randomizer.uniform(0.005, 0.035),
         pause_emit_index=1,
         pause_seconds=randomizer.uniform(0.015, 0.045),
@@ -179,7 +179,7 @@ async def capture_case(
                 raise AssertionError(f"{case.id}: accepted message belongs to another session")
             turn_id = UUID(accepted["conversation_turn_id"])
             text_characters = 0
-            pushed_views = 0
+            published_artifacts = 0
             resumed = False
             while True:
                 interrupted = False
@@ -209,8 +209,8 @@ async def capture_case(
                         events.append(event)
                         if event.type == "text_delta":
                             text_characters += len(event.payload["text"])
-                        if event.type == "view_pushed":
-                            pushed_views += 1
+                        if event.type == "artifact_published":
+                            published_artifacts += 1
                         terminal = event.type in {
                             "conversation_turn_finished",
                             "conversation_turn_failed",
@@ -221,8 +221,8 @@ async def capture_case(
                             and not terminal
                             and turn_index == plan.conversation_turn_index
                             and (
-                                pushed_views >= plan.disconnect_after_view
-                                if plan.disconnect_after_view is not None
+                                published_artifacts >= plan.disconnect_after_artifact
+                                if plan.disconnect_after_artifact is not None
                                 else text_characters >= plan.disconnect_after_characters
                             )
                         ):
@@ -368,10 +368,10 @@ async def capture_case(
         evidence.display = Projection.model_validate(inspected["display"])
         evidence.executions = inspected["executions"]
         evidence.bindings = inspected["bindings"]
-        for view in state.views:
-            if view.spec.kind in {"table", "chart"} and "handle" in view.spec.props:
+        for artifact in state.artifacts:
+            if artifact.spec.kind in {"table", "chart"} and "handle" in artifact.spec.props:
                 resolved = await client.get(
-                    f"/sessions/{session_id}/handles/{view.spec.props['handle']}"
+                    f"/sessions/{session_id}/handles/{artifact.spec.props['handle']}"
                 )
                 resolved.raise_for_status()
                 evidence.display_rows.extend(resolved.json()["rows"])
@@ -433,7 +433,7 @@ async def evaluate_case(
                 {
                     "script": scripted.script.model_dump(),
                     "failure": scripted.failure.model_dump(),
-                    "invalid_view": scripted.invalid_view.model_dump(),
+                    "invalid_artifact": scripted.invalid_artifact.model_dump(),
                 },
                 sort_keys=True,
             ).encode()

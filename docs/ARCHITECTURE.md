@@ -8,7 +8,7 @@ module and cheap to change later, it is the implementer's call, not this documen
 ingress, resolves only at clinical tool/display edges, restricts runtime database credentials,
 and checks outbound requests with a keyed-hash tripwire. X-ray shows actual recorded model
 requests. Draft editing, exact-hash confirmation, synthetic Docker execution, MCP-owned live
-views, SOP retrieval, turn recovery, and persisted session titles are available. Compose network
+artifacts, SOP retrieval, turn recovery, and persisted session titles are available. Compose network
 zones separate clinical, agent, knowledge, and telemetry services; this local
 development deployment is not a production security certification.
 
@@ -21,7 +21,7 @@ development deployment is not a production security certification.
 5. [The agent is an interface](#5-the-agent-is-an-interface)
 6. [Zones and the privacy boundary](#6-zones-and-the-privacy-boundary)
 7. [Handles, not rows](#7-handles-not-rows)
-8. [Views are declarative specs](#8-views-are-declarative-specs)
+8. [Artifacts are declarative specs](#8-artifacts-are-declarative-specs)
 9. [Drafts and confirmation](#9-drafts-and-confirmation)
 10. [Job execution](#10-job-execution)
 11. [Gateways](#11-gateways)
@@ -97,17 +97,21 @@ events(session_id, seq, conversation_turn_id, schema_version, type, payload, cre
 ```
 
 Lifecycle events are `conversation_turn_started`, `conversation_turn_finished`, and
-`conversation_turn_failed`. The current event schema is v2. Original v1 events remain immutable
-in storage and are translated to the current vocabulary on read; the identifier column is
-renamed by a migration, with sequence numbers and payloads preserved.
+`conversation_turn_failed`. The current event schema is v3. Original v1 and v2 events remain
+immutable in storage and are translated to the current vocabulary on read: v1 renamed runs to
+conversation turns, and v3 renamed `view_pushed {view_id}` to `artifact_published {artifact_id}`
+and a draft's `view_id` to `artifact_id`. Identifier columns are renamed by migrations
+(`020_artifacts.sql` renames `drafts.view_id` and allows `view_pushed` only on v1 and v2 rows),
+with sequence numbers and payloads preserved. Artifact numbering counts both event types, so
+existing sessions continue their sequence.
 
 `seq` is monotonic per session, allocated by incrementing a counter column on the session row.
 That row lock serializes appends within a session, which is the desired behavior anyway, and it
 avoids the gap and out-of-order-visibility problems a shared sequence introduces for a reader
 that must not skip.
 
-Conversation and workflow state are projections of this log: the rendered transcript, the right
-panel's view stack, drafts/jobs, and the eval trace. Session organization is persisted metadata:
+Conversation and workflow state are projections of this log: the rendered transcript, the
+published artifacts, drafts/jobs, and the eval trace. Session organization is persisted metadata:
 creation time, title, title origin, and the one-time naming claim live on the session row, with
 a separate metadata notification feed. Three consequences follow, and they are the reason
 for the design.
@@ -115,8 +119,8 @@ for the design.
 **Stream resume is a read.** A reconnecting client asks for events after a sequence number.
 There is no special recovery path to get subtly wrong.
 
-**View history is free.** Back and forward navigation on the working surface is movement
-through a filtered projection, not separately managed UI state.
+**Artifact history is free.** Every artifact is a card at its own position in the transcript;
+the conversation is the history, not separately managed UI state.
 
 **Behavioral assertions run against the bytes the UI rendered.** The eval harness reads the
 same log the client reads. There is no separate instrumentation path that can drift from
@@ -124,7 +128,7 @@ production behavior, which is the failure mode that makes most agent test suites
 
 Two design rules protect this. First, anything worth asserting about must be a structured
 event: refusals go through a `refuse(reason)` tool rather than improvised prose, drafts are
-state, views are specs. This converts most behavioral checks from fuzzy judgment into
+state, artifacts are specs. This converts most behavioral checks from fuzzy judgment into
 deterministic assertion. Second, the event schema is versioned, and the client reducer must
 support removal (`message_dropped`) from the start, even before anything emits it. A resumed
 conversation turn that re-executes an interrupted model call needs to retract a partial
@@ -137,7 +141,7 @@ one row per token.
 turn's id starts a new turn whose `user_message` repeats the stored question and carries
 `retry_of`. Both reducers keep the question and hide the replaced turn's messages, steps and
 refusal; the agent and scope guard build their context without that turn's exchange
-(`without_retried`). Views, drafts and jobs the replaced turn created stay, and its events stay in
+(`without_retried`). Artifacts, drafts and jobs the replaced turn created stay, and its events stay in
 the log for audit and X-ray. Only the latest turn can be retried, so the hidden range is always
 the tail of the transcript.
 
@@ -290,7 +294,7 @@ takes the entire agent zone out of scope, which means the invariant can be verif
 everything the agent zone ever stored rather than by auditing every call path.
 
 Every path into model context counts as an ingress. That includes user text, tool results, job
-logs, retrieved documents and interaction events coming back from rendered views. Missing one
+logs, retrieved documents and interaction events coming back from rendered artifacts. Missing one
 of these is the most likely way to break the invariant, which is why the boundary is a typed
 one: values are `Raw<T>` or `Tokenized<T>`, and only an explicit tokenize step converts.
 
@@ -338,12 +342,12 @@ services behind the main ingress. The site reaches no other zone, and no zone re
 ## 7. Handles, not rows
 
 Data-returning tools return a query handle, a row count and a schema. They do not return rows.
-View-pushing tools take a handle. The model composes a view over data it never sees.
+Artifact-publishing tools take a handle. The model composes an artifact over data it never sees.
 
 This began as a privacy measure and turned out to be the better design regardless.
 
 - It bounds context growth. A thousand-row result costs the same context as a ten-row one.
-- It keeps views live. A view bound to a handle re-reads on render, so a job monitor reflects
+- It keeps artifacts live. An artifact bound to a handle re-reads on render, so a job monitor reflects
   current state instead of a snapshot from when the model spoke.
 - It removes the largest class of hallucination. The model cannot misreport a value it was
   never given.
@@ -355,56 +359,79 @@ surfaces which questions actually require data in context and which were only co
 
 ---
 
-## 8. Views are declarative specs
+## 8. Artifacts are declarative specs
 
-The working surface renders views described by `{kind, version, props}`, validated against a
-JSON Schema at the boundary. The model never emits markup or code.
+An artifact is anything the agent publishes for the user to look at or act on: a table, a chart,
+a draft form, a job monitor. Artifacts are described by `{kind, version, props}`, validated
+against a JSON Schema at the boundary. The model never emits markup or code.
 
-There are two sources of views, and they have different owners.
+There are two sources of artifacts, and they have different owners.
 
-**Tool-owned views** are shipped by the tool that produces them: a job card, a submission form,
-a log tail. These follow the MCP Apps extension, where a tool declares a `ui://` resource and
-the host renders it in a sandboxed frame with JSON-RPC message passing. The jobs MCP server
+**Tool-owned artifacts** are shipped by the tool that produces them: a job card, a submission
+form, a log tail. These follow the MCP Apps extension, where a tool declares a `ui://` resource
+and the host renders it in a sandboxed frame with JSON-RPC message passing. The jobs MCP server
 carries its own job card. This is what makes "connect another MCP server later" a real
-capability rather than a slide: a new server brings its own views with it.
+capability rather than a slide: a new server brings its own artifacts with it.
 
-**Agent-composed views** are ad hoc tables and charts assembled by the model from a small
+**Agent-composed artifacts** are ad hoc tables and charts assembled by the model from a small
 registry of kinds. Charts use a Vega-Lite subset, so the spec is portable and validatable
 rather than bespoke.
 
-The registry is intentionally small and grows one kind at a time. A large view vocabulary
+The registry is intentionally small and grows one kind at a time. A large artifact vocabulary
 introduced early is untestable surface area.
 
-PLAN3 implements only table v1. One JSON Schema under `services/agent/zagent/view_schemas/`
-is used on both sides of the HTTP boundary, with cell/column consistency checks alongside it.
-`view_pushed` carries a stable `view_id` and a validated spec. Invalid specs fail the conversation
-turn before append; earlier views remain intact. Rows are text/scalars, never executable markup.
+PLAN3 implemented table v1. One JSON Schema per kind and version under
+`services/agent/zagent/artifact_schemas/` is used on both sides of the HTTP boundary, with
+cell/column consistency checks alongside it. `artifact_published` carries a stable `artifact_id`
+and a validated spec. Invalid specs fail the conversation turn before append; earlier artifacts
+remain intact. Rows are text/scalars, never executable markup.
 
-View and step stacks are event projections in both Python and TypeScript. The browser stores
-only a selected view ID in the URL; it never stores a separate copy of the stack. No selected
-ID means follow the newest view. Navigation to an older ID pins it across refresh and future
-pushes; selecting the head resumes following. Compact screens expose chat and surface as tabs.
+**Where artifacts appear.** PLAN14 replaced PLAN3's view stack, a right panel that followed the
+newest view, with cards in the conversation. Every artifact has one card at its event's position;
+artifacts published during a run of steps follow the run. Small artifacts are live in their card
+(charts, job cards, the job grid), large ones show a preview (tables, drafts). Maximizing a card
+moves the artifact into the right panel and leaves a placeholder in the card, so live state is
+rendered once; minimizing reverses it. The browser stores only the maximized ID in the URL
+(`?artifact=`), so it survives refresh and history navigation. With nothing maximized the panel
+does not exist and the conversation takes the full width. Publishing never maximizes; the one
+automatic change is user initiated: confirming a maximized draft maximizes the job card the
+confirmation published, whose ID the confirm response carries. Compact screens show the
+maximized artifact instead of the conversation.
 
-The renderer registry discovers versioned components independently of the panel and reducer.
-Table props allow inline fixture rows or a session-scoped handle source. PLAN7 adds generated
-draft forms and pending job cards. Chat links use persisted publication identity, kind, and title;
-they never parse model-written URLs. Explicit `view` selections remain pinned even at the head,
-and missing targets do not select another view. Step markers are collapsed disclosures over
-started/finished step events.
+The renderer registry discovers versioned components independently of the panel and reducer,
+and each renders an inline and a maximized form. Table props allow inline fixture rows or a
+session-scoped handle source. PLAN7 added generated draft forms and pending job cards. Chat links
+use persisted publication identity, kind, and title; they never parse model-written URLs, and
+missing targets show an unavailable artifact rather than another one. Step markers are collapsed
+disclosures over started/finished step events.
 
-PLAN8 moves job rendering to the jobs MCP server's `ui://jobs/card` and `ui://jobs/grid` resources.
-The host uses the official MCP Apps AppBridge/PostMessageTransport in an opaque-origin
-`allow-scripts` iframe, with a restrictive CSP and no network or arbitrary navigation capability.
-It permits only a read of the bound published view, not arbitrary tool arguments. The BFF fetches
-the resource and job data over MCP and relays read-only job notifications. Handles identify live
+**The model's vocabulary is older.** The model still calls artifacts views: `push_view`, receipts
+with `view_id`, `view:` links and `view-0001` identifiers are part of every recorded request, so
+renaming them would invalidate the replay cassettes. The event log, projections, routes and
+client use the artifact names. Draft state reaches the model in four places (the agent's draft
+context, the scope guard's `current_draft`, `update_draft` receipts and the eval simulator's
+prompt); each goes through `drafts.model_facing_draft`, which renames `artifact_id` back to
+`view_id`. A test guards that the tool schemas keep their original class names.
+
+PLAN8 moved job rendering to the jobs MCP server's `ui://jobs/card` and `ui://jobs/grid`
+resources. The host uses the official MCP Apps AppBridge/PostMessageTransport in an
+opaque-origin `allow-scripts` iframe, with a restrictive CSP and no network or arbitrary
+navigation capability. It permits only a read of the bound published artifact, not arbitrary tool
+arguments. The BFF fetches the resource and job data over MCP and relays read-only job
+notifications at `/sessions/:id/artifacts/:artifact_id/{app,data,updates}`. Handles identify live
 queries; immutable publication events do not accumulate progress noise. Legacy v1 job-card
-events use the same server-owned renderer, while new cards use v2 handle bindings.
+events use the same server-owned renderer, while new cards use v2 handle bindings. The host
+reports `displayMode` (`inline` in a card, `fullscreen` when maximized) and honors
+`ui/request-display-mode`, so the jobs app shows a compact summary in the conversation and asks
+for fullscreen to show its log. Only the maximized artifact holds an update stream; inline
+frames poll the data route while near the viewport and stop once every job has finished, which
+keeps long conversations and several tabs within the browser's per-host connection limit.
 
 ---
 
 ## 9. Drafts and confirmation
 
-A job draft is a persisted, versioned object. Chat and the form in the right panel are two
+A job draft is a persisted, versioned object. Chat and the form in the maximized draft are two
 editors over the same object, which is what collapses the two interaction styles in the
 original concept into one state machine: a natural-language correction and a form edit are the
 same mutation.
@@ -421,7 +448,7 @@ draft mutation, so submission is structurally a human action.
 
 PLAN7 implements this with draft/revision rows and pending jobs. A single transaction locks the
 session and draft, compares the semantic content hash, reruns deterministic validation, writes
-one job, and publishes its events/view. Repeated confirmation returns that job. A stale hash
+one job, and publishes its events and job card artifact. Repeated confirmation returns that job. A stale hash
 returns a field-level diff. The hash covers application, specimen handle, and parameters, not
 validation messages, timestamps, or display hints. Integral numeric values are canonicalized.
 Form and model patches share the validator; null removes an incorrect parameter. Generated
@@ -671,14 +698,14 @@ project are the boundary and the evidence, and neither benefits from stack learn
 
 | Layer | Choice | Reasoning |
 |---|---|---|
-| Backend | Python 3.12, FastAPI, Pydantic v2, uv | Pydantic gives schema validation at every boundary, which the view specs, tool arguments and event payloads all need |
+| Backend | Python 3.12, FastAPI, Pydantic v2, uv | Pydantic gives schema validation at every boundary, which the artifact specs, tool arguments and event payloads all need |
 | Database | Postgres 16 | Event log, queue, clinical tables and RLS in one component |
 | Streaming | SSE | `Last-Event-ID` is the exact resume primitive required |
-| Frontend | React 19, TypeScript, Vite, TanStack Router, Tailwind, shadcn/ui | Typed view-spec rendering and a small component surface |
+| Frontend | React 19, TypeScript, Vite, TanStack Router, Tailwind, shadcn/ui | Typed artifact-spec rendering and a small component surface |
 | Local dev | Docker Compose with internal networks per zone | One command, and zones are enforced by Docker network isolation without cluster tooling |
 | Evidence | pytest plus an `zagent evals` CLI | One runner, two entry points |
 | Tracing | OpenTelemetry, Tempo | Job logs already arrive as OTel JSONL |
-| Tools and views | MCP, MCP Apps | Extensibility that is real rather than claimed |
+| Tools and artifacts | MCP, MCP Apps | Extensibility that is real rather than claimed |
 
 **On Rust:** the one component where a type system materially strengthens a guarantee is the
 privacy service, where `Raw<T>` and `Tokenized<T>` can make a boundary violation a compile
@@ -738,16 +765,16 @@ how the traceability matrix is generated rather than maintained.
 
 | # | Decision | Alternative rejected | Because |
 |---|---|---|---|
-| 1 | Append-only per-session event log as the single source of truth | Conventional message table plus separate telemetry | One spine gives resume, view history and eval traces from the same bytes |
+| 1 | Append-only per-session event log as the single source of truth | Conventional message table plus separate telemetry | One spine gives resume, artifact history and eval traces from the same bytes |
 | 2 | Conversation turns decoupled from connections | POST returns the stream | Connection lifetime must not bound work lifetime |
 | 3 | SSE with `Last-Event-ID` | WebSockets | Resume is the primitive needed, and the rest is plain HTTP |
 | 4 | Per-session sequence via a session counter row | Global sequence | Readers must not skip, and gaps make that unsafe |
 | 5 | Agent as an interface, scripted first | Build against a real provider | Enables the entire front end and harness to be proven before any LLM |
 | 6 | Tokenization at ingress | Filter in front of the model call | Removes the whole agent zone from scope, so the invariant is verifiable by scanning storage |
 | 7 | Typed raw/tokenized boundary | Runtime checks only | Every ingress path must be covered, and types cover them structurally |
-| 8 | Handles instead of rows | Rows in tool results | Bounds context, keeps views live, removes a hallucination class |
-| 9 | Declarative view specs | Model-generated markup or code | Validatable, snapshot-testable, safe to render |
-| 10 | MCP Apps for tool-owned views | Bespoke view registry only | Third-party servers bring their own views, so extensibility is real |
+| 8 | Handles instead of rows | Rows in tool results | Bounds context, keeps artifacts live, removes a hallucination class |
+| 9 | Declarative artifact specs | Model-generated markup or code | Validatable, snapshot-testable, safe to render |
+| 10 | MCP Apps for tool-owned artifacts | Bespoke artifact registry only | Third-party servers bring their own artifacts, so extensibility is real |
 | 11 | Version-hashed confirmation | Plain confirmation button | Closes the race between render and click |
 | 12 | No submit tool exposed to the model | Submit tool plus policy prompt | Makes unauthorized submission structurally impossible |
 | 13 | Postgres queue with `SKIP LOCKED` | Dedicated broker | One fewer component, and transactional enqueue with the job row |
@@ -764,3 +791,5 @@ how the traceability matrix is generated rather than maintained.
 | 24 | Knowledge as a separately owned zone behind a broker | Index baked into the agent image | A real knowledge service has another owner, release cycle and content; guarantees belong at the boundary |
 | 25 | Asymmetrically signed per-turn caller context, verified at the broker | Roles passed by the runtime or as tool arguments | Neither the model nor the runtime can widen knowledge access; only the BFF can sign and only the broker can verify |
 | 26 | Citations open a separate intranet through BFF-signed, single-use grants | A document panel in the workbench, or links that name the persona | Checking a source means leaving the assistant for the system of record, and the client must not choose who it is there |
+| 27 | Artifacts as cards in the conversation, maximized on demand into the right panel | A right panel that follows the newest view | The conversation already orders what was published; the panel should hold what the user chose, not whatever arrived last |
+| 28 | Rename views to artifacts everywhere the model does not see | Rename the model contract too | Replay cassettes are keyed by the full model request; renaming the tool or receipts would mean a full re-record |

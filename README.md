@@ -92,6 +92,8 @@ report gives them intervals instead of checkmarks.
 
 <!-- TODO(PLAN11): replace with the 2-minute walkthrough recording -->
 
+![Zagent with a three-turn conversation about patient NGC-0041872: a library table in the chat and a coverage chart maximized in the right panel](docs/images/zagent.png)
+
 Three panels, in the shape most people already know.
 
 | Panel | Contents |

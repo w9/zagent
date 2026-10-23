@@ -92,6 +92,8 @@ report gives them intervals instead of checkmarks.
 
 <!-- TODO(PLAN11): replace with the 2-minute walkthrough recording -->
 
+![Zagent after a failed somatic run: the agent cites the identity SOP, prepares a corrected draft, and the confirmed rerun completes in the maximized job card](docs/images/zagent.png)
+
 Three panels, in the shape most people already know.
 
 | Panel | Contents |

@@ -9,6 +9,8 @@
 Most agent demos show a happy path. Zagent is built to answer the question a stakeholder
 actually asks after the demo: **how do you know it behaves that way every time?**
 
+![Zagent after a failed somatic run: the agent cites the identity SOP, prepares a corrected draft, and the confirmed rerun completes in the maximized job card](docs/images/zagent.png)
+
 It is a working agent over a synthetic pediatric genomics cohort. You can ask about specimens
 and libraries, follow up on previous results, and display tables or charts. Tool results expose
 handles and counts, not rows. A context-aware scope guard emits structured refusals for unrelated
@@ -92,9 +94,7 @@ report gives them intervals instead of checkmarks.
 
 <!-- TODO(PLAN11): replace with the 2-minute walkthrough recording -->
 
-![Zagent after a failed somatic run: the agent cites the identity SOP, prepares a corrected draft, and the confirmed rerun completes in the maximized job card](docs/images/zagent.png)
-
-Three panels, in the shape most people already know.
+Three panels, as in the screenshot at the top, in the shape most people already know.
 
 | Panel | Contents |
 |---|---|

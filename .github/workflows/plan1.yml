@@ -85,8 +85,16 @@ jobs:
           name: browser-evidence-${{ matrix.agent }}
           path: apps/web/test-results
           retention-days: 7
+      # Service logs go to an artifact, not stdout: printed, they bury the
+      # Playwright failure output past what the log viewer and API return.
       - if: failure()
-        run: docker compose --project-directory . -f deploy/compose/compose.yaml logs
+        run: docker compose --project-directory . -f deploy/compose/compose.yaml logs --no-color > compose-logs.txt 2>&1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-compose-logs-${{ matrix.agent }}
+          path: compose-logs.txt
+          retention-days: 7
       - if: always()
         run: make down
 
